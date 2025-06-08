@@ -1,0 +1,253 @@
+{
+  "meta": {
+    "generatedAt": "2025-06-08T05:57:30.237Z",
+    "tasksAnalyzed": 15,
+    "totalTasks": 15,
+    "analysisCount": 30,
+    "thresholdScore": 7,
+    "projectName": "Taskmaster",
+    "usedResearch": true
+  },
+  "complexityAnalysis": [
+    {
+      "taskId": 1,
+      "taskTitle": "プロジェクト環境セットアップ",
+      "complexityScore": 4,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the project environment setup into smaller, manageable tasks. Consider tasks such as: Initialize Next.js project, Configure TypeScript, Set up ESLint and Prettier, and Create basic directory structure.",
+      "reasoning": "Setting up the project environment involves multiple steps, each with its own configuration. Breaking it down makes it easier to manage and track progress."
+    },
+    {
+      "taskId": 2,
+      "taskTitle": "データベーススキーマ設計・実装",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Decompose the database schema design and implementation into individual table designs and migrations. Consider tasks such as: Design '仕訳' table schema, Design '仕訳明細' table schema, Design '勘定科目' table schema, Design '補助科目' table schema, Design '取引先' table schema, and Create database migrations.",
+      "reasoning": "Designing and implementing a database schema involves multiple tables and relationships. Dividing it into individual table designs allows for focused effort and easier management."
+    },
+    {
+      "taskId": 3,
+      "taskTitle": "共通コンポーネント開発",
+      "complexityScore": 6,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Divide the common component development into individual component implementations. Consider tasks such as: Implement Header Menu component, Implement Dropdown Menu component, Implement Input Field component, Implement Button component, and Implement Layout component.",
+      "reasoning": "Developing common components involves creating multiple reusable UI elements. Breaking it down allows for focused development and testing of each component."
+    },
+    {
+      "taskId": 4,
+      "taskTitle": "データアクセス層実装",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the data access layer implementation into smaller tasks focused on ORM setup and API creation for different data entities. Consider tasks such as: Configure Prisma/ORM, Define models for each table, Implement CRUD API for '仕訳', Implement CRUD API for master data, and Create API documentation.",
+      "reasoning": "Implementing the data access layer involves setting up the ORM and creating APIs for different data entities. Dividing it into these tasks allows for focused development and testing."
+    },
+    {
+      "taskId": 5,
+      "taskTitle": "仕訳番号自動採番機能実装",
+      "complexityScore": 5,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Decompose the automatic journal entry numbering implementation into smaller, more manageable tasks. Consider tasks such as: Implement date-based journal entry number generation logic, Implement duplicate check logic, Implement increment function, and Implement error handling.",
+      "reasoning": "Implementing the automatic journal entry numbering involves several logical steps. Breaking it down makes it easier to manage and test each step."
+    },
+    {
+      "taskId": 6,
+      "taskTitle": "マスタデータ管理機能実装",
+      "complexityScore": 8,
+      "recommendedSubtasks": 7,
+      "expansionPrompt": "Divide the master data management implementation into smaller tasks focused on CRUD operations and search functionality for each master data type. Consider tasks such as: Implement CRUD for '勘定科目', Implement CRUD for '補助科目', Implement CRUD for '取引先', Implement CRUD for '分析コード', Implement code-to-name conversion, Implement search functionality, and Implement validation.",
+      "reasoning": "Implementing master data management involves multiple CRUD operations and search functionalities for different master data types. Breaking it down allows for focused development and testing of each feature."
+    },
+    {
+      "taskId": 7,
+      "taskTitle": "仕訳作成ページUI実装",
+      "complexityScore": 6,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the journal entry creation page UI implementation into smaller tasks focused on individual UI components. Consider tasks such as: Implement Save button, Implement journal entry header section, Implement journal entry input fields, Implement journal entry row display section, and Implement responsive design.",
+      "reasoning": "Implementing the journal entry creation page UI involves multiple UI components. Breaking it down allows for focused development and testing of each component."
+    },
+    {
+      "taskId": 8,
+      "taskTitle": "仕訳入力機能実装",
+      "complexityScore": 8,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Divide the journal entry input implementation into smaller tasks focused on individual input fields and validation. Consider tasks such as: Implement debit/credit input, Implement code auto-completion, Implement name auto-display, Implement validation, Implement save process, and Implement error handling.",
+      "reasoning": "Implementing the journal entry input involves multiple input fields and validation rules. Breaking it down allows for focused development and testing of each feature."
+    },
+    {
+      "taskId": 9,
+      "taskTitle": "仕訳照会ページ実装",
+      "complexityScore": 5,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Decompose the journal entry inquiry page implementation into smaller tasks focused on data retrieval and display. Consider tasks such as: Implement data retrieval, Implement data display, Implement update button, and Implement delete button.",
+      "reasoning": "Implementing the journal entry inquiry page involves data retrieval and display, as well as update and delete functionalities. Breaking it down makes it easier to manage and test each feature."
+    },
+    {
+      "taskId": 10,
+      "taskTitle": "仕訳更新ページ実装",
+      "complexityScore": 6,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the journal entry update page implementation into smaller tasks focused on data retrieval, editing, and updating. Consider tasks such as: Implement data retrieval, Implement editing functionality, Implement update process, Implement validation, and Implement error handling.",
+      "reasoning": "Implementing the journal entry update page involves data retrieval, editing, and updating functionalities. Breaking it down allows for focused development and testing of each feature."
+    },
+    {
+      "taskId": 11,
+      "taskTitle": "仕訳削除機能実装",
+      "complexityScore": 5,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Divide the journal entry deletion implementation into smaller tasks focused on confirmation, deletion, and data integrity. Consider tasks such as: Implement deletion confirmation dialog, Implement deletion process, Implement data integrity check, and Implement audit logging.",
+      "reasoning": "Implementing the journal entry deletion involves confirmation, deletion, and data integrity checks. Breaking it down makes it easier to manage and test each feature."
+    },
+    {
+      "taskId": 12,
+      "taskTitle": "フォームバリデーション実装",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Decompose the form validation implementation into smaller tasks focused on individual validation rules. Consider tasks such as: Implement required field check, Implement format validation, Implement debit/credit balance check, Implement error message display, Implement client-side validation, and Implement server-side validation.",
+      "reasoning": "Implementing form validation involves multiple validation rules. Breaking it down allows for focused development and testing of each rule."
+    },
+    {
+      "taskId": 13,
+      "taskTitle": "エラーハンドリング実装",
+      "complexityScore": 6,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the error handling implementation into smaller tasks focused on different error types and handling strategies. Consider tasks such as: Implement API error handling, Implement network error handling, Implement fallback display, Implement error logging, and Implement user-friendly messages.",
+      "reasoning": "Implementing error handling involves handling different error types and implementing different handling strategies. Breaking it down allows for focused development and testing of each strategy."
+    },
+    {
+      "taskId": 14,
+      "taskTitle": "レスポンシブデザイン対応",
+      "complexityScore": 5,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Divide the responsive design implementation into smaller tasks focused on layout, breakpoints, and touch interactions. Consider tasks such as: Implement CSS Grid/Flexbox layout, Configure breakpoints, Implement touch interactions, and Implement device testing.",
+      "reasoning": "Implementing responsive design involves layout adjustments, breakpoint configurations, and touch interaction implementations. Breaking it down allows for focused development and testing of each aspect."
+    },
+    {
+      "taskId": 15,
+      "taskTitle": "統合テスト・品質保証",
+      "complexityScore": 9,
+      "recommendedSubtasks": 7,
+      "expansionPrompt": "Decompose the integration testing and quality assurance into smaller tasks focused on different testing types and environments. Consider tasks such as: Implement E2E tests, Implement performance tests, Implement security tests, Implement UAT tests, Set up test environment, Create test data, and Establish bug reporting process.",
+      "reasoning": "Integration testing and quality assurance involve multiple testing types and environments. Breaking it down allows for focused testing and quality assurance efforts."
+    },
+    {
+      "taskId": "1",
+      "taskTitle": "プロジェクト環境セットアップ",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down this task with a focus on プロジェクト環境セットアップ.",
+      "reasoning": "Automatically added due to missing analysis in AI response."
+    },
+    {
+      "taskId": "2",
+      "taskTitle": "データベーススキーマ設計・実装",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down this task with a focus on データベーススキーマ設計・実装.",
+      "reasoning": "Automatically added due to missing analysis in AI response."
+    },
+    {
+      "taskId": "3",
+      "taskTitle": "共通コンポーネント開発",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down this task with a focus on 共通コンポーネント開発.",
+      "reasoning": "Automatically added due to missing analysis in AI response."
+    },
+    {
+      "taskId": "4",
+      "taskTitle": "データアクセス層実装",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down this task with a focus on データアクセス層実装.",
+      "reasoning": "Automatically added due to missing analysis in AI response."
+    },
+    {
+      "taskId": "5",
+      "taskTitle": "仕訳番号自動採番機能実装",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down this task with a focus on 仕訳番号自動採番機能実装.",
+      "reasoning": "Automatically added due to missing analysis in AI response."
+    },
+    {
+      "taskId": "6",
+      "taskTitle": "マスタデータ管理機能実装",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down this task with a focus on マスタデータ管理機能実装.",
+      "reasoning": "Automatically added due to missing analysis in AI response."
+    },
+    {
+      "taskId": "7",
+      "taskTitle": "仕訳作成ページUI実装",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down this task with a focus on 仕訳作成ページui実装.",
+      "reasoning": "Automatically added due to missing analysis in AI response."
+    },
+    {
+      "taskId": "8",
+      "taskTitle": "仕訳入力機能実装",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down this task with a focus on 仕訳入力機能実装.",
+      "reasoning": "Automatically added due to missing analysis in AI response."
+    },
+    {
+      "taskId": "9",
+      "taskTitle": "仕訳照会ページ実装",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down this task with a focus on 仕訳照会ページ実装.",
+      "reasoning": "Automatically added due to missing analysis in AI response."
+    },
+    {
+      "taskId": "10",
+      "taskTitle": "仕訳更新ページ実装",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down this task with a focus on 仕訳更新ページ実装.",
+      "reasoning": "Automatically added due to missing analysis in AI response."
+    },
+    {
+      "taskId": "11",
+      "taskTitle": "仕訳削除機能実装",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down this task with a focus on 仕訳削除機能実装.",
+      "reasoning": "Automatically added due to missing analysis in AI response."
+    },
+    {
+      "taskId": "12",
+      "taskTitle": "フォームバリデーション実装",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down this task with a focus on フォームバリデーション実装.",
+      "reasoning": "Automatically added due to missing analysis in AI response."
+    },
+    {
+      "taskId": "13",
+      "taskTitle": "エラーハンドリング実装",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down this task with a focus on エラーハンドリング実装.",
+      "reasoning": "Automatically added due to missing analysis in AI response."
+    },
+    {
+      "taskId": "14",
+      "taskTitle": "レスポンシブデザイン対応",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down this task with a focus on レスポンシブデザイン対応.",
+      "reasoning": "Automatically added due to missing analysis in AI response."
+    },
+    {
+      "taskId": "15",
+      "taskTitle": "統合テスト・品質保証",
+      "complexityScore": 5,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Break down this task with a focus on 統合テスト・品質保証.",
+      "reasoning": "Automatically added due to missing analysis in AI response."
+    }
+  ]
+}
