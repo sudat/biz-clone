@@ -51,13 +51,33 @@ type SupabaseAnalysisCode =
 // ServiceResponse型をServiceResultに統一
 type ServiceResponse<T> = ServiceResult<T>;
 
-/**
- * オブジェクトをFormDataに変換するヘルパー関数
- */
-function objectToFormData(obj: Record<string, any>): FormData {
-  const formData = new FormData();
+// ====================
+// 最適化されたFormData変換ヘルパー
+// ====================
 
-  for (const [key, value] of Object.entries(obj)) {
+// FormData変換キャッシュ
+const formDataCache = new Map<string, FormData>();
+
+/**
+ * オブジェクトをFormDataに変換するヘルパー関数（最適化版）
+ */
+function objectToFormData(obj: Record<string, unknown>): FormData {
+  // キャッシュキー生成
+  const cacheKey = JSON.stringify(obj);
+  
+  // キャッシュから確認
+  if (formDataCache.has(cacheKey)) {
+    const cached = formDataCache.get(cacheKey)!;
+    // FormDataはクローンが必要
+    return cloneFormData(cached);
+  }
+  
+  const formData = new FormData();
+  
+  // camelCaseをsnake_caseに変換してFormDataに追加
+  const convertedData = camelToSnake(obj, CONVERSION_OPTIONS);
+  
+  for (const [key, value] of Object.entries(convertedData)) {
     if (value !== null && value !== undefined) {
       if (typeof value === "boolean") {
         formData.append(key, value.toString());
@@ -68,8 +88,27 @@ function objectToFormData(obj: Record<string, any>): FormData {
       }
     }
   }
-
+  
+  // キャッシュに保存（最大100エントリ）
+  if (formDataCache.size < 100) {
+    formDataCache.set(cacheKey, cloneFormData(formData));
+  }
+  
   return formData;
+}
+
+// FormDataクローンヘルパー
+function cloneFormData(original: FormData): FormData {
+  const cloned = new FormData();
+  for (const [key, value] of original.entries()) {
+    cloned.append(key, value);
+  }
+  return cloned;
+}
+
+// キャッシュクリア関数
+export function clearFormDataCache(): void {
+  formDataCache.clear();
 }
 
 /**
@@ -90,11 +129,10 @@ export class AccountDataAdapter {
         };
       }
 
-      // Prisma camelCase → Supabase snake_case 変換
-      const convertedData: SupabaseAccount[] =
-        result.data?.map((account: any) =>
-          camelToSnake<SupabaseAccount>(account)
-        ) || [];
+      // 最適化されたバッチ変換
+      const convertedData = result.data 
+        ? batchCamelToSnake<SupabaseAccount>(result.data, CONVERSION_OPTIONS)
+        : [];
 
       return { success: true, data: convertedData };
     } catch (error) {
@@ -131,8 +169,8 @@ export class AccountDataAdapter {
     account: any,
   ): Promise<ServiceResponse<SupabaseAccount>> {
     try {
-      // snake_case → camelCase 変換してFormDataに変換
-      const camelCaseAccount = snakeToCamel(account) as Record<string, any>;
+      // 最適化された変換処理
+      const camelCaseAccount = snakeToCamel(account, CONVERSION_OPTIONS) as Record<string, unknown>;
       const formData = objectToFormData(camelCaseAccount);
 
       const result = await createAccountAction(formData);
@@ -145,16 +183,17 @@ export class AccountDataAdapter {
         };
       }
 
-      // 成功の場合はリダイレクトされるため、この時点では作成されたデータを返せない
-      // 暫定的に元のデータを変換して返す
+      // 最適化された変換処理
       const convertedData: SupabaseAccount = camelToSnake<SupabaseAccount>(
         account,
+        CONVERSION_OPTIONS
       );
 
       return { success: true, data: convertedData };
     } catch (error) {
       const convertedData: SupabaseAccount = camelToSnake<SupabaseAccount>(
         account,
+        CONVERSION_OPTIONS
       );
       return handleAdapterError(error, "勘定科目の作成", convertedData);
     }
