@@ -1,7 +1,6 @@
 "use server";
 
-import { z } from "zod";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   AccountFilter,
@@ -25,54 +24,37 @@ import {
   createFormValidationError 
 } from "@/lib/utils/error-handler";
 
-// マスタデータ共通のZodスキーマ
-// アカウント（勘定科目）スキーマ
-const AccountSchema = z.object({
-  accountCode: z.string().min(1, "勘定科目コードは必須です"),
-  accountName: z.string().min(1, "勘定科目名は必須です"),
-  accountType: z.enum(["資産", "負債", "資本", "収益", "費用"], {
-    message: "有効な勘定科目タイプを選択してください",
-  }),
-  parentAccountCode: z.string().nullable().optional(),
-  isDetail: z.boolean().optional(),
-  isActive: z.boolean().optional(),
-  sortOrder: z.number().nullable().optional(),
-});
+// 統一スキーマのインポート
+import {
+  createAccountSchema,
+  updateAccountSchema,
+  createSubAccountSchema,
+  updateSubAccountSchema,
+  createPartnerSchema,
+  updatePartnerSchema,
+  createAnalysisCodeSchema,
+  updateAnalysisCodeSchema
+} from "@/lib/schemas/master";
 
-// 補助科目スキーマ
-const SubAccountSchema = z.object({
-  subAccountCode: z.string().min(1, "補助科目コードは必須です"),
-  accountCode: z.string().min(1, "勘定科目コードは必須です"),
-  subAccountName: z.string().min(1, "補助科目名は必須です"),
-  isActive: z.boolean().optional(),
-  sortOrder: z.number().nullable().optional(),
-});
+// FormDataから入力値を抽出するヘルパー関数
+function extractFormData(formData: FormData): Record<string, unknown> {
+  const data: Record<string, unknown> = {};
+  for (const [key, value] of formData.entries()) {
+    if (value === 'true') {
+      data[key] = true;
+    } else if (value === 'false') {
+      data[key] = false;
+    } else if (value === '' || value === 'null') {
+      data[key] = null;
+    } else if (key.includes('sortOrder') || key.includes('sort_order')) {
+      data[key] = value ? Number(value) : null;
+    } else {
+      data[key] = value;
+    }
+  }
+  return data;
+}
 
-// 取引先スキーマ
-const PartnerSchema = z.object({
-  partnerCode: z.string().min(1, "取引先コードは必須です"),
-  partnerName: z.string().min(1, "取引先名は必須です"),
-  partnerKana: z.string().nullable().optional(),
-  partnerType: z.enum(["得意先", "仕入先", "金融機関", "その他"], {
-    message: "有効な取引先タイプを選択してください",
-  }),
-  postalCode: z.string().nullable().optional(),
-  address: z.string().nullable().optional(),
-  phone: z.string().nullable().optional(),
-  email: z.string().nullable().optional(),
-  contactPerson: z.string().nullable().optional(),
-  isActive: z.boolean().optional(),
-});
-
-// 分析コードスキーマ
-const AnalysisCodeSchema = z.object({
-  analysisCode: z.string().min(1, "分析コードは必須です"),
-  analysisName: z.string().min(1, "分析コード名は必須です"),
-  analysisType: z.string().min(1, "分析タイプは必須です"),
-  parentAnalysisCode: z.string().nullable().optional(),
-  isActive: z.boolean().optional(),
-  sortOrder: z.number().nullable().optional(),
-});
 
 /**
  * 勘定科目 Server Actions
@@ -111,34 +93,40 @@ export async function getAccountsHierarchyAction() {
 }
 
 export async function createAccountAction(formData: FormData): Promise<ActionResult<Account>> {
-  const rawFormData = {
-    accountCode: formData.get("accountCode") as string,
-    accountName: formData.get("accountName") as string,
-    accountType: formData.get("accountType") as string,
-    parentAccountCode: formData.get("parentAccountCode") as string | null,
-    isDetail: formData.get("isDetail") === "true",
-    isActive: formData.get("isActive") !== "false", // デフォルトtrue
-    sortOrder: formData.get("sortOrder")
-      ? Number(formData.get("sortOrder"))
-      : null,
-  };
+  const rawFormData = extractFormData(formData);
 
-  // バリデーション
-  const validatedFields = AccountSchema.safeParse(rawFormData);
+  // 新しい統一スキーマでバリデーション
+  const validatedFields = createAccountSchema.safeParse({
+    account_code: rawFormData.accountCode,
+    account_name: rawFormData.accountName,
+    account_type: rawFormData.accountType,
+    parent_account_code: rawFormData.parentAccountCode || null,
+    is_detail: rawFormData.isDetail ?? true,
+    is_active: rawFormData.isActive ?? true,
+    sort_order: rawFormData.sortOrder || null,
+    notes: rawFormData.notes || null
+  });
+  
   if (!validatedFields.success) {
     return createFormValidationError(validatedFields.error.flatten().fieldErrors);
   }
 
   try {
+    const data = validatedFields.data;
     const createData: Prisma.AccountCreateInput = {
-      ...validatedFields.data,
-      parentAccount: validatedFields.data.parentAccountCode
-        ? { connect: { accountCode: validatedFields.data.parentAccountCode } }
+      account_code: data.account_code,
+      account_name: data.account_name,
+      account_type: data.account_type,
+      is_detail: data.is_detail ?? true,
+      is_active: data.is_active ?? true,
+      sort_order: data.sort_order,
+      notes: data.notes,
+      parentAccount: data.parent_account_code
+        ? { connect: { account_code: data.parent_account_code } }
         : undefined,
     };
-    delete (createData as any).parentAccountCode; // Prismaリレーション用に削除
 
-    const account = await AccountService.createAccount(createData);
+    await AccountService.createAccount(createData);
     
     // 成功時のリダイレクト
     revalidatePath("/master/accounts");
@@ -153,33 +141,39 @@ export async function updateAccountAction(
   accountCode: string,
   formData: FormData,
 ): Promise<ActionResult<Account>> {
-  const rawFormData = {
-    accountName: formData.get("accountName") as string,
-    accountType: formData.get("accountType") as string,
-    parentAccountCode: formData.get("parentAccountCode") as string | null,
-    isDetail: formData.get("isDetail") === "true",
-    isActive: formData.get("isActive") === "true",
-    sortOrder: formData.get("sortOrder")
-      ? Number(formData.get("sortOrder"))
-      : null,
-  };
+  const rawFormData = extractFormData(formData);
 
-  // バリデーション
-  const validatedFields = AccountSchema.partial().safeParse(rawFormData);
+  // 新しい統一スキーマでバリデーション
+  const validatedFields = updateAccountSchema.safeParse({
+    account_code: accountCode, // 更新時はコード必須
+    account_name: rawFormData.accountName,
+    account_type: rawFormData.accountType,
+    parent_account_code: rawFormData.parentAccountCode || null,
+    is_detail: rawFormData.isDetail,
+    is_active: rawFormData.isActive,
+    sort_order: rawFormData.sortOrder || null,
+    notes: rawFormData.notes || null
+  });
+  
   if (!validatedFields.success) {
     return createFormValidationError(validatedFields.error.flatten().fieldErrors);
   }
 
   try {
+    const data = validatedFields.data;
     const updateData: Prisma.AccountUpdateInput = {
-      ...validatedFields.data,
-      parentAccount: validatedFields.data.parentAccountCode
-        ? { connect: { accountCode: validatedFields.data.parentAccountCode } }
+      account_name: data.account_name,
+      account_type: data.account_type,
+      is_detail: data.is_detail,
+      is_active: data.is_active,
+      sort_order: data.sort_order,
+      notes: data.notes,
+      parentAccount: data.parent_account_code
+        ? { connect: { account_code: data.parent_account_code } }
         : { disconnect: true },
     };
-    delete (updateData as any).parentAccountCode; // Prismaリレーション用に削除
 
-    const account = await AccountService.updateAccount(accountCode, updateData);
+    await AccountService.updateAccount(accountCode, updateData);
     
     // 成功時のリダイレクト
     revalidatePath("/master/accounts");
@@ -228,30 +222,36 @@ export async function getSubAccountsByAccountCodeAction(accountCode: string) {
 }
 
 export async function createSubAccountAction(formData: FormData): Promise<ActionResult<SubAccount>> {
-  const rawFormData = {
-    subAccountCode: formData.get("subAccountCode") as string,
-    accountCode: formData.get("accountCode") as string,
-    subAccountName: formData.get("subAccountName") as string,
-    isActive: formData.get("isActive") !== "false", // デフォルトtrue
-    sortOrder: formData.get("sortOrder")
-      ? Number(formData.get("sortOrder"))
-      : null,
-  };
+  const rawFormData = extractFormData(formData);
 
-  // バリデーション
-  const validatedFields = SubAccountSchema.safeParse(rawFormData);
+  // 新しい統一スキーマでバリデーション
+  const validatedFields = createSubAccountSchema.safeParse({
+    sub_account_code: rawFormData.subAccountCode,
+    account_code: rawFormData.accountCode,
+    sub_account_name: rawFormData.subAccountName,
+    sub_account_name_kana: rawFormData.subAccountNameKana || null,
+    is_active: rawFormData.isActive ?? true,
+    sort_order: rawFormData.sortOrder || null,
+    notes: rawFormData.notes || null
+  });
+  
   if (!validatedFields.success) {
     return createFormValidationError(validatedFields.error.flatten().fieldErrors);
   }
 
   try {
+    const data = validatedFields.data;
     const createData: Prisma.SubAccountCreateInput = {
-      ...validatedFields.data,
-      account: { connect: { accountCode: validatedFields.data.accountCode } },
+      sub_account_code: data.sub_account_code,
+      sub_account_name: data.sub_account_name,
+      sub_account_name_kana: data.sub_account_name_kana,
+      is_active: data.is_active ?? true,
+      sort_order: data.sort_order,
+      notes: data.notes,
+      account: { connect: { account_code: data.account_code } },
     };
-    delete (createData as any).accountCode; // Prismaリレーション用に削除
 
-    const subAccount = await SubAccountService.createSubAccount(createData);
+    await SubAccountService.createSubAccount(createData);
     
     // 成功時のリダイレクト
     revalidatePath("/master/sub-accounts");
@@ -267,25 +267,37 @@ export async function updateSubAccountAction(
   subAccountCode: string,
   formData: FormData,
 ): Promise<ActionResult<SubAccount>> {
-  const rawFormData = {
-    subAccountName: formData.get("subAccountName") as string,
-    isActive: formData.get("isActive") === "true",
-    sortOrder: formData.get("sortOrder")
-      ? Number(formData.get("sortOrder"))
-      : null,
-  };
+  const rawFormData = extractFormData(formData);
 
-  // バリデーション
-  const validatedFields = SubAccountSchema.partial().safeParse(rawFormData);
+  // 新しい統一スキーマでバリデーション
+  const validatedFields = updateSubAccountSchema.safeParse({
+    sub_account_code: subAccountCode, // 更新時はコード必須
+    account_code: accountCode, // 関連する勘定科目コードも必須
+    sub_account_name: rawFormData.subAccountName,
+    sub_account_name_kana: rawFormData.subAccountNameKana || null,
+    is_active: rawFormData.isActive,
+    sort_order: rawFormData.sortOrder || null,
+    notes: rawFormData.notes || null
+  });
+  
   if (!validatedFields.success) {
     return createFormValidationError(validatedFields.error.flatten().fieldErrors);
   }
 
   try {
-    const subAccount = await SubAccountService.updateSubAccount(
+    const data = validatedFields.data;
+    const updateData = {
+      sub_account_name: data.sub_account_name,
+      sub_account_name_kana: data.sub_account_name_kana,
+      is_active: data.is_active,
+      sort_order: data.sort_order,
+      notes: data.notes
+    };
+    
+    await SubAccountService.updateSubAccount(
       accountCode,
       subAccountCode,
-      validatedFields.data,
+      updateData,
     );
     
     // 成功時のリダイレクト
@@ -337,27 +349,30 @@ export async function getPartnerByCodeAction(partnerCode: string) {
 }
 
 export async function createPartnerAction(formData: FormData): Promise<ActionResult<Partner>> {
-  const rawFormData = {
-    partnerCode: formData.get("partnerCode") as string,
-    partnerName: formData.get("partnerName") as string,
-    partnerKana: formData.get("partnerKana") as string | null,
-    partnerType: formData.get("partnerType") as string,
-    postalCode: formData.get("postalCode") as string | null,
-    address: formData.get("address") as string | null,
-    phone: formData.get("phone") as string | null,
-    email: formData.get("email") as string | null,
-    contactPerson: formData.get("contactPerson") as string | null,
-    isActive: formData.get("isActive") !== "false", // デフォルトtrue
-  };
+  const rawFormData = extractFormData(formData);
 
-  // バリデーション
-  const validatedFields = PartnerSchema.safeParse(rawFormData);
+  // 新しい統一スキーマでバリデーション
+  const validatedFields = createPartnerSchema.safeParse({
+    partner_code: rawFormData.partnerCode,
+    partner_name: rawFormData.partnerName,
+    partner_name_kana: rawFormData.partnerKana || null,
+    partner_type: rawFormData.partnerType,
+    postal_code: rawFormData.postalCode || null,
+    address: rawFormData.address || null,
+    phone: rawFormData.phone || null,
+    email: rawFormData.email || null,
+    contact_person: rawFormData.contactPerson || null,
+    is_active: rawFormData.isActive ?? true,
+    sort_order: rawFormData.sortOrder || null,
+    notes: rawFormData.notes || null
+  });
+  
   if (!validatedFields.success) {
     return createFormValidationError(validatedFields.error.flatten().fieldErrors);
   }
 
   try {
-    const partner = await PartnerService.createPartner(validatedFields.data);
+    await PartnerService.createPartner(validatedFields.data);
     
     // 成功時のリダイレクト
     revalidatePath("/master/partners");
@@ -372,26 +387,45 @@ export async function updatePartnerAction(
   partnerCode: string,
   formData: FormData,
 ): Promise<ActionResult<Partner>> {
-  const rawFormData = {
-    partnerName: formData.get("partnerName") as string,
-    partnerKana: formData.get("partnerKana") as string | null,
-    partnerType: formData.get("partnerType") as string,
-    postalCode: formData.get("postalCode") as string | null,
-    address: formData.get("address") as string | null,
-    phone: formData.get("phone") as string | null,
-    email: formData.get("email") as string | null,
-    contactPerson: formData.get("contactPerson") as string | null,
-    isActive: formData.get("isActive") === "true",
-  };
+  const rawFormData = extractFormData(formData);
 
-  // バリデーション
-  const validatedFields = PartnerSchema.partial().safeParse(rawFormData);
+  // 新しい統一スキーマでバリデーション
+  const validatedFields = updatePartnerSchema.safeParse({
+    partner_code: partnerCode, // 更新時はコード必須
+    partner_name: rawFormData.partnerName,
+    partner_name_kana: rawFormData.partnerKana || null,
+    partner_type: rawFormData.partnerType,
+    postal_code: rawFormData.postalCode || null,
+    address: rawFormData.address || null,
+    phone: rawFormData.phone || null,
+    email: rawFormData.email || null,
+    contact_person: rawFormData.contactPerson || null,
+    is_active: rawFormData.isActive,
+    sort_order: rawFormData.sortOrder || null,
+    notes: rawFormData.notes || null
+  });
+  
   if (!validatedFields.success) {
     return createFormValidationError(validatedFields.error.flatten().fieldErrors);
   }
 
   try {
-    const partner = await PartnerService.updatePartner(partnerCode, validatedFields.data);
+    const data = validatedFields.data;
+    const updateData = {
+      partner_name: data.partner_name,
+      partner_name_kana: data.partner_name_kana,
+      partner_type: data.partner_type,
+      postal_code: data.postal_code,
+      address: data.address,
+      phone: data.phone,
+      email: data.email,
+      contact_person: data.contact_person,
+      is_active: data.is_active,
+      sort_order: data.sort_order,
+      notes: data.notes
+    };
+    
+    await PartnerService.updatePartner(partnerCode, updateData);
     
     // 成功時のリダイレクト
     revalidatePath("/master/partners");
@@ -438,33 +472,42 @@ export async function getAnalysisCodesHierarchyAction() {
 }
 
 export async function createAnalysisCodeAction(formData: FormData): Promise<ActionResult<AnalysisCode>> {
-  const rawFormData = {
-    analysisCode: formData.get("analysisCode") as string,
-    analysisName: formData.get("analysisName") as string,
-    analysisType: formData.get("analysisType") as string,
-    parentAnalysisCode: formData.get("parentAnalysisCode") as string | null,
-    isActive: formData.get("isActive") !== "false", // デフォルトtrue
-    sortOrder: formData.get("sortOrder")
-      ? Number(formData.get("sortOrder"))
-      : null,
-  };
+  const rawFormData = extractFormData(formData);
 
-  // バリデーション
-  const validatedFields = AnalysisCodeSchema.safeParse(rawFormData);
+  // 新しい統一スキーマでバリデーション
+  const validatedFields = createAnalysisCodeSchema.safeParse({
+    analysis_code: rawFormData.analysisCode,
+    analysis_name: rawFormData.analysisName,
+    analysis_name_kana: rawFormData.analysisNameKana || null,
+    analysis_type: rawFormData.analysisType,
+    parent_analysis_code: rawFormData.parentAnalysisCode || null,
+    is_leaf: rawFormData.isLeaf ?? true,
+    is_active: rawFormData.isActive ?? true,
+    sort_order: rawFormData.sortOrder || null,
+    notes: rawFormData.notes || null
+  });
+  
   if (!validatedFields.success) {
     return createFormValidationError(validatedFields.error.flatten().fieldErrors);
   }
 
   try {
+    const data = validatedFields.data;
     const createData: Prisma.AnalysisCodeCreateInput = {
-      ...validatedFields.data,
-      parentAnalysisCode_rel: validatedFields.data.parentAnalysisCode
-        ? { connect: { analysisCode: validatedFields.data.parentAnalysisCode } }
+      analysis_code: data.analysis_code,
+      analysis_name: data.analysis_name,
+      analysis_name_kana: data.analysis_name_kana,
+      analysis_type: data.analysis_type,
+      is_leaf: data.is_leaf ?? true,
+      is_active: data.is_active ?? true,
+      sort_order: data.sort_order,
+      notes: data.notes,
+      parentAnalysisCode_rel: data.parent_analysis_code
+        ? { connect: { analysis_code: data.parent_analysis_code } }
         : undefined,
     };
-    delete (createData as any).parentAnalysisCode; // Prismaリレーション用に削除
 
-    const analysisCode = await AnalysisCodeService.createAnalysisCode(createData);
+    await AnalysisCodeService.createAnalysisCode(createData);
     
     // 成功時のリダイレクト
     revalidatePath("/master/analysis-codes");
@@ -479,15 +522,24 @@ export async function updateAnalysisCodeAction(
   analysisCodeId: string,
   formData: FormData,
 ): Promise<ActionResult<AnalysisCode>> {
-  const rawFormData = {
-    analysisName: formData.get("analysisName") as string,
-    analysisType: formData.get("analysisType") as string,
-    parentAnalysisCode: formData.get("parentAnalysisCode") as string | null,
-    isActive: formData.get("isActive") === "true",
-    sortOrder: formData.get("sortOrder")
-      ? Number(formData.get("sortOrder"))
-      : null,
-  };
+  const rawFormData = extractFormData(formData);
+
+  // 新しい統一スキーマでバリデーション
+  const validatedFields = updateAnalysisCodeSchema.safeParse({
+    analysis_code: analysisCodeId, // 更新時はコード必須
+    analysis_name: rawFormData.analysisName,
+    analysis_name_kana: rawFormData.analysisNameKana || null,
+    analysis_type: rawFormData.analysisType,
+    parent_analysis_code: rawFormData.parentAnalysisCode || null,
+    is_leaf: rawFormData.isLeaf,
+    is_active: rawFormData.isActive,
+    sort_order: rawFormData.sortOrder || null,
+    notes: rawFormData.notes || null
+  });
+  
+  if (!validatedFields.success) {
+    return createFormValidationError(validatedFields.error.flatten().fieldErrors);
+  }
 
   // バリデーション
   const validatedFields = AnalysisCodeSchema.partial().safeParse(rawFormData);
@@ -496,15 +548,21 @@ export async function updateAnalysisCodeAction(
   }
 
   try {
+    const data = validatedFields.data;
     const updateData: Prisma.AnalysisCodeUpdateInput = {
-      ...validatedFields.data,
-      parentAnalysisCode_rel: validatedFields.data.parentAnalysisCode
-        ? { connect: { analysisCode: validatedFields.data.parentAnalysisCode } }
+      analysis_name: data.analysis_name,
+      analysis_name_kana: data.analysis_name_kana,
+      analysis_type: data.analysis_type,
+      is_leaf: data.is_leaf,
+      is_active: data.is_active,
+      sort_order: data.sort_order,
+      notes: data.notes,
+      parentAnalysisCode_rel: data.parent_analysis_code
+        ? { connect: { analysis_code: data.parent_analysis_code } }
         : { disconnect: true },
     };
-    delete (updateData as any).parentAnalysisCode; // Prismaリレーション用に削除
 
-    const updatedAnalysisCode = await AnalysisCodeService.updateAnalysisCode(analysisCodeId, updateData);
+    await AnalysisCodeService.updateAnalysisCode(analysisCodeId, updateData);
     
     // 成功時のリダイレクト
     revalidatePath("/master/analysis-codes");
