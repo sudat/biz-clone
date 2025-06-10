@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { Database } from "@/lib/database/types";
 import { ClientAccountService } from "@/lib/adapters/client-data-adapter";
 import { AccountDataAdapter } from "@/lib/adapters/client-data-adapter";
+import { useAccountRealtimeSync } from "@/lib/hooks/use-realtime-master-sync";
+import { ConflictResolutionDialog } from "@/components/ui/conflict-resolution-dialog";
 import {
   searchAndSort,
   getSearchStats,
@@ -73,8 +75,31 @@ export function EnhancedAccountMasterList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [useServerSearch, setUseServerSearch] = useState(false);
 
+  // リアルタイム同期フックの統合
+  const {
+    data: realtimeData,
+    syncState,
+    applyOptimisticUpdate,
+    resolveConflict,
+    refreshData,
+  } = useAccountRealtimeSync(accounts, {
+    enableRealtime: true,
+    enableOptimisticUpdates: true,
+    conflictResolution: 'manual',
+    notifyChanges: true,
+  });
+
+  // リアルタイムデータをローカル状態と同期
   useEffect(() => {
-    loadAccounts();
+    if (realtimeData.length > 0) {
+      setAccounts(realtimeData);
+    }
+  }, [realtimeData]);
+
+  useEffect(() => {
+    if (accounts.length === 0) {
+      loadAccounts();
+    }
   }, []);
 
   const loadAccounts = async () => {
@@ -167,17 +192,22 @@ export function EnhancedAccountMasterList() {
 
   const handleDelete = async (account: Account) => {
     if (confirm(`勘定科目「${account.account_name}」を削除しますか？`)) {
+      // 楽観的更新を適用
+      applyOptimisticUpdate('delete', account);
+      
       try {
         const result = await ClientAccountService.deleteAccount(
           account.account_code
         );
-        if (result.success) {
-          await loadAccounts();
-        } else {
+        if (!result.success) {
           alert("削除エラー: " + result.error);
+          // エラー時は元に戻す
+          await refreshData();
         }
       } catch (error) {
         alert("削除エラー: " + error);
+        // エラー時は元に戻す
+        await refreshData();
       }
     }
   };
@@ -185,7 +215,7 @@ export function EnhancedAccountMasterList() {
   const handleFormSubmit = async () => {
     setIsDialogOpen(false);
     setEditingAccount(null);
-    await loadAccounts();
+    // フォーム送信後はリアルタイム同期により自動更新される
   };
 
   const renderHighlightedText = (text: string) => {
@@ -234,6 +264,25 @@ export function EnhancedAccountMasterList() {
             >
               切り替え
             </Button>
+            {/* リアルタイム同期状態 */}
+            <div className="flex items-center gap-2">
+              <Badge 
+                variant={syncState.isConnected ? "default" : "destructive"}
+                className="text-xs"
+              >
+                {syncState.isConnected ? "同期中" : "未接続"}
+              </Badge>
+              {syncState.isOptimisticUpdate && (
+                <Badge variant="secondary" className="text-xs">
+                  更新中 ({syncState.pendingUpdates})
+                </Badge>
+              )}
+              {syncState.conflicts.length > 0 && (
+                <Badge variant="destructive" className="text-xs">
+                  競合 ({syncState.conflicts.length})
+                </Badge>
+              )}
+            </div>
           </div>
           <div>
             {searchStats.filtered !== searchStats.total && (
@@ -338,6 +387,15 @@ export function EnhancedAccountMasterList() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* 競合解決ダイアログ */}
+      <ConflictResolutionDialog
+        isOpen={syncState.conflicts.length > 0}
+        onClose={() => {}}
+        conflicts={syncState.conflicts}
+        onResolve={resolveConflict}
+        entityName="勘定科目"
+      />
     </>
   );
 }
