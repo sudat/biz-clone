@@ -186,3 +186,29 @@ export const DEFAULT_ERROR_DISPLAY: Record<ErrorType, ErrorDisplayConfig> = {
     actionLabel: '再読み込み'
   }
 };
+
+/**
+ * システムエラーを作成するヘルパー関数
+ */
+export function createSystemError(
+  message: string, 
+  originalError?: Error | string,
+  retryable: boolean = true
+): ErrorInfo {
+  return {
+    type: ErrorType.SYSTEM,
+    message,
+    details: {
+      originalError: originalError instanceof Error ? originalError.message : originalError,
+      retryable,
+    },
+    timestamp: new Date().toISOString(),
+  };
+}
+
+/**
+ * エラーが再試行可能かどうかを判定する関数
+ */
+export function isRetryableError(error: ErrorInfo): boolean {
+  return error.details?.retryable ?? false;
+}

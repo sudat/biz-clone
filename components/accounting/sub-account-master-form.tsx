@@ -4,11 +4,9 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Database } from "@/lib/database/types";
-import {
-  ClientSubAccountService,
-  ClientAccountService,
-} from "@/lib/adapters/client-data-adapter";
+import type { SubAccount, Account } from "@/lib/database/prisma";
+import { createSubAccount, updateSubAccount } from "@/app/actions/sub-accounts";
+import { getAccounts } from "@/app/actions/accounts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,28 +27,25 @@ import {
 } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
 
-type SubAccount = Database["public"]["Tables"]["sub_accounts"]["Row"];
-type Account = Database["public"]["Tables"]["accounts"]["Row"];
-
 interface SubAccountWithAccount extends SubAccount {
   account?: {
-    account_code: string;
-    account_name: string;
+    accountCode: string;
+    accountName: string;
   };
 }
 
 const subAccountFormSchema = z.object({
-  account_code: z.string().min(1, "勘定科目は必須です"),
-  sub_account_code: z
+  accountCode: z.string().min(1, "勘定科目は必須です"),
+  subAccountCode: z
     .string()
     .min(1, "補助科目コードは必須です")
     .max(10, "補助科目コードは10文字以内で入力してください"),
-  sub_account_name: z
+  subAccountName: z
     .string()
     .min(1, "補助科目名称は必須です")
     .max(100, "補助科目名称は100文字以内で入力してください"),
-  is_active: z.boolean(),
-  sort_order: z.number().int().min(0).optional().nullable(),
+  isActive: z.boolean(),
+  sortOrder: z.number().int().min(0).optional().nullable(),
 });
 
 type SubAccountFormData = z.infer<typeof subAccountFormSchema>;
@@ -75,11 +70,11 @@ export function SubAccountMasterForm({
   const form = useForm<SubAccountFormData>({
     resolver: zodResolver(subAccountFormSchema),
     defaultValues: {
-      account_code: subAccount?.account_code || "",
-      sub_account_code: subAccount?.sub_account_code || "",
-      sub_account_name: subAccount?.sub_account_name || "",
-      is_active: subAccount?.is_active ?? true,
-      sort_order: subAccount?.sort_order || null,
+      accountCode: subAccount?.accountCode || "",
+      subAccountCode: subAccount?.subAccountCode || "",
+      subAccountName: subAccount?.subAccountName || "",
+      isActive: subAccount?.isActive ?? true,
+      sortOrder: subAccount?.sortOrder || null,
     },
   });
 
@@ -87,7 +82,7 @@ export function SubAccountMasterForm({
     if (!propAccounts || propAccounts.length === 0) {
       const loadAccounts = async () => {
         try {
-          const result = await ClientAccountService.getAccounts();
+          const result = await getAccounts();
           if (result.success && result.data) {
             setAccounts(result.data);
           }
@@ -104,27 +99,27 @@ export function SubAccountMasterForm({
     try {
       let result;
       if (isEditing && subAccount) {
-        const updateData: Database["public"]["Tables"]["sub_accounts"]["Update"] =
-          {
-            sub_account_name: data.sub_account_name,
-            is_active: data.is_active,
-            sort_order: data.sort_order,
-          };
-        result = await ClientSubAccountService.updateSubAccount(
-          subAccount.account_code,
-          subAccount.sub_account_code,
-          updateData
+        const formData = new FormData();
+        formData.append('subAccountName', data.subAccountName);
+        formData.append('isActive', data.isActive.toString());
+        if (data.sortOrder !== null && data.sortOrder !== undefined) {
+          formData.append('sortOrder', data.sortOrder.toString());
+        }
+        result = await updateSubAccount(
+          subAccount.accountCode,
+          subAccount.subAccountCode,
+          formData
         );
       } else {
-        const insertData: Database["public"]["Tables"]["sub_accounts"]["Insert"] =
-          {
-            account_code: data.account_code,
-            sub_account_code: data.sub_account_code,
-            sub_account_name: data.sub_account_name,
-            is_active: data.is_active,
-            sort_order: data.sort_order,
-          };
-        result = await ClientSubAccountService.createSubAccount(insertData);
+        const formData = new FormData();
+        formData.append('accountCode', data.accountCode);
+        formData.append('subAccountCode', data.subAccountCode);
+        formData.append('subAccountName', data.subAccountName);
+        formData.append('isActive', data.isActive.toString());
+        if (data.sortOrder !== null && data.sortOrder !== undefined) {
+          formData.append('sortOrder', data.sortOrder.toString());
+        }
+        result = await createSubAccount(formData);
       }
 
       if (result.success) {
@@ -145,7 +140,7 @@ export function SubAccountMasterForm({
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <FormField
           control={form.control}
-          name="account_code"
+          name="accountCode"
           render={({ field }) => (
             <FormItem>
               <FormLabel>勘定科目</FormLabel>
@@ -162,10 +157,10 @@ export function SubAccountMasterForm({
                 <SelectContent>
                   {accounts.map((account) => (
                     <SelectItem
-                      key={account.account_code}
-                      value={account.account_code}
+                      key={account.accountCode}
+                      value={account.accountCode}
                     >
-                      {account.account_code} - {account.account_name}
+                      {account.accountCode} - {account.accountName}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -182,7 +177,7 @@ export function SubAccountMasterForm({
 
         <FormField
           control={form.control}
-          name="sub_account_code"
+          name="subAccountCode"
           render={({ field }) => (
             <FormItem>
               <FormLabel>補助科目コード</FormLabel>
@@ -205,7 +200,7 @@ export function SubAccountMasterForm({
 
         <FormField
           control={form.control}
-          name="sub_account_name"
+          name="subAccountName"
           render={({ field }) => (
             <FormItem>
               <FormLabel>補助科目名称</FormLabel>
@@ -223,7 +218,7 @@ export function SubAccountMasterForm({
 
         <FormField
           control={form.control}
-          name="sort_order"
+          name="sortOrder"
           render={({ field }) => (
             <FormItem>
               <FormLabel>並び順</FormLabel>
@@ -248,7 +243,7 @@ export function SubAccountMasterForm({
 
         <FormField
           control={form.control}
-          name="is_active"
+          name="isActive"
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">

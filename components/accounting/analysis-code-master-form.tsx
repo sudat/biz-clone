@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Database } from "@/lib/database/types";
-import { AnalysisCodeDataAdapter } from "@/lib/adapters/client-data-adapter";
+import type { AnalysisCode } from "@/lib/database/prisma";
+import { createAnalysisCode, updateAnalysisCode, getAnalysisTypes } from "@/app/actions/analysis-codes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,31 +26,29 @@ import {
 } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
 
-type AnalysisCode = Database["public"]["Tables"]["analysis_codes"]["Row"];
-
 const analysisCodeFormSchema = z.object({
-  analysis_code: z
+  analysisCode: z
     .string()
     .min(1, "分析コードは必須です")
     .max(15, "分析コードは15文字以内で入力してください"),
-  analysis_name: z
+  analysisName: z
     .string()
     .min(1, "分析名称は必須です")
     .max(100, "分析名称は100文字以内で入力してください"),
-  analysis_type: z
+  analysisType: z
     .string()
     .min(1, "分析種別は必須です")
     .max(20, "分析種別は20文字以内で入力してください"),
-  parent_analysis_code: z
+  parentAnalysisCode: z
     .string()
     .max(15, "親分析コードは15文字以内で入力してください")
     .optional(),
-  sort_order: z
+  sortOrder: z
     .number()
     .int("表示順序は整数で入力してください")
     .min(0, "表示順序は0以上で入力してください")
     .optional(),
-  is_active: z.boolean(),
+  isActive: z.boolean(),
 });
 
 type AnalysisCodeFormData = z.infer<typeof analysisCodeFormSchema>;
@@ -77,9 +75,9 @@ export function AnalysisCodeMasterForm({
 
   const loadAnalysisTypes = async () => {
     try {
-      const result = await AnalysisCodeDataAdapter.getAnalysisTypes();
+      const result = await getAnalysisTypes();
       if (result.success) {
-        setAnalysisTypes(result.data);
+        setAnalysisTypes(result.data || []);
       }
     } catch (error) {
       console.error("分析種別の取得エラー:", error);
@@ -89,12 +87,12 @@ export function AnalysisCodeMasterForm({
   const form = useForm<AnalysisCodeFormData>({
     resolver: zodResolver(analysisCodeFormSchema),
     defaultValues: {
-      analysis_code: analysisCode?.analysis_code || "",
-      analysis_name: analysisCode?.analysis_name || "",
-      analysis_type: analysisCode?.analysis_type || "",
-      parent_analysis_code: analysisCode?.parent_analysis_code || "",
-      sort_order: analysisCode?.sort_order || 1,
-      is_active: analysisCode?.is_active ?? true,
+      analysisCode: analysisCode?.analysisCode || "",
+      analysisName: analysisCode?.analysisName || "",
+      analysisType: analysisCode?.analysisType || "",
+      parentAnalysisCode: analysisCode?.parentAnalysisCode || "",
+      sortOrder: analysisCode?.sortOrder || 1,
+      isActive: analysisCode?.isActive ?? true,
     },
   });
 
@@ -104,30 +102,23 @@ export function AnalysisCodeMasterForm({
       let result;
       if (isEditing && analysisCode) {
         // 更新
-        const updateData: Database["public"]["Tables"]["analysis_codes"]["Update"] =
-          {
-            analysis_name: data.analysis_name,
-            analysis_type: data.analysis_type,
-            parent_analysis_code: data.parent_analysis_code || null,
-            sort_order: data.sort_order || null,
-            is_active: data.is_active,
-          };
-        result = await AnalysisCodeDataAdapter.updateAnalysisCode(
-          analysisCode.analysis_code,
-          updateData
-        );
+        const formData = new FormData();
+        formData.append('analysisName', data.analysisName);
+        formData.append('analysisType', data.analysisType);
+        if (data.parentAnalysisCode) formData.append('parentAnalysisCode', data.parentAnalysisCode);
+        if (data.sortOrder !== undefined) formData.append('sortOrder', data.sortOrder.toString());
+        formData.append('isActive', data.isActive.toString());
+        result = await updateAnalysisCode(analysisCode.analysisCode, formData);
       } else {
         // 新規作成
-        const insertData: Database["public"]["Tables"]["analysis_codes"]["Insert"] =
-          {
-            analysis_code: data.analysis_code,
-            analysis_name: data.analysis_name,
-            analysis_type: data.analysis_type,
-            parent_analysis_code: data.parent_analysis_code || null,
-            sort_order: data.sort_order || null,
-            is_active: data.is_active,
-          };
-        result = await AnalysisCodeDataAdapter.createAnalysisCode(insertData);
+        const formData = new FormData();
+        formData.append('analysisCode', data.analysisCode);
+        formData.append('analysisName', data.analysisName);
+        formData.append('analysisType', data.analysisType);
+        if (data.parentAnalysisCode) formData.append('parentAnalysisCode', data.parentAnalysisCode);
+        if (data.sortOrder !== undefined) formData.append('sortOrder', data.sortOrder.toString());
+        formData.append('isActive', data.isActive.toString());
+        result = await createAnalysisCode(formData);
       }
 
       if (result.success) {
@@ -147,14 +138,14 @@ export function AnalysisCodeMasterForm({
     if (value === "new-type") {
       setNewAnalysisType("");
     } else {
-      form.setValue("analysis_type", value);
+      form.setValue("analysisType", value);
       setNewAnalysisType("");
     }
   };
 
   const handleNewAnalysisTypeSubmit = () => {
     if (newAnalysisType.trim()) {
-      form.setValue("analysis_type", newAnalysisType.trim());
+      form.setValue("analysisType", newAnalysisType.trim());
       setAnalysisTypes((prev) => [...prev, newAnalysisType.trim()]);
       setNewAnalysisType("");
     }
@@ -166,7 +157,7 @@ export function AnalysisCodeMasterForm({
         <div className="grid grid-cols-1 gap-4">
           <FormField
             control={form.control}
-            name="analysis_code"
+            name="analysisCode"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>分析コード</FormLabel>
@@ -189,7 +180,7 @@ export function AnalysisCodeMasterForm({
 
           <FormField
             control={form.control}
-            name="analysis_name"
+            name="analysisName"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>分析名称</FormLabel>
@@ -210,7 +201,7 @@ export function AnalysisCodeMasterForm({
 
           <FormField
             control={form.control}
-            name="analysis_type"
+            name="analysisType"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>分析種別</FormLabel>
@@ -276,7 +267,7 @@ export function AnalysisCodeMasterForm({
 
           <FormField
             control={form.control}
-            name="sort_order"
+            name="sortOrder"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>表示順序</FormLabel>
@@ -306,7 +297,7 @@ export function AnalysisCodeMasterForm({
 
           <FormField
             control={form.control}
-            name="is_active"
+            name="isActive"
             render={({ field }) => (
               <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">

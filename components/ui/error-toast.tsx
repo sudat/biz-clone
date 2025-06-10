@@ -157,7 +157,7 @@ export function showErrorToast(
     })
   });
 
-  return toastId;
+  return String(toastId);
 }
 
 /**
@@ -173,7 +173,7 @@ export function showValidationError(
         .join('\n')
     : undefined;
 
-  return toast.error(message, {
+  return String(toast.error(message, {
     description,
     duration: 6000,
     icon: <AlertTriangle className="h-4 w-4" />,
@@ -193,7 +193,7 @@ export function showValidationError(
         エラー箇所を確認
       </Button>
     ) : undefined
-  });
+  }));
 }
 
 /**
@@ -204,11 +204,11 @@ export function showSuccessToast(
   description?: string,
   duration: number = 4000
 ): string {
-  return toast.success(message, {
+  return String(toast.success(message, {
     description,
     duration,
     icon: <Info className="h-4 w-4" />
-  });
+  }));
 }
 
 /**
@@ -219,11 +219,11 @@ export function showInfoToast(
   description?: string,
   duration: number = 4000
 ): string {
-  return toast.info(message, {
+  return String(toast.info(message, {
     description,
     duration,
     icon: <Info className="h-4 w-4" />
-  });
+  }));
 }
 
 /**
@@ -234,11 +234,11 @@ export function showWarningToast(
   description?: string,
   duration: number = 6000
 ): string {
-  return toast.warning(message, {
+  return String(toast.warning(message, {
     description,
     duration,
     icon: <AlertTriangle className="h-4 w-4" />
-  });
+  }));
 }
 
 /**
@@ -251,7 +251,7 @@ export function showLoadingToast(
     cancelLabel?: string;
   } = {}
 ): string {
-  return toast.loading(message, {
+  return String(toast.loading(message, {
     duration: Infinity, // 手動で閉じるまで表示
     action: options.onCancel ? (
       <Button
@@ -265,7 +265,7 @@ export function showLoadingToast(
         {options.cancelLabel || 'キャンセル'}
       </Button>
     ) : undefined
-  });
+  }));
 }
 
 /**

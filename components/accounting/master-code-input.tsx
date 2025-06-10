@@ -19,12 +19,9 @@ import {
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  useAccountCodeConverter,
-  usePartnerCodeConverter,
-  useAnalysisCodeConverter,
-  useSubAccountCodeConverter
-} from "@/lib/hooks/use-master-code-converter";
+
+// このコンポーネントは削除されたSupabaseフックに依存していたため無効化
+// 将来的にはServer Actionsベースで再実装予定
 
 export interface MasterData {
   code: string;
@@ -295,10 +292,11 @@ export function RealtimeAccountCodeInput({
   enableAutoComplete = true,
   ...props
 }: RealtimeCodeInputProps) {
-  const { getNameByCode, searchCodes, isLoading, error } = useAccountCodeConverter({
-    enableRealtime,
-    debounceMs: 300,
-  });
+  // 削除されたフックのスタブ
+  const getNameByCode = async (code: string) => ({ success: false, error: "機能無効", data: null });
+  const searchCodes = async (term: string, limit?: number) => ({ success: false, error: "機能無効", data: [] });
+  const isLoading = false;
+  const error = "このコンポーネントは一時的に無効化されています";
 
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -456,10 +454,11 @@ export function RealtimePartnerCodeInput({
   enableAutoComplete = true,
   ...props
 }: RealtimeCodeInputProps) {
-  const { getNameByCode, searchCodes, isLoading, error } = usePartnerCodeConverter({
-    enableRealtime,
-    debounceMs: 300,
-  });
+  // 削除されたフックのスタブ
+  const getNameByCode = async (code: string) => ({ success: false, error: "機能無効", data: null });
+  const searchCodes = async (term: string, limit?: number) => ({ success: false, error: "機能無効", data: [] });
+  const isLoading = false;
+  const error = "このコンポーネントは一時的に無効化されています";
 
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);

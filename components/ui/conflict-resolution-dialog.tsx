@@ -183,7 +183,7 @@ function SingleConflictResolver<T>({
     
     for (const field of changedFields) {
       const selectedSource = mergedData[field] || 'local';
-      merged[field] = selectedSource === 'local' ? localData[field] : remoteData[field];
+      (merged as any)[field] = selectedSource === 'local' ? (localData as any)[field] : (remoteData as any)[field];
     }
     
     onResolve('merge', merged as T);
@@ -277,8 +277,8 @@ function SingleConflictResolver<T>({
                 <div key={field}>
                   <FieldValueDisplay
                     label={getFieldLabel(field)}
-                    localValue={localData[field]}
-                    remoteValue={remoteData[field]}
+                    localValue={(localData as any)[field]}
+                    remoteValue={(remoteData as any)[field]}
                     isChanged={true}
                     onSelectLocal={() => handleFieldSelect(field, 'local')}
                     onSelectRemote={() => handleFieldSelect(field, 'remote')}

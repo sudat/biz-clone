@@ -187,17 +187,17 @@ export function MasterDataSearch({
                     )}
                     {filter.type === "select" && filter.options && (
                       <Select
-                        value={filters[filter.field] || ""}
+                        value={filters[filter.field] || "__all__"}
                         onValueChange={(value) =>
-                          handleFilterChange(filter.field, value)
+                          handleFilterChange(filter.field, value === "__all__" ? "" : value)
                         }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="選択してください" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">すべて</SelectItem>
-                          {filter.options.map((option) => (
+                          <SelectItem value="__all__">すべて</SelectItem>
+                          {filter.options?.length > 0 && filter.options.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>
@@ -274,7 +274,7 @@ export function MasterDataSearch({
           )}
           {Object.entries(filters).map(([field, value]) => {
             if (!value) return null;
-            const filter = searchFilters.find((f) => f.field === field);
+            const filter = searchFilters?.find((f) => f.field === field);
             if (!filter) return null;
 
             return (

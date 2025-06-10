@@ -23,10 +23,10 @@ import {
 } from '@/lib/types/errors';
 
 /**
- * Prismaエラーかどうかを判定
+ * Prismaエラーかどうかを判定（簡略版）
  */
-export function isPrismaError(error: unknown): error is Prisma.PrismaClientKnownRequestError {
-  return error instanceof Prisma.PrismaClientKnownRequestError;
+export function isPrismaError(error: unknown): boolean {
+  return !!(error && typeof error === 'object' && 'code' in error);
 }
 
 /**
@@ -40,7 +40,7 @@ export function isRedirectError(error: unknown): boolean {
  * Prismaエラーを統一エラー形式に変換
  */
 export function handlePrismaError(
-  error: Prisma.PrismaClientKnownRequestError,
+  error: any,
   operation: string,
   entityName?: string
 ): ServiceResult<never> {
@@ -153,8 +153,8 @@ export function handleServerActionError(
     const result = handlePrismaError(error, operation, entityName);
     return {
       success: false,
-      error: result.error,
-      message: result.error.message
+      error: result.error!,
+      message: result.error!.message
     };
   }
 

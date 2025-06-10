@@ -16,20 +16,20 @@ datasource db {
 }
 
 // ============================================================================
-// マスタテーブル群
+// マスタテーブル群（完全camelCase統一）
 // ============================================================================
 
 // 勘定科目マスタ
 model Account {
-  accountCode       String   @id @map("account_code") @db.VarChar(10)
-  accountName       String   @map("account_name") @db.VarChar(100)
-  accountType       String   @map("account_type") @db.VarChar(20)
-  parentAccountCode String?  @map("parent_account_code") @db.VarChar(10)
-  isDetail          Boolean  @default(true) @map("is_detail")
-  isActive          Boolean  @default(true) @map("is_active")
-  sortOrder         Int?     @map("sort_order")
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  accountCode       String   @id @db.VarChar(10)
+  accountName       String   @db.VarChar(100)
+  accountType       String   @db.VarChar(20)
+  parentAccountCode String?  @db.VarChar(10)
+  isDetail          Boolean  @default(true)
+  isActive          Boolean  @default(true)
+  sortOrder         Int?
+  createdAt         DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
   // 自己参照関係
   parentAccount Account?  @relation("AccountParent", fields: [parentAccountCode], references: [accountCode])
@@ -44,13 +44,13 @@ model Account {
 
 // 補助科目マスタ
 model SubAccount {
-  subAccountCode String   @map("sub_account_code") @db.VarChar(15)
-  accountCode    String   @map("account_code") @db.VarChar(10)
-  subAccountName String   @map("sub_account_name") @db.VarChar(100)
-  isActive       Boolean  @default(true) @map("is_active")
-  sortOrder      Int?     @map("sort_order")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  subAccountCode String   @db.VarChar(15)
+  accountCode    String   @db.VarChar(10)
+  subAccountName String   @db.VarChar(100)
+  isActive       Boolean  @default(true)
+  sortOrder      Int?
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
   // 関係
   account        Account         @relation(fields: [accountCode], references: [accountCode])
@@ -63,18 +63,18 @@ model SubAccount {
 
 // 取引先マスタ
 model Partner {
-  partnerCode   String   @id @map("partner_code") @db.VarChar(15)
-  partnerName   String   @map("partner_name") @db.VarChar(100)
-  partnerKana   String?  @map("partner_kana") @db.VarChar(100)
-  partnerType   String   @map("partner_type") @db.VarChar(20)
-  postalCode    String?  @map("postal_code") @db.VarChar(8)
+  partnerCode   String   @id @db.VarChar(15)
+  partnerName   String   @db.VarChar(100)
+  partnerKana   String?  @db.VarChar(100)
+  partnerType   String   @db.VarChar(20)
+  postalCode    String?  @db.VarChar(8)
   address       String?  @db.VarChar(200)
   phone         String?  @db.VarChar(20)
   email         String?  @db.VarChar(100)
-  contactPerson String?  @map("contact_person") @db.VarChar(50)
-  isActive      Boolean  @default(true) @map("is_active")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  contactPerson String?  @db.VarChar(50)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
   // 関係
   journalDetails JournalDetail[]
@@ -84,14 +84,14 @@ model Partner {
 
 // 分析コードマスタ
 model AnalysisCode {
-  analysisCode       String   @id @map("analysis_code") @db.VarChar(15)
-  analysisName       String   @map("analysis_name") @db.VarChar(100)
-  analysisType       String   @map("analysis_type") @db.VarChar(20)
-  parentAnalysisCode String?  @map("parent_analysis_code") @db.VarChar(15)
-  isActive           Boolean  @default(true) @map("is_active")
-  sortOrder          Int?     @map("sort_order")
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  analysisCode       String   @id @db.VarChar(15)
+  analysisName       String   @db.VarChar(100)
+  analysisType       String   @db.VarChar(20)
+  parentAnalysisCode String?  @db.VarChar(15)
+  isActive           Boolean  @default(true)
+  sortOrder          Int?
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
   // 自己参照関係
   parentAnalysisCode_rel AnalysisCode?  @relation("AnalysisCodeParent", fields: [parentAnalysisCode], references: [analysisCode])
@@ -104,18 +104,18 @@ model AnalysisCode {
 }
 
 // ============================================================================
-// 仕訳テーブル群
+// 仕訳テーブル群（完全camelCase統一）
 // ============================================================================
 
 // 仕訳ヘッダテーブル
 model JournalHeader {
-  journalNumber String   @id @map("journal_number") @db.VarChar(15)
-  journalDate   DateTime @map("journal_date") @db.Date
+  journalNumber String   @id @db.VarChar(15)
+  journalDate   DateTime @db.Date
   description   String?  @db.Text
-  totalAmount   Decimal  @default(0) @map("total_amount") @db.Decimal(15, 2)
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdBy     String?  @map("created_by") @db.Uuid
+  totalAmount   Decimal  @default(0) @db.Decimal(15, 2)
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  createdBy     String?  @db.Uuid
 
   // 関係
   journalDetails JournalDetail[]
@@ -125,17 +125,17 @@ model JournalHeader {
 
 // 仕訳明細テーブル
 model JournalDetail {
-  journalNumber   String   @map("journal_number") @db.VarChar(15)
-  lineNumber      Int      @map("line_number")
-  debitCredit     String   @map("debit_credit") @db.VarChar(1)
-  accountCode     String   @map("account_code") @db.VarChar(10)
-  subAccountCode  String?  @map("sub_account_code") @db.VarChar(15)
-  partnerCode     String?  @map("partner_code") @db.VarChar(15)
-  analysisCode    String?  @map("analysis_code") @db.VarChar(15)
-  amount          Decimal  @map("amount") @db.Decimal(15, 2)
-  lineDescription String?  @map("line_description") @db.Text
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  journalNumber   String   @db.VarChar(15)
+  lineNumber      Int
+  debitCredit     String   @db.VarChar(1)
+  accountCode     String   @db.VarChar(10)
+  subAccountCode  String?  @db.VarChar(15)
+  partnerCode     String?  @db.VarChar(15)
+  analysisCode    String?  @db.VarChar(15)
+  amount          Decimal  @db.Decimal(15, 2)
+  lineDescription String?  @db.Text
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
   // 関係
   journalHeader   JournalHeader @relation(fields: [journalNumber], references: [journalNumber], onDelete: Cascade)

@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Database } from "@/lib/database/types";
-import { ClientAccountService } from "@/lib/adapters/client-data-adapter";
+import type { Account } from "@/lib/database/prisma";
+import { createAccount, updateAccount } from "@/app/actions/accounts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,29 +27,26 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { 
   showErrorToast, 
-  showSuccessToast,
-  handleFormError 
+  showSuccessToast
 } from "@/components/ui/error-toast";
 import { createSystemError } from "@/lib/types/errors";
 
-type Account = Database["public"]["Tables"]["accounts"]["Row"];
-
 const accountFormSchema = z.object({
-  account_code: z
+  accountCode: z
     .string()
     .min(1, "勘定科目コードは必須です")
     .max(10, "勘定科目コードは10文字以内で入力してください"),
-  account_name: z
+  accountName: z
     .string()
     .min(1, "勘定科目名称は必須です")
     .max(100, "勘定科目名称は100文字以内で入力してください"),
-  account_type: z.enum(["資産", "負債", "資本", "収益", "費用"], {
+  accountType: z.enum(["資産", "負債", "資本", "収益", "費用"], {
     required_error: "勘定科目種別を選択してください",
   }),
-  parent_account_code: z.string().optional().nullable(),
-  is_detail: z.boolean(),
-  is_active: z.boolean(),
-  sort_order: z.number().int().min(0).optional().nullable(),
+  parentAccountCode: z.string().optional().nullable(),
+  isDetail: z.boolean(),
+  isActive: z.boolean(),
+  sortOrder: z.number().int().min(0).optional().nullable(),
 });
 
 type AccountFormData = z.infer<typeof accountFormSchema>;
@@ -71,13 +68,13 @@ export function AccountMasterForm({
   const form = useForm<AccountFormData>({
     resolver: zodResolver(accountFormSchema),
     defaultValues: {
-      account_code: account?.account_code || "",
-      account_name: account?.account_name || "",
-      account_type: account?.account_type || "資産",
-      parent_account_code: account?.parent_account_code || null,
-      is_detail: account?.is_detail ?? true,
-      is_active: account?.is_active ?? true,
-      sort_order: account?.sort_order || null,
+      accountCode: account?.accountCode || "",
+      accountName: account?.accountName || "",
+      accountType: (account?.accountType as "資産" | "負債" | "資本" | "収益" | "費用") || "資産",
+      parentAccountCode: account?.parentAccountCode || null,
+      isDetail: account?.isDetail ?? true,
+      isActive: account?.isActive ?? true,
+      sortOrder: account?.sortOrder || null,
     },
   });
 
@@ -87,30 +84,29 @@ export function AccountMasterForm({
       let result;
       if (isEditing && account) {
         // 更新
-        const updateData: Database["public"]["Tables"]["accounts"]["Update"] = {
-          account_name: data.account_name,
-          account_type: data.account_type,
-          parent_account_code: data.parent_account_code,
-          is_detail: data.is_detail,
-          is_active: data.is_active,
-          sort_order: data.sort_order,
-        };
-        result = await ClientAccountService.updateAccount(
-          account.account_code,
-          updateData
-        );
+        const formData = new FormData();
+        formData.append('accountName', data.accountName);
+        formData.append('accountType', data.accountType);
+        if (data.parentAccountCode) formData.append('parentAccountCode', data.parentAccountCode);
+        formData.append('isDetail', data.isDetail.toString());
+        formData.append('isActive', data.isActive.toString());
+        if (data.sortOrder !== null && data.sortOrder !== undefined) {
+          formData.append('sortOrder', data.sortOrder.toString());
+        }
+        result = await updateAccount(account.accountCode, formData);
       } else {
         // 新規作成
-        const insertData: Database["public"]["Tables"]["accounts"]["Insert"] = {
-          account_code: data.account_code,
-          account_name: data.account_name,
-          account_type: data.account_type,
-          parent_account_code: data.parent_account_code,
-          is_detail: data.is_detail,
-          is_active: data.is_active,
-          sort_order: data.sort_order,
-        };
-        result = await ClientAccountService.createAccount(insertData);
+        const formData = new FormData();
+        formData.append('accountCode', data.accountCode);
+        formData.append('accountName', data.accountName);
+        formData.append('accountType', data.accountType);
+        if (data.parentAccountCode) formData.append('parentAccountCode', data.parentAccountCode);
+        formData.append('isDetail', data.isDetail.toString());
+        formData.append('isActive', data.isActive.toString());
+        if (data.sortOrder !== null && data.sortOrder !== undefined) {
+          formData.append('sortOrder', data.sortOrder.toString());
+        }
+        result = await createAccount(formData);
       }
 
       if (result.success) {
@@ -119,7 +115,7 @@ export function AccountMasterForm({
         );
         onSubmit();
       } else {
-        handleFormError(result.error, form);
+        showErrorToast(createSystemError(result.error || "エラーが発生しました", "バリデーションエラー"));
       }
     } catch (error) {
       console.error("勘定科目の保存エラー:", error);
@@ -138,7 +134,7 @@ export function AccountMasterForm({
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <FormField
           control={form.control}
-          name="account_code"
+          name="accountCode"
           render={({ field }) => (
             <FormItem>
               <FormLabel>勘定科目コード</FormLabel>
@@ -161,7 +157,7 @@ export function AccountMasterForm({
 
         <FormField
           control={form.control}
-          name="account_name"
+          name="accountName"
           render={({ field }) => (
             <FormItem>
               <FormLabel>勘定科目名称</FormLabel>
@@ -175,7 +171,7 @@ export function AccountMasterForm({
 
         <FormField
           control={form.control}
-          name="account_type"
+          name="accountType"
           render={({ field }) => (
             <FormItem>
               <FormLabel>勘定科目種別</FormLabel>
@@ -204,7 +200,7 @@ export function AccountMasterForm({
 
         <FormField
           control={form.control}
-          name="sort_order"
+          name="sortOrder"
           render={({ field }) => (
             <FormItem>
               <FormLabel>並び順</FormLabel>
@@ -229,7 +225,7 @@ export function AccountMasterForm({
 
         <FormField
           control={form.control}
-          name="is_detail"
+          name="isDetail"
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
@@ -251,7 +247,7 @@ export function AccountMasterForm({
 
         <FormField
           control={form.control}
-          name="is_active"
+          name="isActive"
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">

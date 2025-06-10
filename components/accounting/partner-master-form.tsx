@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Database } from "@/lib/database/types";
-import { PartnerDataAdapter } from "@/lib/adapters/client-data-adapter";
+import type { Partner } from "@/lib/database/prisma";
+import { createPartner, updatePartner } from "@/app/actions/partners";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,25 +26,23 @@ import {
 } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
 
-type Partner = Database["public"]["Tables"]["partners"]["Row"];
-
 const partnerFormSchema = z.object({
-  partner_code: z
+  partnerCode: z
     .string()
     .min(1, "取引先コードは必須です")
     .max(15, "取引先コードは15文字以内で入力してください"),
-  partner_name: z
+  partnerName: z
     .string()
     .min(1, "取引先名称は必須です")
     .max(100, "取引先名称は100文字以内で入力してください"),
-  partner_kana: z
+  partnerKana: z
     .string()
     .max(100, "取引先かなは100文字以内で入力してください")
     .optional(),
-  partner_type: z.enum(["得意先", "仕入先", "金融機関", "その他"], {
+  partnerType: z.enum(["得意先", "仕入先", "金融機関", "その他"], {
     required_error: "取引先種別を選択してください",
   }),
-  postal_code: z
+  postalCode: z
     .string()
     .max(8, "郵便番号は8文字以内で入力してください")
     .optional(),
@@ -62,11 +60,11 @@ const partnerFormSchema = z.object({
     .max(100, "メールアドレスは100文字以内で入力してください")
     .optional()
     .or(z.literal("")),
-  contact_person: z
+  contactPerson: z
     .string()
     .max(50, "担当者名は50文字以内で入力してください")
     .optional(),
-  is_active: z.boolean(),
+  isActive: z.boolean(),
 });
 
 type PartnerFormData = z.infer<typeof partnerFormSchema>;
@@ -88,16 +86,16 @@ export function PartnerMasterForm({
   const form = useForm<PartnerFormData>({
     resolver: zodResolver(partnerFormSchema),
     defaultValues: {
-      partner_code: partner?.partner_code || "",
-      partner_name: partner?.partner_name || "",
-      partner_kana: partner?.partner_kana || "",
-      partner_type: partner?.partner_type || "得意先",
-      postal_code: partner?.postal_code || "",
+      partnerCode: partner?.partnerCode || "",
+      partnerName: partner?.partnerName || "",
+      partnerKana: partner?.partnerKana || "",
+      partnerType: (partner?.partnerType as "得意先" | "仕入先" | "金融機関" | "その他") || "得意先",
+      postalCode: partner?.postalCode || "",
       address: partner?.address || "",
       phone: partner?.phone || "",
       email: partner?.email || "",
-      contact_person: partner?.contact_person || "",
-      is_active: partner?.is_active ?? true,
+      contactPerson: partner?.contactPerson || "",
+      isActive: partner?.isActive ?? true,
     },
   });
 
@@ -107,36 +105,31 @@ export function PartnerMasterForm({
       let result;
       if (isEditing && partner) {
         // 更新
-        const updateData: Database["public"]["Tables"]["partners"]["Update"] = {
-          partner_name: data.partner_name,
-          partner_kana: data.partner_kana || null,
-          partner_type: data.partner_type,
-          postal_code: data.postal_code || null,
-          address: data.address || null,
-          phone: data.phone || null,
-          email: data.email || null,
-          contact_person: data.contact_person || null,
-          is_active: data.is_active,
-        };
-        result = await PartnerDataAdapter.updatePartner(
-          partner.partner_code,
-          updateData
-        );
+        const formData = new FormData();
+        formData.append('partnerName', data.partnerName);
+        if (data.partnerKana) formData.append('partnerKana', data.partnerKana);
+        formData.append('partnerType', data.partnerType);
+        if (data.postalCode) formData.append('postalCode', data.postalCode);
+        if (data.address) formData.append('address', data.address);
+        if (data.phone) formData.append('phone', data.phone);
+        if (data.email) formData.append('email', data.email);
+        if (data.contactPerson) formData.append('contactPerson', data.contactPerson);
+        formData.append('isActive', data.isActive.toString());
+        result = await updatePartner(partner.partnerCode, formData);
       } else {
         // 新規作成
-        const insertData: Database["public"]["Tables"]["partners"]["Insert"] = {
-          partner_code: data.partner_code,
-          partner_name: data.partner_name,
-          partner_kana: data.partner_kana || null,
-          partner_type: data.partner_type,
-          postal_code: data.postal_code || null,
-          address: data.address || null,
-          phone: data.phone || null,
-          email: data.email || null,
-          contact_person: data.contact_person || null,
-          is_active: data.is_active,
-        };
-        result = await PartnerDataAdapter.createPartner(insertData);
+        const formData = new FormData();
+        formData.append('partnerCode', data.partnerCode);
+        formData.append('partnerName', data.partnerName);
+        if (data.partnerKana) formData.append('partnerKana', data.partnerKana);
+        formData.append('partnerType', data.partnerType);
+        if (data.postalCode) formData.append('postalCode', data.postalCode);
+        if (data.address) formData.append('address', data.address);
+        if (data.phone) formData.append('phone', data.phone);
+        if (data.email) formData.append('email', data.email);
+        if (data.contactPerson) formData.append('contactPerson', data.contactPerson);
+        formData.append('isActive', data.isActive.toString());
+        result = await createPartner(formData);
       }
 
       if (result.success) {
@@ -158,7 +151,7 @@ export function PartnerMasterForm({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="partner_code"
+            name="partnerCode"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>取引先コード</FormLabel>
@@ -181,7 +174,7 @@ export function PartnerMasterForm({
 
           <FormField
             control={form.control}
-            name="partner_type"
+            name="partnerType"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>取引先種別</FormLabel>
@@ -210,7 +203,7 @@ export function PartnerMasterForm({
 
         <FormField
           control={form.control}
-          name="partner_name"
+          name="partnerName"
           render={({ field }) => (
             <FormItem>
               <FormLabel>取引先名称</FormLabel>
@@ -228,7 +221,7 @@ export function PartnerMasterForm({
 
         <FormField
           control={form.control}
-          name="partner_kana"
+          name="partnerKana"
           render={({ field }) => (
             <FormItem>
               <FormLabel>取引先かな</FormLabel>
@@ -250,7 +243,7 @@ export function PartnerMasterForm({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="postal_code"
+            name="postalCode"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>郵便番号</FormLabel>
@@ -324,7 +317,7 @@ export function PartnerMasterForm({
 
           <FormField
             control={form.control}
-            name="contact_person"
+            name="contactPerson"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>担当者名</FormLabel>
@@ -343,7 +336,7 @@ export function PartnerMasterForm({
 
         <FormField
           control={form.control}
-          name="is_active"
+          name="isActive"
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">

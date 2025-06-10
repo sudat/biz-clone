@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Database } from "@/lib/database/types";
-import {
-  ClientSubAccountService,
-  ClientAccountService,
-} from "@/lib/adapters/client-data-adapter";
+import type { SubAccount, Account } from "@/lib/database/prisma";
+import { getSubAccounts, deleteSubAccount } from "@/app/actions/sub-accounts";
+import { getAccounts } from "@/app/actions/accounts";
 import {
   Table,
   TableBody,
@@ -16,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Edit, Trash2, Search } from "lucide-react";
+import { Edit, Trash2, Search, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -27,13 +25,10 @@ import {
 } from "@/components/ui/dialog";
 import { SubAccountMasterForm } from "./sub-account-master-form";
 
-type SubAccount = Database["public"]["Tables"]["sub_accounts"]["Row"];
-type Account = Database["public"]["Tables"]["accounts"]["Row"];
-
 interface SubAccountWithAccount extends SubAccount {
   account?: {
-    account_code: string;
-    account_name: string;
+    accountCode: string;
+    accountName: string;
   };
 }
 
@@ -45,11 +40,12 @@ export function SubAccountMasterList() {
   const [editingSubAccount, setEditingSubAccount] =
     useState<SubAccountWithAccount | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadSubAccounts = async () => {
     setLoading(true);
     try {
-      const result = await ClientSubAccountService.getSubAccounts();
+      const result = await getSubAccounts();
       if (result.success && result.data) {
         setSubAccounts(result.data as SubAccountWithAccount[]);
       } else if (!result.success) {
@@ -64,12 +60,36 @@ export function SubAccountMasterList() {
 
   const loadAccounts = async () => {
     try {
-      const result = await ClientAccountService.getAccounts();
+      const result = await getAccounts();
       if (result.success && result.data) {
         setAccounts(result.data);
       }
     } catch (error) {
       console.error("勘定科目データの取得エラー:", error);
+    }
+  };
+
+  const refreshData = async () => {
+    setRefreshing(true);
+    try {
+      const [subAccountsResult, accountsResult] = await Promise.all([
+        getSubAccounts(),
+        getAccounts()
+      ]);
+      
+      if (subAccountsResult.success && subAccountsResult.data) {
+        setSubAccounts(subAccountsResult.data as SubAccountWithAccount[]);
+      } else if (!subAccountsResult.success) {
+        console.error("補助科目データの取得エラー:", subAccountsResult.error);
+      }
+      
+      if (accountsResult.success && accountsResult.data) {
+        setAccounts(accountsResult.data);
+      }
+    } catch (error) {
+      console.error("データの取得エラー:", error);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -81,10 +101,10 @@ export function SubAccountMasterList() {
   const filteredSubAccounts = subAccounts.filter((subAccount) => {
     const searchLower = searchTerm.toLowerCase();
     return (
-      subAccount.account_code.toLowerCase().includes(searchLower) ||
-      subAccount.sub_account_code.toLowerCase().includes(searchLower) ||
-      subAccount.sub_account_name.toLowerCase().includes(searchLower) ||
-      subAccount.account?.account_name?.toLowerCase().includes(searchLower) ||
+      subAccount.accountCode.toLowerCase().includes(searchLower) ||
+      subAccount.subAccountCode.toLowerCase().includes(searchLower) ||
+      subAccount.subAccountName.toLowerCase().includes(searchLower) ||
+      subAccount.account?.accountName?.toLowerCase().includes(searchLower) ||
       ""
     );
   });
@@ -97,18 +117,18 @@ export function SubAccountMasterList() {
   const handleEditSubmit = () => {
     setIsEditDialogOpen(false);
     setEditingSubAccount(null);
-    loadSubAccounts();
+    refreshData();
   };
 
   const handleDelete = async (subAccount: SubAccountWithAccount) => {
-    if (confirm(`補助科目「${subAccount.sub_account_name}」を削除しますか？`)) {
+    if (confirm(`補助科目「${subAccount.subAccountName}」を削除しますか？`)) {
       try {
-        const result = await ClientSubAccountService.deleteSubAccount(
-          subAccount.account_code,
-          subAccount.sub_account_code
+        const result = await deleteSubAccount(
+          subAccount.accountCode,
+          subAccount.subAccountCode
         );
         if (result.success) {
-          await loadSubAccounts();
+          await refreshData();
         } else {
           alert("削除エラー: " + result.error);
         }
@@ -124,14 +144,26 @@ export function SubAccountMasterList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center space-x-2">
-        <Search className="h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="勘定科目コード、補助科目コード、名称で検索..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="勘定科目コード、補助科目コード、名称で検索..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm"
+          />
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={refreshData}
+          disabled={refreshing}
+          className="h-auto p-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          更新
+        </Button>
       </div>
 
       <Table>
@@ -148,28 +180,28 @@ export function SubAccountMasterList() {
         <TableBody>
           {filteredSubAccounts.map((subAccount) => (
             <TableRow
-              key={`${subAccount.account_code}-${subAccount.sub_account_code}`}
+              key={`${subAccount.accountCode}-${subAccount.subAccountCode}`}
             >
               <TableCell>
                 <div>
-                  <div className="font-medium">{subAccount.account_code}</div>
+                  <div className="font-medium">{subAccount.accountCode}</div>
                   <div className="text-sm text-muted-foreground">
-                    {subAccount.account?.account_name}
+                    {subAccount.account?.accountName}
                   </div>
                 </div>
               </TableCell>
               <TableCell className="font-mono">
-                {subAccount.sub_account_code}
+                {subAccount.subAccountCode}
               </TableCell>
-              <TableCell>{subAccount.sub_account_name}</TableCell>
+              <TableCell>{subAccount.subAccountName}</TableCell>
               <TableCell>
                 <Badge
-                  variant={subAccount.is_active ? "default" : "secondary"}
+                  variant={subAccount.isActive ? "default" : "secondary"}
                 >
-                  {subAccount.is_active ? "有効" : "無効"}
+                  {subAccount.isActive ? "有効" : "無効"}
                 </Badge>
               </TableCell>
-              <TableCell>{subAccount.sort_order || "-"}</TableCell>
+              <TableCell>{subAccount.sortOrder || "-"}</TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
                   <Button

@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Biz Clone - 会計システム",
-  description: "Next.js + Supabase + Shadcn/UI で構築された会計システム",
+  description: "Next.js + Prisma + Shadcn/UI で構築された会計システム",
 };
 
 export default function RootLayout({
