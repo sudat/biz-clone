@@ -11,9 +11,9 @@
  * ============================================================================
  */
 
-import { camelToSnake, snakeToCamel } from "@/lib/utils/typeConverters";
+import { camelToSnake, snakeToCamel, batchCamelToSnake } from "@/lib/utils/typeConverters";
 import { Database } from "@/lib/database/types";
-import { ServiceResult } from "@/lib/types/errors";
+import { ServiceResult, ErrorInfo, ErrorType } from "@/lib/types/errors";
 import { handleAdapterError } from "@/lib/utils/error-handler";
 
 // Server Actions imports
@@ -51,6 +51,14 @@ type SupabaseAnalysisCode =
 // ServiceResponse型をServiceResultに統一
 type ServiceResponse<T> = ServiceResult<T>;
 
+// 型変換オプション
+const CONVERSION_OPTIONS = {
+  useCache: true,
+  deep: true,
+  preserveDates: true,
+  maxDepth: 10
+};
+
 // ====================
 // 最適化されたFormData変換ヘルパー
 // ====================
@@ -77,7 +85,7 @@ function objectToFormData(obj: Record<string, unknown>): FormData {
   // camelCaseをsnake_caseに変換してFormDataに追加
   const convertedData = camelToSnake(obj, CONVERSION_OPTIONS);
   
-  for (const [key, value] of Object.entries(convertedData)) {
+  for (const [key, value] of Object.entries(convertedData as Record<string, unknown>)) {
     if (value !== null && value !== undefined) {
       if (typeof value === "boolean") {
         formData.append(key, value.toString());
@@ -125,7 +133,10 @@ export class AccountDataAdapter {
       if ("error" in result) {
         return {
           success: false,
-          error: result.error || "勘定科目の取得に失敗しました",
+          error: {
+            type: ErrorType.DATABASE,
+            message: result.error || "勘定科目の取得に失敗しました",
+          },
         };
       }
 
@@ -152,7 +163,10 @@ export class AccountDataAdapter {
       if (!result.success) {
         return {
           success: false,
-          error: result.error || "勘定科目の削除に失敗しました",
+          error: {
+            type: ErrorType.DATABASE,
+            message: result.error || "勘定科目の削除に失敗しました",
+          },
         };
       }
 
@@ -361,7 +375,10 @@ export class SubAccountDataAdapter {
       if (!result.success) {
         return {
           success: false,
-          error: result.error || "補助科目の削除に失敗しました",
+          error: {
+            type: ErrorType.DATABASE,
+            message: result.error || "補助科目の削除に失敗しました",
+          },
         };
       }
 
@@ -545,7 +562,10 @@ export class PartnerDataAdapter {
       if (!result.success) {
         return {
           success: false,
-          error: result.error || "取引先の削除に失敗しました",
+          error: {
+            type: ErrorType.DATABASE,
+            message: result.error || "取引先の削除に失敗しました",
+          },
         };
       }
 
@@ -752,7 +772,10 @@ export class AnalysisCodeDataAdapter {
       if (!result.success) {
         return {
           success: false,
-          error: result.error || "分析コードの削除に失敗しました",
+          error: {
+            type: ErrorType.DATABASE,
+            message: result.error || "分析コードの削除に失敗しました",
+          },
         };
       }
 
