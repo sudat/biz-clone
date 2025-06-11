@@ -189,7 +189,10 @@ export function MasterDataSearch({
                       <Select
                         value={filters[filter.field] || "__all__"}
                         onValueChange={(value) =>
-                          handleFilterChange(filter.field, value === "__all__" ? "" : value)
+                          handleFilterChange(
+                            filter.field,
+                            value === "__all__" ? "" : value
+                          )
                         }
                       >
                         <SelectTrigger>
@@ -197,11 +200,15 @@ export function MasterDataSearch({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__all__">すべて</SelectItem>
-                          {filter.options?.length > 0 && filter.options.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
+                          {filter.options?.length > 0 &&
+                            filter.options.map((option) => (
+                              <SelectItem
+                                key={option.value}
+                                value={option.value}
+                              >
+                                {option.label}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     )}

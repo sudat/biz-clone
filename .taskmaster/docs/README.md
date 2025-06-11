@@ -77,37 +77,28 @@ React/Next.js を使用したモダンなフロントエンド構成と、会計
 
 ```mermaid
 graph TB
-    subgraph "Frontend"
-        NEXT[Next.js 15.3.3]
+    subgraph "Frontend (UI層)"
+        NEXT[Next.js 15]
         REACT[React 19]
         TS[TypeScript]
         TAILWIND[Tailwind CSS]
         SHADCN[Shadcn/UI]
     end
 
-    subgraph "Backend"
-        NEXTAPI[Next.js API Routes]
-        PRISMA[Prisma ORM]
+    subgraph "Backend (Server Actions層)"
+        ACTIONS[Server Actions]
         ZOD[Zod Validation]
     end
 
-    subgraph "Database"
+    subgraph "Database (Database層)"
+        PRISMA[Prisma ORM]
         POSTGRES[PostgreSQL]
-        SUPABASE[Supabase]
     end
 
-    subgraph "Infrastructure"
-        VERCEL[Vercel]
-        GITHUB[GitHub Actions]
-    end
-
-    NEXT --> NEXTAPI
-    NEXTAPI --> PRISMA
+    NEXT --> ACTIONS
+    ACTIONS --> ZOD
+    ACTIONS --> PRISMA
     PRISMA --> POSTGRES
-    POSTGRES --> SUPABASE
-
-    NEXT --> VERCEL
-    GITHUB --> VERCEL
 ```
 
 ## 主要機能
@@ -159,24 +150,26 @@ npm run dev
 
 ```
 biz-clone/
-├── app/                     # Next.js App Router
-│   ├── auth/               # 認証関連ページ
+├── app/                     # Next.js App Router (UI層)
+│   ├── actions/            # Server Actions (ビジネスロジック層)
+│   │   ├── accounts.ts     # 勘定科目操作
+│   │   ├── partners.ts     # 取引先操作
+│   │   └── analysis-codes.ts # 分析コード操作
 │   ├── master/             # マスタ管理画面
 │   │   ├── accounts/       # 勘定科目管理
 │   │   ├── partners/       # 取引先管理
 │   │   └── analysis-codes/ # 分析コード管理
-│   └── api/                # API Routes
-├── components/             # UI コンポーネント
+│   └── siwake/             # 仕訳関連画面
+├── components/             # UI コンポーネント (UI層)
 │   ├── ui/                 # 基本 UI コンポーネント
 │   ├── accounting/         # 会計特化コンポーネント
 │   └── layout/             # レイアウトコンポーネント
-├── lib/                    # ビジネスロジック
-│   ├── services/           # サービス層
-│   ├── repositories/       # データアクセス層
-│   ├── schemas/            # バリデーションスキーマ
-│   ├── types/              # 型定義
+├── lib/                    # ユーティリティ・データベース層
+│   ├── database/           # Prismaクライアント (Database層)
+│   ├── schemas/            # Zodバリデーションスキーマ
 │   └── utils/              # ユーティリティ関数
-├── prisma/                 # データベースマイグレーション
+├── types/                  # 統一TypeScript型定義
+├── prisma/                 # データベーススキーマ・マイグレーション
 └── __tests__/              # テストファイル
 ```
 

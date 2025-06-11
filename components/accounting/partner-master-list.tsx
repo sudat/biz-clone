@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import type { Partner } from "@/lib/database/prisma";
-import { getPartners, deletePartner, searchPartners } from "@/app/actions/partners";
+import {
+  getPartners,
+  deletePartner,
+  searchPartners,
+} from "@/app/actions/partners";
 import {
   searchAndSort,
   getSearchStats,
@@ -110,13 +114,10 @@ export function PartnerMasterList() {
   const performServerSearch = useCallback(async (searchState: SearchState) => {
     setLoading(true);
     try {
-      const result = await searchPartners(
-        searchState.searchTerm,
-        {
-          partner_type: searchState.filters.partnerType,
-          is_active: searchState.activeOnly ? true : undefined,
-        }
-      );
+      const result = await searchPartners(searchState.searchTerm, {
+        partner_type: searchState.filters.partnerType,
+        is_active: searchState.activeOnly ? true : undefined,
+      });
 
       if (result.success) {
         setPartners(result.data || []);

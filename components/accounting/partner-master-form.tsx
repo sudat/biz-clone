@@ -89,7 +89,9 @@ export function PartnerMasterForm({
       partnerCode: partner?.partnerCode || "",
       partnerName: partner?.partnerName || "",
       partnerKana: partner?.partnerKana || "",
-      partnerType: (partner?.partnerType as "得意先" | "仕入先" | "金融機関" | "その他") || "得意先",
+      partnerType:
+        (partner?.partnerType as "得意先" | "仕入先" | "金融機関" | "その他") ||
+        "得意先",
       postalCode: partner?.postalCode || "",
       address: partner?.address || "",
       phone: partner?.phone || "",
@@ -106,29 +108,31 @@ export function PartnerMasterForm({
       if (isEditing && partner) {
         // 更新
         const formData = new FormData();
-        formData.append('partnerName', data.partnerName);
-        if (data.partnerKana) formData.append('partnerKana', data.partnerKana);
-        formData.append('partnerType', data.partnerType);
-        if (data.postalCode) formData.append('postalCode', data.postalCode);
-        if (data.address) formData.append('address', data.address);
-        if (data.phone) formData.append('phone', data.phone);
-        if (data.email) formData.append('email', data.email);
-        if (data.contactPerson) formData.append('contactPerson', data.contactPerson);
-        formData.append('isActive', data.isActive.toString());
+        formData.append("partnerName", data.partnerName);
+        if (data.partnerKana) formData.append("partnerKana", data.partnerKana);
+        formData.append("partnerType", data.partnerType);
+        if (data.postalCode) formData.append("postalCode", data.postalCode);
+        if (data.address) formData.append("address", data.address);
+        if (data.phone) formData.append("phone", data.phone);
+        if (data.email) formData.append("email", data.email);
+        if (data.contactPerson)
+          formData.append("contactPerson", data.contactPerson);
+        formData.append("isActive", data.isActive.toString());
         result = await updatePartner(partner.partnerCode, formData);
       } else {
         // 新規作成
         const formData = new FormData();
-        formData.append('partnerCode', data.partnerCode);
-        formData.append('partnerName', data.partnerName);
-        if (data.partnerKana) formData.append('partnerKana', data.partnerKana);
-        formData.append('partnerType', data.partnerType);
-        if (data.postalCode) formData.append('postalCode', data.postalCode);
-        if (data.address) formData.append('address', data.address);
-        if (data.phone) formData.append('phone', data.phone);
-        if (data.email) formData.append('email', data.email);
-        if (data.contactPerson) formData.append('contactPerson', data.contactPerson);
-        formData.append('isActive', data.isActive.toString());
+        formData.append("partnerCode", data.partnerCode);
+        formData.append("partnerName", data.partnerName);
+        if (data.partnerKana) formData.append("partnerKana", data.partnerKana);
+        formData.append("partnerType", data.partnerType);
+        if (data.postalCode) formData.append("postalCode", data.postalCode);
+        if (data.address) formData.append("address", data.address);
+        if (data.phone) formData.append("phone", data.phone);
+        if (data.email) formData.append("email", data.email);
+        if (data.contactPerson)
+          formData.append("contactPerson", data.contactPerson);
+        formData.append("isActive", data.isActive.toString());
         result = await createPartner(formData);
       }
 

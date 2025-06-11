@@ -24,27 +24,30 @@ export class JournalNumberService {
   }> {
     try {
       // 日付をYYYYMMDD形式に変換
-      const datePrefix = date.replace(/-/g, '');
-      
+      const datePrefix = date.replace(/-/g, "");
+
       // 現在の最大シーケンス番号を取得
-      const lastSequence = await prisma.$queryRaw<[{ max_sequence: number | null }]>`
-        SELECT COALESCE(MAX(CAST(RIGHT(journal_number, 7) AS INTEGER)), 0) as max_sequence
+      const lastSequence = await prisma.$queryRaw<
+        [{ max_sequence: number | null }]
+      >`
+        SELECT COALESCE(MAX(CAST(RIGHT(journal_number, 6) AS INTEGER)), 0) as max_sequence
         FROM journal_headers 
-        WHERE journal_number LIKE ${datePrefix + '%'}
+        WHERE journal_number LIKE ${datePrefix + "%"}
       `;
 
       const nextSequence = (lastSequence[0]?.max_sequence || 0) + 1;
-      const journalNumber = datePrefix + nextSequence.toString().padStart(7, '0');
+      const journalNumber = datePrefix +
+        nextSequence.toString().padStart(6, "0");
 
       return {
         success: true,
         data: journalNumber,
       };
     } catch (error) {
-      console.error('仕訳番号生成サービスエラー:', error);
+      console.error("仕訳番号生成サービスエラー:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : '不明なエラー',
+        error: error instanceof Error ? error.message : "不明なエラー",
       };
     }
   }
@@ -62,7 +65,7 @@ export class JournalNumberService {
     try {
       const existingJournal = await prisma.journalHeader.findUnique({
         where: { journalNumber },
-        select: { journalNumber: true }
+        select: { journalNumber: true },
       });
 
       return {
@@ -70,10 +73,10 @@ export class JournalNumberService {
         data: !!existingJournal,
       };
     } catch (error) {
-      console.error('仕訳番号存在チェックサービスエラー:', error);
+      console.error("仕訳番号存在チェックサービスエラー:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : '不明なエラー',
+        error: error instanceof Error ? error.message : "不明なエラー",
       };
     }
   }
@@ -89,16 +92,16 @@ export class JournalNumberService {
     error?: string;
   }> {
     try {
-      const datePrefix = date.replace(/-/g, '');
-      
+      const datePrefix = date.replace(/-/g, "");
+
       const lastJournal = await prisma.journalHeader.findFirst({
         where: {
           journalNumber: {
-            startsWith: datePrefix
-          }
+            startsWith: datePrefix,
+          },
         },
         select: { journalNumber: true },
-        orderBy: { journalNumber: 'desc' }
+        orderBy: { journalNumber: "desc" },
       });
 
       return {
@@ -106,10 +109,10 @@ export class JournalNumberService {
         data: lastJournal?.journalNumber || null,
       };
     } catch (error) {
-      console.error('最終仕訳番号取得サービスエラー:', error);
+      console.error("最終仕訳番号取得サービスエラー:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : '不明なエラー',
+        error: error instanceof Error ? error.message : "不明なエラー",
       };
     }
   }
@@ -126,28 +129,30 @@ export class JournalNumberService {
   }> {
     try {
       // Simplified version - just return basic sequence info
-      const datePrefix = date.replace(/-/g, '');
-      const lastSequence = await prisma.$queryRaw<[{ max_sequence: number | null }]>`
-        SELECT COALESCE(MAX(CAST(RIGHT(journal_number, 7) AS INTEGER)), 0) as max_sequence
+      const datePrefix = date.replace(/-/g, "");
+      const lastSequence = await prisma.$queryRaw<
+        [{ max_sequence: number | null }]
+      >`
+        SELECT COALESCE(MAX(CAST(RIGHT(journal_number, 6) AS INTEGER)), 0) as max_sequence
         FROM journal_headers 
-        WHERE journal_number LIKE ${datePrefix + '%'}
+        WHERE journal_number LIKE ${datePrefix + "%"}
       `;
 
       const currentSequence = lastSequence[0]?.max_sequence || 0;
-      
+
       return {
         success: true,
         data: {
           journalDate: date,
           currentSequence,
-          nextSequence: currentSequence + 1
+          nextSequence: currentSequence + 1,
         } as any, // Simplified type
       };
     } catch (error) {
-      console.error('仕訳番号シーケンス取得サービスエラー:', error);
+      console.error("仕訳番号シーケンス取得サービスエラー:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : '不明なエラー',
+        error: error instanceof Error ? error.message : "不明なエラー",
       };
     }
   }
@@ -164,27 +169,30 @@ export class JournalNumberService {
   }> {
     try {
       // 日付をYYYYMMDD形式に変換
-      const datePrefix = date.replace(/-/g, '');
-      
+      const datePrefix = date.replace(/-/g, "");
+
       // 現在の最大シーケンス番号を取得
-      const lastSequence = await prisma.$queryRaw<[{ max_sequence: number | null }]>`
-        SELECT COALESCE(MAX(CAST(RIGHT(journal_number, 7) AS INTEGER)), 0) as max_sequence
+      const lastSequence = await prisma.$queryRaw<
+        [{ max_sequence: number | null }]
+      >`
+        SELECT COALESCE(MAX(CAST(RIGHT(journal_number, 6) AS INTEGER)), 0) as max_sequence
         FROM journal_headers 
-        WHERE journal_number LIKE ${datePrefix + '%'}
+        WHERE journal_number LIKE ${datePrefix + "%"}
       `;
 
       const nextSequence = (lastSequence[0]?.max_sequence || 0) + 1;
-      const previewNumber = datePrefix + nextSequence.toString().padStart(7, '0');
+      const previewNumber = datePrefix +
+        nextSequence.toString().padStart(6, "0");
 
       return {
         success: true,
         data: previewNumber,
       };
     } catch (error) {
-      console.error('仕訳番号プレビューエラー:', error);
+      console.error("仕訳番号プレビューエラー:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : '不明なエラー',
+        error: error instanceof Error ? error.message : "不明なエラー",
       };
     }
   }
@@ -196,8 +204,8 @@ export class JournalNumberService {
    * @returns Promise<{ success: boolean, data?: string, error?: string }>
    */
   static async generateNextJournalNumberSafe(
-    date: string, 
-    maxRetries: number = 3
+    date: string,
+    maxRetries: number = 3,
   ): Promise<{
     success: boolean;
     data?: string;
@@ -214,8 +222,8 @@ export class JournalNumberService {
    * @returns Promise<{ success: boolean, data?: string[], error?: string }>
    */
   static async generateMultipleJournalNumbers(
-    date: string, 
-    count: number
+    date: string,
+    count: number,
   ): Promise<{
     success: boolean;
     data?: string[];
@@ -235,7 +243,7 @@ export class JournalNumberService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : '不明なエラー',
+        error: error instanceof Error ? error.message : "不明なエラー",
       };
     }
   }
@@ -256,4 +264,27 @@ export class JournalNumberService {
       data: [], // No issues found in simplified version
     };
   }
-} 
+}
+
+/**
+ * 仕訳番号生成関数（計上日ベース）
+ * @param journalDate 計上日（YYYY-MM-DD形式）または Date オブジェクト
+ * @returns Promise<string> 生成された仕訳番号（yyyymmdd + 6桁シーケンス）
+ * @throws Error 生成に失敗した場合
+ */
+export async function generateJournalNumber(
+  journalDate: string | Date,
+): Promise<string> {
+  // 日付を YYYY-MM-DD 形式の文字列に変換
+  const dateStr = journalDate instanceof Date
+    ? journalDate.toISOString().split("T")[0]
+    : journalDate;
+
+  const result = await JournalNumberService.generateNextJournalNumber(dateStr);
+
+  if (!result.success || !result.data) {
+    throw new Error(result.error || "仕訳番号の生成に失敗しました");
+  }
+
+  return result.data;
+}
