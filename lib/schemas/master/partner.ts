@@ -3,6 +3,7 @@
  */
 
 import { z } from "zod";
+import { PARTNER_TYPE_LIST, type PartnerType } from "@/types/master-types";
 
 /**
  * 取引先作成スキーマ
@@ -11,7 +12,7 @@ export const createPartnerSchema = z.object({
   partnerCode: z.string().min(1, "取引先コードは必須です").max(15),
   partnerName: z.string().min(1, "取引先名は必須です").max(100),
   partnerKana: z.string().max(100).optional(),
-  partnerType: z.enum(["顧客", "仕入先", "銀行", "その他"]),
+  partnerType: z.enum(PARTNER_TYPE_LIST),
   phone: z.string().max(20).optional(),
   email: z.string().email().max(100).optional().or(z.literal("")),
   address: z.string().max(200).optional()
@@ -23,7 +24,7 @@ export const createPartnerSchema = z.object({
 export const updatePartnerSchema = z.object({
   partnerName: z.string().min(1, "取引先名は必須です").max(100),
   partnerKana: z.string().max(100).optional(),
-  partnerType: z.enum(["顧客", "仕入先", "銀行", "その他"]),
+  partnerType: z.enum(PARTNER_TYPE_LIST),
   phone: z.string().max(20).optional(),
   email: z.string().email().max(100).optional().or(z.literal("")),
   address: z.string().max(200).optional()

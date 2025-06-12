@@ -9,7 +9,8 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { JournalDetailInput, JournalDetailData } from "./journal-detail-input";
+import { JournalDetailInput } from "./journal-detail-input";
+import { JournalDetailData } from "@/types/journal";
 import { JournalDetailList } from "./journal-detail-list";
 
 interface JournalEntrySideProps {

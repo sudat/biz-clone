@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { getAccounts, searchAccounts, deleteAccount, type AccountForClient } from "@/app/actions/accounts";
+import {
+  getAccounts,
+  searchAccounts,
+  deleteAccount,
+  type AccountForClient,
+} from "@/app/actions/accounts";
 import {
   searchAndSort,
   getSearchStats,
@@ -32,19 +37,17 @@ import {
 } from "@/components/ui/dialog";
 import { AccountMasterForm } from "@/components/accounting/account-master-form";
 import { Badge } from "@/components/ui/badge";
+import { ACCOUNT_TYPE_OPTIONS } from "@/types/master-types";
 
 const searchFilters: SearchFilter[] = [
   {
     field: "accountType",
     label: "勘定科目種別",
     type: "select",
-    options: [
-      { value: "資産", label: "資産" },
-      { value: "負債", label: "負債" },
-      { value: "純資産", label: "純資産" },
-      { value: "収益", label: "収益" },
-      { value: "費用", label: "費用" },
-    ],
+    options: ACCOUNT_TYPE_OPTIONS.map((option) => ({
+      value: option.value,
+      label: option.label,
+    })),
   },
 ];
 
@@ -65,10 +68,48 @@ export function AccountMasterList() {
     sortDirection: "asc",
     activeOnly: false,
   });
-  const [editingAccount, setEditingAccount] = useState<AccountForClient | null>(null);
+  const [editingAccount, setEditingAccount] = useState<AccountForClient | null>(
+    null
+  );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [useServerSearch, setUseServerSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // 階層深度計算関数
+  const calculateDepth = useCallback((accountCode: string, accounts: AccountForClient[]): number => {
+    const account = accounts.find(acc => acc.accountCode === accountCode);
+    if (!account?.parentAccountCode) return 0;
+    return 1 + calculateDepth(account.parentAccountCode, accounts);
+  }, []);
+
+  // 階層ソート関数
+  const buildHierarchicalList = useCallback((accounts: AccountForClient[]): AccountForClient[] => {
+    const result: AccountForClient[] = [];
+    const processed = new Set<string>();
+
+    // 親科目から子科目の順で追加する再帰関数
+    const addAccountWithChildren = (parentCode: string | null, depth: number = 0) => {
+      // 指定された親を持つ科目を取得（親科目がnullの場合はルート科目）
+      const children = accounts
+        .filter(acc => acc.parentAccountCode === parentCode)
+        .sort((a, b) => a.accountCode.localeCompare(b.accountCode));
+
+      children.forEach(account => {
+        if (!processed.has(account.accountCode)) {
+          processed.add(account.accountCode);
+          // 深度情報を追加
+          result.push({ ...account, _hierarchyDepth: depth } as AccountForClient & { _hierarchyDepth: number });
+          // 子科目を再帰的に追加
+          addAccountWithChildren(account.accountCode, depth + 1);
+        }
+      });
+    };
+
+    // ルート科目（親科目なし）から開始
+    addAccountWithChildren(null);
+    
+    return result;
+  }, []);
 
   // Manual refresh function using new Server Actions
   const refreshData = useCallback(async () => {
@@ -109,20 +150,19 @@ export function AccountMasterList() {
     }
   };
 
-  // サーバーサイド検索（新しいServer Actions使用）
+  // サーバーサイド検索（新しいServer Actions使用、階層表示対応）
   const performServerSearch = useCallback(async (searchState: SearchState) => {
     setLoading(true);
     try {
-      const result = await searchAccounts(
-        searchState.searchTerm,
-        {
-          accountType: searchState.filters.accountType,
-          isActive: searchState.activeOnly ? true : undefined,
-        }
-      );
+      const result = await searchAccounts(searchState.searchTerm, {
+        accountType: searchState.filters.accountType,
+        isActive: searchState.activeOnly ? true : undefined,
+      });
 
       if (result.success) {
-        setAccounts(result.data || []);
+        // サーバーサイド検索結果も階層表示用にソート
+        const hierarchicalData = buildHierarchicalList(result.data || []);
+        setAccounts(hierarchicalData);
       } else {
         console.error("検索エラー:", result.error);
       }
@@ -131,20 +171,25 @@ export function AccountMasterList() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [buildHierarchicalList]);
 
-  // クライアントサイド検索・フィルタリング
+  // クライアントサイド検索・フィルタリング（階層表示対応）
   const filteredAccounts = useMemo(() => {
+    let processedAccounts = accounts;
+
     if (useServerSearch) {
-      return accounts; // サーバーサイド検索済みのデータをそのまま使用
+      processedAccounts = accounts; // サーバーサイド検索済みのデータをそのまま使用
+    } else {
+      processedAccounts = searchAndSort(accounts, searchState, [
+        "accountCode",
+        "accountName",
+        "accountType",
+      ]);
     }
 
-    return searchAndSort(accounts, searchState, [
-      "accountCode",
-      "accountName",
-      "accountType",
-    ]);
-  }, [accounts, searchState, useServerSearch]);
+    // 階層表示用にソート（検索結果も階層構造を保持）
+    return buildHierarchicalList(processedAccounts);
+  }, [accounts, searchState, useServerSearch, buildHierarchicalList]);
 
   const searchStats = useMemo(() => {
     return getSearchStats(accounts, filteredAccounts);
@@ -284,6 +329,7 @@ export function AccountMasterList() {
                 <TableHead>コード</TableHead>
                 <TableHead>名称</TableHead>
                 <TableHead>種別</TableHead>
+                <TableHead>区分</TableHead>
                 <TableHead>状態</TableHead>
                 <TableHead className="text-right">操作</TableHead>
               </TableRow>
@@ -292,7 +338,7 @@ export function AccountMasterList() {
               {filteredAccounts.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="text-center text-muted-foreground py-8"
                   >
                     {searchState.searchTerm ||
@@ -303,16 +349,32 @@ export function AccountMasterList() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredAccounts.map((account) => (
-                  <TableRow key={account.accountCode}>
-                    <TableCell className="font-mono">
-                      {renderHighlightedText(account.accountCode)}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {renderHighlightedText(account.accountName)}
-                    </TableCell>
+                filteredAccounts.map((account) => {
+                  const depth = (account as AccountForClient & { _hierarchyDepth?: number })._hierarchyDepth || 0;
+                  return (
+                    <TableRow key={account.accountCode}>
+                      <TableCell className="font-mono">
+                        {renderHighlightedText(account.accountCode)}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center">
+                          <span style={{ marginLeft: `${depth * 20}px` }}>
+                            {depth > 0 && (
+                              <span className="text-muted-foreground mr-1">└ </span>
+                            )}
+                            {renderHighlightedText(account.accountName)}
+                          </span>
+                        </div>
+                      </TableCell>
                     <TableCell>
                       {renderHighlightedText(account.accountType)}
+                    </TableCell>
+                    <TableCell>
+                      {account.isDetail ? (
+                        <Badge variant="default">明細科目</Badge>
+                      ) : (
+                        <Badge variant="outline">集計科目</Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -339,8 +401,9 @@ export function AccountMasterList() {
                         </Button>
                       </div>
                     </TableCell>
-                  </TableRow>
-                ))
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -348,7 +411,7 @@ export function AccountMasterList() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-hide">
           <DialogHeader>
             <DialogTitle>
               {editingAccount ? "勘定科目編集" : "新規勘定科目作成"}

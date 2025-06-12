@@ -16,24 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MasterCodeInput } from "./master-code-input";
-
-export interface JournalDetailData {
-  debitCredit: "debit" | "credit";
-  accountCode: string;
-  accountName?: string;
-  subAccountCode?: string;
-  subAccountName?: string;
-  partnerCode?: string;
-  partnerName?: string;
-  analysisCode?: string;
-  analysisCodeName?: string;
-  baseAmount: number;
-  taxAmount: number;
-  totalAmount: number;
-  taxRate?: number;
-  taxType: "taxable" | "non_taxable" | "tax_free" | "tax_entry";
-  description?: string;
-}
+import { JournalDetailData } from "@/types/journal";
+import { TAX_TYPE_OPTIONS, DEFAULT_TAX_TYPE } from "@/types/tax";
 
 interface JournalDetailInputProps {
   type: "debit" | "credit";
@@ -75,7 +59,7 @@ export function JournalDetailInput({
     taxAmount: 0,
     totalAmount: undefined,
     taxRate: 10,
-    taxType: "non_taxable",
+    taxType: DEFAULT_TAX_TYPE,
     description: "",
   });
 
@@ -93,7 +77,7 @@ export function JournalDetailInput({
       taxAmount: 0,
       totalAmount: undefined,
       taxRate: 10,
-      taxType: "non_taxable",
+      taxType: DEFAULT_TAX_TYPE,
       description: "",
     });
   };

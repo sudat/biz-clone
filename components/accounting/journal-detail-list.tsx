@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { JournalDetailData } from "./journal-detail-input";
+import { JournalDetailData } from "@/types/journal";
 
 interface JournalDetailListProps {
   type: 'debit' | 'credit';
@@ -130,7 +130,7 @@ export function JournalDetailList({
                       </div>
                       <div className="flex items-center gap-1 ml-2">
                         <span className="text-sm font-mono font-semibold text-slate-800">
-                          {formatCurrency(detail.amount)}
+                          {formatCurrency(detail.totalAmount)}
                         </span>
                         <Button
                           type="button"

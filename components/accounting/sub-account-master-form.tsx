@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { SubAccount, Account } from "@/lib/database/prisma";
-import { createSubAccount, updateSubAccount } from "@/app/actions/sub-accounts";
+import type { SubAccount } from "@/lib/database/prisma";
+import type { AccountForClient } from "@/types/client";
+import { createSubAccount, updateSubAccount, checkSubAccountCodeExists } from "@/app/actions/sub-accounts";
 import { getAccounts } from "@/app/actions/accounts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
+import { 
+  showErrorToast, 
+  showSuccessToast
+} from "@/components/ui/error-toast";
+import { createSystemError } from "@/lib/types/errors";
 
 interface SubAccountWithAccount extends SubAccount {
   account?: {
@@ -52,7 +58,7 @@ type SubAccountFormData = z.infer<typeof subAccountFormSchema>;
 
 interface SubAccountMasterFormProps {
   subAccount?: SubAccountWithAccount | null;
-  accounts?: Account[];
+  accounts?: AccountForClient[];
   onSubmit: () => void;
   onCancel: () => void;
 }
@@ -64,7 +70,10 @@ export function SubAccountMasterForm({
   onCancel,
 }: SubAccountMasterFormProps) {
   const [loading, setLoading] = useState(false);
-  const [accounts, setAccounts] = useState<Account[]>(propAccounts || []);
+  const [codeCheckLoading, setCodeCheckLoading] = useState(false);
+  const [codeCheckMessage, setCodeCheckMessage] = useState<string>("");
+  const [codeCheckError, setCodeCheckError] = useState<boolean>(false);
+  const [accounts, setAccounts] = useState<AccountForClient[]>(propAccounts || []);
   const isEditing = !!subAccount;
 
   const form = useForm<SubAccountFormData>({
@@ -94,7 +103,41 @@ export function SubAccountMasterForm({
     }
   }, [propAccounts]);
 
+  // 補助科目コードの重複チェック
+  const checkSubAccountCode = async (accountCode: string, subAccountCode: string) => {
+    if (!accountCode || !subAccountCode || isEditing) return; // 編集時はチェックしない
+    
+    setCodeCheckLoading(true);
+    setCodeCheckMessage("");
+    setCodeCheckError(false);
+
+    try {
+      const result = await checkSubAccountCodeExists(accountCode, subAccountCode);
+      if (result.exists && result.subAccount) {
+        const subAccount = result.subAccount;
+        const status = subAccount.isActive ? "有効" : "無効";
+        setCodeCheckMessage(
+          `このコード（${subAccount.account?.accountName} / ${subAccount.subAccountName} / ${status}）は既に使用されています。`
+        );
+        setCodeCheckError(true);
+      } else {
+        setCodeCheckMessage("このコードは使用可能です。");
+        setCodeCheckError(false);
+      }
+    } catch {
+      setCodeCheckMessage("コードのチェックに失敗しました。");
+      setCodeCheckError(true);
+    } finally {
+      setCodeCheckLoading(false);
+    }
+  };
+
   const handleSubmit = async (data: SubAccountFormData) => {
+    // 新規作成時に重複エラーがある場合は送信しない
+    if (!isEditing && codeCheckError) {
+      showErrorToast(createSystemError("補助科目コードが重複しています", "登録処理"));
+      return;
+    }
     setLoading(true);
     try {
       let result;
@@ -123,13 +166,20 @@ export function SubAccountMasterForm({
       }
 
       if (result.success) {
+        showSuccessToast(
+          isEditing ? "補助科目を更新しました" : "補助科目を作成しました"
+        );
         onSubmit();
       } else {
-        alert("保存エラー: " + result.error);
+        showErrorToast(createSystemError(result.error || "エラーが発生しました", "バリデーションエラー"));
       }
     } catch (error) {
       console.error("補助科目の保存エラー:", error);
-      alert("保存に失敗しました: " + error);
+      const systemError = createSystemError(
+        "補助科目の保存に失敗しました",
+        error instanceof Error ? error.message : "不明なエラー"
+      );
+      showErrorToast(systemError);
     } finally {
       setLoading(false);
     }
@@ -186,13 +236,34 @@ export function SubAccountMasterForm({
                   {...field}
                   placeholder="例: 001"
                   disabled={isEditing || loading}
+                  onBlur={(e) => {
+                    field.onBlur();
+                    const accountCode = form.getValues("accountCode");
+                    checkSubAccountCode(accountCode, e.target.value);
+                  }}
                 />
               </FormControl>
               <FormDescription>
                 {isEditing
                   ? "コードは編集できません"
-                  : "補助科目を識別するコードを入力してください"}
+                  : codeCheckMessage && !codeCheckError
+                    ? "" // チェック成功時は説明文を非表示
+                    : "補助科目を識別するコードを入力してください"}
               </FormDescription>
+              
+              {/* 重複チェック結果の表示 */}
+              {!isEditing && (codeCheckLoading || codeCheckMessage) && (
+                <div className={`text-sm mt-1 ${
+                  codeCheckLoading 
+                    ? "text-gray-500" 
+                    : codeCheckError 
+                      ? "text-red-600" 
+                      : "text-green-600"
+                }`}>
+                  {codeCheckLoading ? "チェック中..." : codeCheckMessage}
+                </div>
+              )}
+              
               <FormMessage />
             </FormItem>
           )}
@@ -272,7 +343,7 @@ export function SubAccountMasterForm({
           >
             キャンセル
           </Button>
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading || (!isEditing && codeCheckError)}>
             {loading ? "保存中..." : isEditing ? "更新" : "作成"}
           </Button>
         </div>

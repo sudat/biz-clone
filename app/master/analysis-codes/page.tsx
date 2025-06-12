@@ -33,7 +33,7 @@ export default function AnalysisCodeMasterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
       <Header />
-      <main className="container mx-auto px-8 py-8 space-y-8 max-w-7xl">
+      <main className="container mx-auto px-8 py-8 space-y-4 max-w-7xl">
         {/* ページヘッダー */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-card/40 backdrop-blur-sm rounded-xl p-6 shadow-md border">
           <div className="space-y-2">
@@ -54,7 +54,7 @@ export default function AnalysisCodeMasterPage() {
         </div>
 
         {/* メインコンテンツカード */}
-        <Card className="shadow-xl border-0 bg-card/60 backdrop-blur-sm overflow-hidden">
+        <Card className="shadow-xl border-0 bg-card/60 backdrop-blur-sm overflow-hidden gap-0">
           <CardHeader className="bg-gradient-to-r from-muted/20 to-muted/10">
             <CardTitle className="text-2xl font-bold">分析コード一覧</CardTitle>
             <CardDescription className="text-base">
@@ -78,7 +78,7 @@ export default function AnalysisCodeMasterPage() {
         </Card>
 
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogContent className="max-w-lg shadow-2xl border-0">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto scrollbar-hide shadow-2xl border-0">
             <DialogHeader className="space-y-4 pb-6">
               <DialogTitle className="text-2xl font-bold">
                 新規分析コード作成

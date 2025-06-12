@@ -6,6 +6,31 @@ import { createAnalysisCodeSchema, updateAnalysisCodeSchema } from "@/lib/schema
 import type { AnalysisCode } from "@/lib/database/prisma";
 
 /**
+ * 分析コードの重複チェック
+ */
+export async function checkAnalysisCodeExists(analysisCode: string): Promise<{ exists: boolean; analysisCode?: any }> {
+  try {
+    const existingAnalysisCode = await prisma.analysisCode.findUnique({
+      where: { analysisCode },
+      select: {
+        analysisCode: true,
+        analysisName: true,
+        analysisType: true,
+        isActive: true
+      }
+    });
+
+    return {
+      exists: !!existingAnalysisCode,
+      analysisCode: existingAnalysisCode || undefined
+    };
+  } catch (error) {
+    console.error("分析コード重複チェックエラー:", error);
+    return { exists: false };
+  }
+}
+
+/**
  * 分析コード一覧の取得
  */
 export async function getAnalysisCodes() {

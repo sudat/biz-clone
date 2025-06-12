@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { AnalysisCode } from "@/lib/database/prisma";
-import { createAnalysisCode, updateAnalysisCode, getAnalysisTypes } from "@/app/actions/analysis-codes";
+import { createAnalysisCode, updateAnalysisCode, getAnalysisTypes, checkAnalysisCodeExists } from "@/app/actions/analysis-codes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,6 +25,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
+import { 
+  showErrorToast, 
+  showSuccessToast
+} from "@/components/ui/error-toast";
+import { createSystemError } from "@/lib/types/errors";
 
 const analysisCodeFormSchema = z.object({
   analysisCode: z
@@ -65,6 +70,9 @@ export function AnalysisCodeMasterForm({
   onCancel,
 }: AnalysisCodeMasterFormProps) {
   const [loading, setLoading] = useState(false);
+  const [codeCheckLoading, setCodeCheckLoading] = useState(false);
+  const [codeCheckMessage, setCodeCheckMessage] = useState<string>("");
+  const [codeCheckError, setCodeCheckError] = useState<boolean>(false);
   const [analysisTypes, setAnalysisTypes] = useState<string[]>([]);
   const [newAnalysisType, setNewAnalysisType] = useState("");
   const isEditing = !!analysisCode;
@@ -96,7 +104,41 @@ export function AnalysisCodeMasterForm({
     },
   });
 
+  // 分析コードの重複チェック
+  const checkAnalysisCode = async (code: string) => {
+    if (!code || isEditing) return; // 編集時はチェックしない
+    
+    setCodeCheckLoading(true);
+    setCodeCheckMessage("");
+    setCodeCheckError(false);
+
+    try {
+      const result = await checkAnalysisCodeExists(code);
+      if (result.exists && result.analysisCode) {
+        const analysisCode = result.analysisCode;
+        const status = analysisCode.isActive ? "有効" : "無効";
+        setCodeCheckMessage(
+          `このコード（${analysisCode.analysisName} / ${analysisCode.analysisType} / ${status}）は既に使用されています。`
+        );
+        setCodeCheckError(true);
+      } else {
+        setCodeCheckMessage("このコードは使用可能です。");
+        setCodeCheckError(false);
+      }
+    } catch {
+      setCodeCheckMessage("コードのチェックに失敗しました。");
+      setCodeCheckError(true);
+    } finally {
+      setCodeCheckLoading(false);
+    }
+  };
+
   const handleSubmit = async (data: AnalysisCodeFormData) => {
+    // 新規作成時に重複エラーがある場合は送信しない
+    if (!isEditing && codeCheckError) {
+      showErrorToast(createSystemError("分析コードが重複しています", "登録処理"));
+      return;
+    }
     setLoading(true);
     try {
       let result;
@@ -122,13 +164,20 @@ export function AnalysisCodeMasterForm({
       }
 
       if (result.success) {
+        showSuccessToast(
+          isEditing ? "分析コードを更新しました" : "分析コードを作成しました"
+        );
         onSubmit();
       } else {
-        alert("保存エラー: " + result.error);
+        showErrorToast(createSystemError(result.error || "エラーが発生しました", "バリデーションエラー"));
       }
     } catch (error) {
       console.error("分析コードの保存エラー:", error);
-      alert("保存に失敗しました: " + error);
+      const systemError = createSystemError(
+        "分析コードの保存に失敗しました",
+        error instanceof Error ? error.message : "不明なエラー"
+      );
+      showErrorToast(systemError);
     } finally {
       setLoading(false);
     }
@@ -166,13 +215,33 @@ export function AnalysisCodeMasterForm({
                     {...field}
                     placeholder="例: DEPT001"
                     disabled={isEditing || loading}
+                    onBlur={(e) => {
+                      field.onBlur();
+                      checkAnalysisCode(e.target.value);
+                    }}
                   />
                 </FormControl>
                 <FormDescription>
                   {isEditing
                     ? "コードは編集できません"
-                    : "分析コードを識別するコードを入力してください"}
+                    : codeCheckMessage && !codeCheckError
+                      ? "" // チェック成功時は説明文を非表示
+                      : "分析コードを識別するコードを入力してください"}
                 </FormDescription>
+                
+                {/* 重複チェック結果の表示 */}
+                {!isEditing && (codeCheckLoading || codeCheckMessage) && (
+                  <div className={`text-sm mt-1 ${
+                    codeCheckLoading 
+                      ? "text-gray-500" 
+                      : codeCheckError 
+                        ? "text-red-600" 
+                        : "text-green-600"
+                  }`}>
+                    {codeCheckLoading ? "チェック中..." : codeCheckMessage}
+                  </div>
+                )}
+                
                 <FormMessage />
               </FormItem>
             )}
@@ -327,7 +396,7 @@ export function AnalysisCodeMasterForm({
           >
             キャンセル
           </Button>
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading || (!isEditing && codeCheckError)}>
             {loading ? "保存中..." : isEditing ? "更新" : "作成"}
           </Button>
         </div>

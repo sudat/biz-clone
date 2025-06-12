@@ -37,17 +37,17 @@ import {
 } from "@/components/ui/dialog";
 import { PartnerMasterForm } from "@/components/accounting/partner-master-form";
 import { Badge } from "@/components/ui/badge";
+import { PARTNER_TYPE_OPTIONS } from "@/types/master-types";
 
 const searchFilters: SearchFilter[] = [
   {
     field: "partnerType",
     label: "取引先種別",
     type: "select",
-    options: [
-      { value: "得意先", label: "得意先" },
-      { value: "仕入先", label: "仕入先" },
-      { value: "その他", label: "その他" },
-    ],
+    options: PARTNER_TYPE_OPTIONS.map(option => ({
+      value: option.value,
+      label: option.label
+    })),
   },
 ];
 

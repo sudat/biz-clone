@@ -6,6 +6,43 @@ import { createSubAccountSchema, updateSubAccountSchema } from "@/lib/schemas/ma
 import type { SubAccount } from "@/lib/database/prisma";
 
 /**
+ * 補助科目コードの重複チェック
+ */
+export async function checkSubAccountCodeExists(
+  accountCode: string, 
+  subAccountCode: string
+): Promise<{ exists: boolean; subAccount?: any }> {
+  try {
+    const existingSubAccount = await prisma.subAccount.findUnique({
+      where: {
+        accountCode_subAccountCode: {
+          accountCode,
+          subAccountCode
+        }
+      },
+      select: {
+        subAccountCode: true,
+        subAccountName: true,
+        isActive: true,
+        account: {
+          select: {
+            accountName: true
+          }
+        }
+      }
+    });
+
+    return {
+      exists: !!existingSubAccount,
+      subAccount: existingSubAccount || undefined
+    };
+  } catch (error) {
+    console.error("補助科目コード重複チェックエラー:", error);
+    return { exists: false };
+  }
+}
+
+/**
  * 補助科目一覧の取得
  */
 export async function getSubAccounts() {

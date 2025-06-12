@@ -17,8 +17,7 @@ import { Form } from "@/components/ui/form";
 import { JournalHeaderSection } from "./journal-header-section";
 import { JournalEntrySide } from "./journal-entry-side";
 import { BalanceMonitor } from "./balance-monitor";
-import { JournalDetailData } from "./journal-detail-input";
-import { JournalSaveData } from "@/app/actions/journal-save";
+import { JournalDetailData, JournalSaveData } from "@/types/journal";
 
 // 今日の日付をYYYYMMDD形式で取得
 const getTodayString = (): string => {
@@ -102,12 +101,12 @@ export function JournalEntryForm({
   );
 
   const debitTotal = useMemo(() => 
-    debitDetails.reduce((sum, detail) => sum + detail.amount, 0), 
+    debitDetails.reduce((sum, detail) => sum + detail.totalAmount, 0), 
     [debitDetails]
   );
   
   const creditTotal = useMemo(() => 
-    creditDetails.reduce((sum, detail) => sum + detail.amount, 0), 
+    creditDetails.reduce((sum, detail) => sum + detail.totalAmount, 0), 
     [creditDetails]
   );
 
@@ -159,8 +158,11 @@ export function JournalEntryForm({
         throw new Error(validationErrors.join("\n"));
       }
       
-      // 日付変換
+      // 日付変換（バリデーション済みなのでnullチェック不要だが、型安全性のため確認）
       const parsedDate = parseDateString(formData.header.journalDate!);
+      if (!parsedDate) {
+        throw new Error("日付の変換に失敗しました");
+      }
 
       const journalSaveData: JournalSaveData = {
         header: {

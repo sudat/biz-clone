@@ -6,6 +6,31 @@ import { createPartnerSchema, updatePartnerSchema } from "@/lib/schemas/master";
 import type { Partner } from "@/lib/database/prisma";
 
 /**
+ * 取引先コードの重複チェック
+ */
+export async function checkPartnerCodeExists(partnerCode: string): Promise<{ exists: boolean; partner?: any }> {
+  try {
+    const existingPartner = await prisma.partner.findUnique({
+      where: { partnerCode },
+      select: {
+        partnerCode: true,
+        partnerName: true,
+        partnerType: true,
+        isActive: true
+      }
+    });
+
+    return {
+      exists: !!existingPartner,
+      partner: existingPartner || undefined
+    };
+  } catch (error) {
+    console.error("取引先コード重複チェックエラー:", error);
+    return { exists: false };
+  }
+}
+
+/**
  * 取引先一覧の取得
  */
 export async function getPartners() {

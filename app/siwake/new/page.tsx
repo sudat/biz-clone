@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { JournalEntryForm } from "@/components/accounting/journal-entry-form";
 import { showSuccessToast, showErrorToast } from "@/components/ui/error-toast";
 import { ErrorType } from "@/lib/types/errors";
-import { saveJournal, type JournalSaveData } from "@/app/actions/journal-save";
+import { saveJournal } from "@/app/actions/journal-save";
+import { type JournalSaveData } from "@/types/journal";
 
 export default function NewSiwakePage() {
   const router = useRouter();

@@ -22,7 +22,6 @@ export async function getAccounts(): Promise<
 > {
   try {
     const accounts = await prisma.account.findMany({
-      where: { isActive: true },
       orderBy: { accountCode: "asc" },
     });
 
@@ -42,14 +41,39 @@ export async function getAccounts(): Promise<
 /**
  * 勘定科目の作成
  */
-export async function createAccount(formData: FormData) {
+/**
+ * 勘定科目コードの重複チェック
+ */
+export async function checkAccountCodeExists(accountCode: string): Promise<{ exists: boolean; account?: any }> {
   try {
-    const data = {
-      accountCode: formData.get("accountCode") as string,
-      accountName: formData.get("accountName") as string,
-      accountType: formData.get("accountType") as string,
-    };
+    const existingAccount = await prisma.account.findUnique({
+      where: { accountCode },
+      select: {
+        accountCode: true,
+        accountName: true,
+        accountType: true,
+        isActive: true
+      }
+    });
 
+    return {
+      exists: !!existingAccount,
+      account: existingAccount || undefined
+    };
+  } catch (error) {
+    console.error("勘定科目コード重複チェックエラー:", error);
+    return { exists: false };
+  }
+}
+
+export async function createAccount(formData: FormData) {
+  const data = {
+    accountCode: formData.get("accountCode") as string,
+    accountName: formData.get("accountName") as string,
+    accountType: formData.get("accountType") as string,
+  };
+
+  try {
     // バリデーション
     const result = createAccountSchema.safeParse(data);
     if (!result.success) {
@@ -68,8 +92,20 @@ export async function createAccount(formData: FormData) {
 
     revalidatePath("/master/accounts");
     return { success: true, data: account };
-  } catch (error) {
+  } catch (error: any) {
     console.error("勘定科目作成エラー:", error);
+    
+    // Prismaのユニーク制約エラー（P2002）をチェック
+    if (error?.code === "P2002") {
+      const field = error?.meta?.target?.[0];
+      if (field === "accountCode") {
+        return { 
+          success: false, 
+          error: `勘定科目コード「${data.accountCode}」は既に使用されています。別のコードを指定してください。` 
+        };
+      }
+    }
+    
     return { success: false, error: "勘定科目の作成に失敗しました" };
   }
 }
@@ -79,25 +115,49 @@ export async function createAccount(formData: FormData) {
  */
 export async function updateAccount(accountCode: string, formData: FormData) {
   try {
+    // FormDataから全フィールドを取得
     const data = {
       accountName: formData.get("accountName") as string,
       accountType: formData.get("accountType") as string,
+      parentAccountCode: formData.get("parentAccountCode") as string || null,
+      isDetail: formData.get("isDetail") === "true",
+      isActive: formData.get("isActive") === "true",
+      sortOrder: formData.get("sortOrder") ? parseInt(formData.get("sortOrder") as string) : null,
     };
 
-    // バリデーション
-    const result = updateAccountSchema.safeParse(data);
+    // バリデーション（updateSchemaに必要なフィールドのみ）
+    const validationData = {
+      accountName: data.accountName,
+      accountType: data.accountType,
+      sortOrder: data.sortOrder,
+    };
+    
+    const result = updateAccountSchema.safeParse(validationData);
     if (!result.success) {
       return { success: false, error: "入力値が正しくありません" };
     }
 
-    // データベース更新
+    // データベース更新（全フィールドを更新）
     const account = await prisma.account.update({
       where: { accountCode },
-      data: result.data,
+      data: {
+        accountName: data.accountName,
+        accountType: data.accountType,
+        parentAccountCode: data.parentAccountCode,
+        isDetail: data.isDetail,
+        isActive: data.isActive,
+        sortOrder: data.sortOrder,
+      },
     });
 
+    // AccountForClient型に変換（Decimal型を処理）
+    const accountForClient: AccountForClient = {
+      ...account,
+      defaultTaxRate: account.defaultTaxRate ? account.defaultTaxRate.toNumber() : null,
+    };
+
     revalidatePath("/master/accounts");
-    return { success: true, data: account };
+    return { success: true, data: accountForClient };
   } catch (error) {
     console.error("勘定科目更新エラー:", error);
     return { success: false, error: "勘定科目の更新に失敗しました" };

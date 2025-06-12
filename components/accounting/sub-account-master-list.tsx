@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { SubAccount, Account } from "@/lib/database/prisma";
+import type { SubAccount } from "@/lib/database/prisma";
 import { getSubAccounts, deleteSubAccount } from "@/app/actions/sub-accounts";
-import { getAccounts } from "@/app/actions/accounts";
+import { getAccounts, type AccountForClient } from "@/app/actions/accounts";
 import {
   Table,
   TableBody,
@@ -34,7 +34,7 @@ interface SubAccountWithAccount extends SubAccount {
 
 export function SubAccountMasterList() {
   const [subAccounts, setSubAccounts] = useState<SubAccountWithAccount[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accounts, setAccounts] = useState<AccountForClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingSubAccount, setEditingSubAccount] =

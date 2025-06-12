@@ -117,19 +117,19 @@ export async function searchAnalysisCodes(query: string): Promise<MasterSearchRe
     const analysisCodes = await prisma.analysisCode.findMany({
       where: {
         OR: [
-          { analysisCodeId: { contains: query, mode: 'insensitive' } },
-          { analysisCodeName: { contains: query, mode: 'insensitive' } }
+          { analysisCode: { contains: query, mode: 'insensitive' } },
+          { analysisName: { contains: query, mode: 'insensitive' } }
         ]
       },
       take: 10,
       orderBy: [
-        { analysisCodeId: 'asc' }
+        { analysisCode: 'asc' }
       ]
     });
 
     return analysisCodes.map(analysisCode => ({
-      code: analysisCode.analysisCodeId,
-      name: analysisCode.analysisCodeName,
+      code: analysisCode.analysisCode,
+      name: analysisCode.analysisName,
       type: 'analysisCode' as const
     }));
   } catch (error) {
@@ -188,9 +188,9 @@ export async function getMasterName(type: 'account' | 'subAccount' | 'partner' |
 
       case 'analysisCode':
         const analysisCode = await prisma.analysisCode.findUnique({
-          where: { analysisCodeId: code }
+          where: { analysisCode: code }
         });
-        return analysisCode?.analysisCodeName || null;
+        return analysisCode?.analysisName || null;
 
       default:
         return null;
@@ -275,13 +275,13 @@ export async function getAllAnalysisCodes(): Promise<MasterSearchResult[]> {
   try {
     const analysisCodes = await prisma.analysisCode.findMany({
       orderBy: [
-        { analysisCodeId: 'asc' }
+        { analysisCode: 'asc' }
       ]
     });
 
     return analysisCodes.map(analysisCode => ({
-      code: analysisCode.analysisCodeId,
-      name: analysisCode.analysisCodeName,
+      code: analysisCode.analysisCode,
+      name: analysisCode.analysisName,
       type: 'analysisCode' as const
     }));
   } catch (error) {

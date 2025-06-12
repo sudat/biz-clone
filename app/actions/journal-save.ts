@@ -13,37 +13,11 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/database/prisma";
 import { generateJournalNumber } from "@/lib/database/journal-number";
-
-// 仕訳明細データ型
-export interface JournalDetailData {
-  debitCredit: "debit" | "credit";
-  accountCode: string;
-  accountName?: string;
-  subAccountCode?: string;
-  subAccountName?: string;
-  partnerCode?: string;
-  partnerName?: string;
-  analysisCode?: string;
-  analysisCodeName?: string;
-  amount: number;
-  description?: string;
-}
-
-// 仕訳保存データ型
-export interface JournalSaveData {
-  header: {
-    journalDate: Date;
-    description?: string;
-  };
-  details: JournalDetailData[];
-}
-
-// 仕訳保存結果型
-export interface JournalSaveResult {
-  success: boolean;
-  journalNumber?: string;
-  error?: string;
-}
+import { 
+  JournalDetailData, 
+  JournalSaveData, 
+  JournalSaveResult 
+} from "@/types/journal";
 
 /**
  * 仕訳保存処理
@@ -67,12 +41,11 @@ export async function saveJournal(
     // データベーストランザクション内で仕訳保存
     const result = await prisma.$transaction(async (tx) => {
       // 仕訳ヘッダー作成
-      const journalEntry = await tx.journalEntry.create({
+      const journalHeader = await tx.journalHeader.create({
         data: {
           journalNumber,
           journalDate: data.header.journalDate,
           description: data.header.description || "",
-          status: "draft",
         },
       });
 
@@ -81,22 +54,26 @@ export async function saveJournal(
         data.details.map(async (detail, index) => {
           return tx.journalDetail.create({
             data: {
-              journalEntryId: journalEntry.id,
+              journalNumber,
               lineNumber: index + 1,
-              debitCredit: detail.debitCredit,
+              debitCredit: detail.debitCredit === "debit" ? "D" : "C",
               accountCode: detail.accountCode,
               subAccountCode: detail.subAccountCode || null,
               partnerCode: detail.partnerCode || null,
               analysisCode: detail.analysisCode || null,
-              amount: new Prisma.Decimal(detail.amount),
-              description: detail.description || null,
+              baseAmount: detail.baseAmount,
+              taxAmount: detail.taxAmount,
+              totalAmount: detail.totalAmount,
+              taxRate: detail.taxRate || null,
+              taxType: detail.taxType,
+              lineDescription: detail.description || null,
             },
           });
         }),
       );
 
       return {
-        journalEntry,
+        journalHeader,
         journalDetails,
       };
     });
@@ -107,7 +84,7 @@ export async function saveJournal(
 
     return {
       success: true,
-      journalNumber: result.journalEntry.journalNumber,
+      journalNumber: result.journalHeader.journalNumber,
     };
   } catch (error) {
     console.error("仕訳保存エラー:", error);
@@ -148,7 +125,7 @@ function validateJournalData(
       return { isValid: false, error: `${lineNum}行目: 勘定科目は必須です` };
     }
 
-    if (!detail.amount || detail.amount <= 0) {
+    if (!detail.totalAmount || detail.totalAmount <= 0) {
       return {
         isValid: false,
         error: `${lineNum}行目: 金額は1円以上で入力してください`,
@@ -166,11 +143,11 @@ function validateJournalData(
   // 借方・貸方バランスチェック
   const debitTotal = data.details
     .filter((d) => d.debitCredit === "debit")
-    .reduce((sum, d) => sum + d.amount, 0);
+    .reduce((sum, d) => sum + d.totalAmount, 0);
 
   const creditTotal = data.details
     .filter((d) => d.debitCredit === "credit")
-    .reduce((sum, d) => sum + d.amount, 0);
+    .reduce((sum, d) => sum + d.totalAmount, 0);
 
   if (Math.abs(debitTotal - creditTotal) >= 0.01) {
     return {
@@ -204,23 +181,23 @@ export async function deleteJournal(
   try {
     await prisma.$transaction(async (tx) => {
       // 仕訳検索
-      const journalEntry = await tx.journalEntry.findUnique({
+      const journalHeader = await tx.journalHeader.findUnique({
         where: { journalNumber },
-        include: { details: true },
+        include: { journalDetails: true },
       });
 
-      if (!journalEntry) {
+      if (!journalHeader) {
         throw new Error("指定された仕訳が見つかりません");
       }
 
       // 明細削除
       await tx.journalDetail.deleteMany({
-        where: { journalEntryId: journalEntry.id },
+        where: { journalNumber },
       });
 
       // 仕訳削除
-      await tx.journalEntry.delete({
-        where: { id: journalEntry.id },
+      await tx.journalHeader.delete({
+        where: { journalNumber },
       });
     });
 
