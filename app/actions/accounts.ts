@@ -9,11 +9,16 @@ import type { Account } from "@/lib/database/prisma";
 // 勘定科目のシンプルなServer Actions
 // ====================
 
+// Client Component用の勘定科目型（Decimal型をnumber型に変換）
+export type AccountForClient = Omit<Account, 'defaultTaxRate'> & {
+  defaultTaxRate: number | null;
+};
+
 /**
- * 勘定科目一覧の取得（完全camelCase対応）
+ * 勘定科目一覧の取得（完全camelCase対応・Decimal型変換）
  */
 export async function getAccounts(): Promise<
-  { success: boolean; data?: Account[]; error?: string }
+  { success: boolean; data?: AccountForClient[]; error?: string }
 > {
   try {
     const accounts = await prisma.account.findMany({
@@ -21,7 +26,13 @@ export async function getAccounts(): Promise<
       orderBy: { accountCode: "asc" },
     });
 
-    return { success: true, data: accounts };
+    // Decimal型をnumber型に変換
+    const accountsForClient: AccountForClient[] = accounts.map(account => ({
+      ...account,
+      defaultTaxRate: account.defaultTaxRate ? account.defaultTaxRate.toNumber() : null,
+    }));
+
+    return { success: true, data: accountsForClient };
   } catch (error) {
     console.error("勘定科目取得エラー:", error);
     return { success: false, error: "勘定科目の取得に失敗しました" };
@@ -113,12 +124,12 @@ export async function deleteAccount(accountCode: string) {
 }
 
 /**
- * 勘定科目の検索（完全camelCase対応）
+ * 勘定科目の検索（完全camelCase対応・Decimal型変換）
  */
 export async function searchAccounts(
   searchTerm: string,
   filters: { accountType?: string; isActive?: boolean } = {},
-): Promise<{ success: boolean; data?: Account[]; error?: string }> {
+): Promise<{ success: boolean; data?: AccountForClient[]; error?: string }> {
   try {
     const accounts = await prisma.account.findMany({
       where: {
@@ -136,7 +147,13 @@ export async function searchAccounts(
       orderBy: { accountCode: "asc" },
     });
 
-    return { success: true, data: accounts };
+    // Decimal型をnumber型に変換
+    const accountsForClient: AccountForClient[] = accounts.map(account => ({
+      ...account,
+      defaultTaxRate: account.defaultTaxRate ? account.defaultTaxRate.toNumber() : null,
+    }));
+
+    return { success: true, data: accountsForClient };
   } catch (error) {
     console.error("勘定科目検索エラー:", error);
     return { success: false, error: "勘定科目の検索に失敗しました" };

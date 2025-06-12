@@ -27,7 +27,11 @@ export interface JournalDetailData {
   partnerName?: string;
   analysisCode?: string;
   analysisCodeName?: string;
-  amount: number;
+  baseAmount: number;
+  taxAmount: number;
+  totalAmount: number;
+  taxRate?: number;
+  taxType: "taxable" | "non_taxable" | "tax_free" | "tax_entry";
   description?: string;
 }
 
@@ -67,7 +71,11 @@ export function JournalDetailInput({
     subAccountCode: "",
     partnerCode: "",
     analysisCode: "",
-    amount: undefined,
+    baseAmount: undefined,
+    taxAmount: 0,
+    totalAmount: undefined,
+    taxRate: 10,
+    taxType: "non_taxable",
     description: "",
   });
 
@@ -81,17 +89,56 @@ export function JournalDetailInput({
       subAccountCode: "",
       partnerCode: "",
       analysisCode: "",
-      amount: undefined,
+      baseAmount: undefined,
+      taxAmount: 0,
+      totalAmount: undefined,
+      taxRate: 10,
+      taxType: "non_taxable",
       description: "",
     });
+  };
+
+  // 消費税自動計算
+  const calculateTax = (baseAmount: number, taxRate: number, taxType: string) => {
+    if (taxType === "taxable" && taxRate > 0) {
+      return Math.floor(baseAmount * (taxRate / 100));
+    }
+    return 0;
+  };
+
+  // 本体額変更時の処理
+  const handleBaseAmountChange = (baseAmount: number) => {
+    const taxAmount = calculateTax(baseAmount, formData.taxRate || 0, formData.taxType || "non_taxable");
+    const totalAmount = baseAmount + taxAmount;
+    
+    setFormData(prev => ({
+      ...prev,
+      baseAmount,
+      taxAmount,
+      totalAmount,
+    }));
+  };
+
+  // 課税区分変更時の処理
+  const handleTaxTypeChange = (taxType: "taxable" | "non_taxable" | "tax_free" | "tax_entry") => {
+    const baseAmount = formData.baseAmount || 0;
+    const taxAmount = calculateTax(baseAmount, formData.taxRate || 0, taxType);
+    const totalAmount = baseAmount + taxAmount;
+    
+    setFormData(prev => ({
+      ...prev,
+      taxType,
+      taxAmount,
+      totalAmount,
+    }));
   };
 
   // 追加処理
   const handleAdd = () => {
     if (
       !formData.accountCode ||
-      formData.amount == null ||
-      formData.amount <= 0
+      formData.totalAmount == null ||
+      formData.totalAmount <= 0
     ) {
       return;
     }
@@ -106,7 +153,11 @@ export function JournalDetailInput({
       partnerName: formData.partnerName,
       analysisCode: formData.analysisCode,
       analysisCodeName: formData.analysisCodeName,
-      amount: formData.amount,
+      baseAmount: formData.baseAmount || 0,
+      taxAmount: formData.taxAmount || 0,
+      totalAmount: formData.totalAmount || 0,
+      taxRate: formData.taxRate,
+      taxType: formData.taxType || "non_taxable",
       description: formData.description,
     };
 
@@ -116,7 +167,7 @@ export function JournalDetailInput({
 
   // 入力可能判定
   const canAdd =
-    formData.accountCode && formData.amount != null && formData.amount > 0;
+    formData.accountCode && formData.totalAmount != null && formData.totalAmount > 0;
 
   // Enterキー処理
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -234,29 +285,66 @@ export function JournalDetailInput({
           </div>
         </div>
 
-        {/* 金額 */}
+        {/* 課税区分 */}
+        <div className="flex items-center gap-2">
+          <Label className="min-w-[80px] text-sm font-medium whitespace-nowrap">
+            課税区分
+          </Label>
+          <div className="w-40">
+            <select
+              value={formData.taxType || "non_taxable"}
+              onChange={(e) => handleTaxTypeChange(e.target.value as "taxable" | "non_taxable" | "tax_free" | "tax_entry")}
+              disabled={disabled}
+              className="w-full h-9 px-3 border border-input bg-background text-sm rounded-md"
+            >
+              <option value="non_taxable">非課税</option>
+              <option value="taxable">課税</option>
+              <option value="tax_free">免税</option>
+            </select>
+          </div>
+        </div>
+
+        {/* 金額（本体額 + 消費税額） */}
         <div className="flex items-center gap-2">
           <Label className="min-w-[80px] text-sm font-medium whitespace-nowrap">
             金額 *
           </Label>
-          <div className="w-40">
-            <Input
-              type="number"
-              min="0"
-              step="1"
-              value={formData.amount == null ? "" : formData.amount}
-              onChange={(e) => {
-                const value = e.target.value;
-                setFormData((prev) => ({
-                  ...prev,
-                  amount: value === "" ? undefined : parseFloat(value) || 0,
-                }));
-              }}
-              onKeyPress={handleKeyPress}
-              disabled={disabled}
-              placeholder="金額を入力..."
-              className="text-right font-mono h-9"
-            />
+          <div className="flex-1 flex gap-2">
+            {/* 本体額 */}
+            <div className="flex-1">
+              <div className="text-xs text-gray-600 mb-1">本体額</div>
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                value={formData.baseAmount == null ? "" : formData.baseAmount}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const baseAmount = value === "" ? 0 : parseFloat(value) || 0;
+                  handleBaseAmountChange(baseAmount);
+                }}
+                onKeyPress={handleKeyPress}
+                disabled={disabled}
+                placeholder="本体額を入力..."
+                className="text-right font-mono h-9"
+              />
+            </div>
+            
+            {/* 消費税額（表示のみ） */}
+            <div className="w-24">
+              <div className="text-xs text-gray-600 mb-1">消費税</div>
+              <div className="h-9 px-3 border border-input bg-gray-50 text-right font-mono text-sm rounded-md flex items-center justify-end">
+                ¥{(formData.taxAmount || 0).toLocaleString()}
+              </div>
+            </div>
+            
+            {/* 合計額（表示のみ） */}
+            <div className="w-32">
+              <div className="text-xs text-gray-600 mb-1">合計</div>
+              <div className="h-9 px-3 border-2 border-blue-200 bg-blue-50 text-right font-mono text-sm font-semibold rounded-md flex items-center justify-end">
+                ¥{(formData.totalAmount || 0).toLocaleString()}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -298,7 +386,7 @@ export function JournalDetailInput({
         {/* バリデーションメッセージ */}
         {!canAdd &&
           (formData.accountCode ||
-            (formData.amount != null && formData.amount !== 0)) && (
+            (formData.totalAmount != null && formData.totalAmount !== 0)) && (
             <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
               勘定科目と金額（1円以上）の入力が必要です
             </div>

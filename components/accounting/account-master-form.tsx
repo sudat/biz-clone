@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { Account } from "@/lib/database/prisma";
-import { createAccount, updateAccount } from "@/app/actions/accounts";
+import { createAccount, updateAccount, type AccountForClient } from "@/app/actions/accounts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -52,7 +51,7 @@ const accountFormSchema = z.object({
 type AccountFormData = z.infer<typeof accountFormSchema>;
 
 interface AccountMasterFormProps {
-  account?: Account | null;
+  account?: AccountForClient | null;
   onSubmit: () => void;
   onCancel: () => void;
 }

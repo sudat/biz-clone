@@ -37,7 +37,7 @@ export function filterData<T extends Record<string, unknown>>(
 
   // 有効状態フィルター
   if (searchState.activeOnly) {
-    filteredData = filteredData.filter((item) => item.is_active === true);
+    filteredData = filteredData.filter((item) => item.isActive === true);
   }
 
   return filteredData;

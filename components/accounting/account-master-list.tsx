@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { getAccounts, searchAccounts, deleteAccount } from "@/app/actions/accounts";
-import type { Account } from "@/lib/database/prisma";
+import { getAccounts, searchAccounts, deleteAccount, type AccountForClient } from "@/app/actions/accounts";
 import {
   searchAndSort,
   getSearchStats,
@@ -57,7 +56,7 @@ const sortOptions: SortOption[] = [
 ];
 
 export function AccountMasterList() {
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accounts, setAccounts] = useState<AccountForClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchState, setSearchState] = useState<SearchState>({
     searchTerm: "",
@@ -66,7 +65,7 @@ export function AccountMasterList() {
     sortDirection: "asc",
     activeOnly: false,
   });
-  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [editingAccount, setEditingAccount] = useState<AccountForClient | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [useServerSearch, setUseServerSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -177,12 +176,12 @@ export function AccountMasterList() {
     }
   };
 
-  const handleEdit = (account: Account) => {
+  const handleEdit = (account: AccountForClient) => {
     setEditingAccount(account);
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (account: Account) => {
+  const handleDelete = async (account: AccountForClient) => {
     if (confirm(`勘定科目「${account.accountName}」を削除しますか？`)) {
       try {
         const result = await deleteAccount(account.accountCode);
@@ -371,3 +370,5 @@ export function AccountMasterList() {
     </>
   );
 }
+
+export default AccountMasterList;
