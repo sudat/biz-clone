@@ -8,7 +8,7 @@
 "use client";
 
 import React from "react";
-import { Scale, CheckCircle, AlertTriangle, Save, RefreshCw } from "lucide-react";
+import { Scale, CheckCircle, AlertTriangle, Save, RefreshCw, Edit, Trash2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -18,11 +18,15 @@ interface BalanceMonitorProps {
   debitTotal: number;
   creditTotal: number;
   className?: string;
-  // 保存・リセット機能
+  // 保存・リセット機能（作成モード）
   onSubmit?: () => void;
   onReset?: () => void;
   canSave?: boolean;
   isSubmitting?: boolean;
+  // 更新・削除機能（照会モード）
+  onUpdate?: () => void;
+  onDelete?: () => void;
+  mode?: 'create' | 'inquiry';
   hasDetails?: boolean;
   detailsCount?: number;
   disabled?: boolean;
@@ -46,6 +50,9 @@ export function BalanceMonitor({
   onReset,
   canSave = false,
   isSubmitting = false,
+  onUpdate,
+  onDelete,
+  mode = 'create',
   hasDetails = false,
   detailsCount = 0,
   disabled = false
@@ -122,8 +129,8 @@ export function BalanceMonitor({
           )}
         </div>
 
-        {/* 右側: アクションボタン（保存・リセット機能がある場合のみ表示） */}
-        {onSubmit && onReset ? (
+        {/* 右側: アクションボタン */}
+        {mode === 'create' && onSubmit && onReset ? (
           <div className="flex gap-2">
             <Button
               type="button"
@@ -159,6 +166,36 @@ export function BalanceMonitor({
                 </>
               )}
             </Button>
+          </div>
+        ) : mode === 'inquiry' && (onUpdate || onDelete) ? (
+          <div className="flex gap-2">
+            {onUpdate && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onUpdate}
+                disabled={disabled}
+                className="min-w-[80px]"
+              >
+                <Edit className="h-3 w-3 mr-1" />
+                更新
+              </Button>
+            )}
+
+            {onDelete && (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={onDelete}
+                disabled={disabled}
+                className="min-w-[80px]"
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                削除
+              </Button>
+            )}
           </div>
         ) : (
           <div /> // 空のdivでレイアウトを保持

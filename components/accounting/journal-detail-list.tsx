@@ -20,6 +20,8 @@ interface JournalDetailListProps {
   type: 'debit' | 'credit';
   details: JournalDetailData[];
   onRemove: (index: number) => void;
+  onDetailClick?: (detail: JournalDetailData) => void;
+  selectedDetail?: JournalDetailData | null;
   total: number;
   disabled?: boolean;
   className?: string;
@@ -58,6 +60,8 @@ export function JournalDetailList({
   type,
   details,
   onRemove,
+  onDetailClick,
+  selectedDetail,
   total,
   disabled = false,
   className
@@ -104,16 +108,22 @@ export function JournalDetailList({
               </span>
             </div>
           ) : (
-            filteredDetails.map((detail, index) => (
-              <div
-                key={`${type}-${index}`}
-                className={cn(
-                  "p-1.5 rounded border transition-all duration-200",
-                  "bg-white/50 hover:bg-white/80",
-                  config.itemBorderColor,
-                  "group"
-                )}
-              >
+            filteredDetails.map((detail, index) => {
+              const isSelected = selectedDetail === detail;
+              return (
+                <div
+                  key={`${type}-${index}`}
+                  onClick={() => onDetailClick?.(detail)}
+                  className={cn(
+                    "p-1.5 rounded border transition-all duration-200 cursor-pointer",
+                    isSelected 
+                      ? "bg-blue-100 border-blue-300 shadow-sm" 
+                      : "bg-white/50 hover:bg-white/80 hover:border-slate-300",
+                    config.itemBorderColor,
+                    "group"
+                  )}
+                >
+              
                 <div className="flex justify-between items-center">
                   <div className="flex-1 min-w-0">
                     {/* メイン行：勘定科目 + 金額 */}
@@ -172,7 +182,8 @@ export function JournalDetailList({
                   </div>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
         

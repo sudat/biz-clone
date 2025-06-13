@@ -29,7 +29,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 import {
   getAllAccounts,
@@ -199,8 +198,8 @@ export function MasterSearchDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="max-w-4xl max-h-[70vh] overflow-y-auto scrollbar-hide">
+        <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Search className="h-5 w-5 text-blue-600" />
             {typeConfig.label}{COMMON_TEXTS.selectFrom}
@@ -216,7 +215,7 @@ export function MasterSearchDialog({
         </DialogHeader>
 
         {/* Search area */}
-        <div className="flex-shrink-0 space-y-2">
+        <div className="space-y-2">
           <Label htmlFor="search-input">{COMMON_TEXTS.search}</Label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -232,8 +231,7 @@ export function MasterSearchDialog({
         </div>
 
         {/* Table area */}
-        <div className="flex-1 min-h-0">
-          <ScrollArea className="h-full">
+        <div>
             <Table>
               <TableHeader className="sticky top-0 bg-background">
                 <TableRow>
@@ -320,11 +318,10 @@ export function MasterSearchDialog({
                 )}
               </TableBody>
             </Table>
-          </ScrollArea>
         </div>
 
         {/* Footer info */}
-        <div className="flex-shrink-0 pt-2 border-t text-xs text-muted-foreground text-center">
+        <div className="pt-2 border-t text-xs text-muted-foreground text-center">
           {filteredData.length > 0 && (
             <>
               {filteredData.length}{COMMON_TEXTS.itemsOf}{typeConfig.label}

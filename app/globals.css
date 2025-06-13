@@ -129,3 +129,46 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
 }
+
+/* 印刷用スタイル */
+@media print {
+  @page {
+    margin: 1cm;
+    size: A4 landscape;
+  }
+  
+  /* 印刷時に不要な要素を非表示 */
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  /* 印刷時のテーブルスタイル */
+  table {
+    page-break-inside: auto;
+  }
+  
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  
+  thead {
+    display: table-header-group;
+  }
+  
+  /* 印刷時の色を保持 */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  /* 印刷時のボーダー色を明確に */
+  .border-gray-300 {
+    border-color: #000 !important;
+  }
+  
+  /* 印刷時の背景色 */
+  .bg-gray-50 {
+    background-color: #f9f9f9 !important;
+  }
+}

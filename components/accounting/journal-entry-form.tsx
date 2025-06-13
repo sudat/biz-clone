@@ -7,7 +7,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -63,6 +63,7 @@ type JournalEntryForm = z.infer<typeof journalEntrySchema>;
 interface JournalEntryFormProps {
   onSubmit?: (data: JournalSaveData) => Promise<void>;
   initialData?: Partial<JournalEntryForm>;
+  initialDetails?: JournalDetailData[];
   journalNumber?: string;
   disabled?: boolean;
   className?: string;
@@ -71,12 +72,24 @@ interface JournalEntryFormProps {
 export function JournalEntryForm({
   onSubmit,
   initialData,
+  initialDetails,
   journalNumber,
   disabled = false,
   className
 }: JournalEntryFormProps) {
   const [details, setDetails] = useState<JournalDetailData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // 明細クリック反映機能用の状態
+  const [selectedDetail, setSelectedDetail] = useState<JournalDetailData | null>(null);
+  const [displayMode, setDisplayMode] = useState<'input' | 'edit'>('input');
+
+  // 初期明細データの設定
+  useEffect(() => {
+    if (initialDetails && initialDetails.length > 0) {
+      setDetails(initialDetails);
+    }
+  }, [initialDetails]);
 
   const form = useForm<JournalEntryForm>({
     resolver: zodResolver(journalEntrySchema),
@@ -122,6 +135,35 @@ export function JournalEntryForm({
   // 明細削除
   const handleRemoveDetail = (index: number) => {
     setDetails(prev => prev.filter((_, i) => i !== index));
+    // 削除された明細が選択中の場合、選択を解除
+    if (selectedDetail && details[index] === selectedDetail) {
+      setSelectedDetail(null);
+      setDisplayMode('input');
+    }
+  };
+
+  // 明細クリック処理
+  const handleDetailClick = (detail: JournalDetailData) => {
+    setSelectedDetail(detail);
+    setDisplayMode('edit');
+  };
+
+  // 編集キャンセル処理
+  const handleCancelEdit = () => {
+    setSelectedDetail(null);
+    setDisplayMode('input');
+  };
+
+  // 明細更新処理
+  const handleUpdateDetail = (updatedDetail: JournalDetailData) => {
+    if (selectedDetail) {
+      const index = details.findIndex(d => d === selectedDetail);
+      if (index !== -1) {
+        setDetails(prev => prev.map((d, i) => i === index ? updatedDetail : d));
+        setSelectedDetail(null);
+        setDisplayMode('input');
+      }
+    }
   };
 
   // フォーム送信
@@ -188,6 +230,8 @@ export function JournalEntryForm({
   const handleReset = () => {
     form.reset();
     setDetails([]);
+    setSelectedDetail(null);
+    setDisplayMode('input');
   };
 
   return (
@@ -221,7 +265,12 @@ export function JournalEntryForm({
                 type="debit"
                 details={details}
                 onAddDetail={handleAddDetail}
+                onUpdateDetail={handleUpdateDetail}
                 onRemoveDetail={handleRemoveDetail}
+                onDetailClick={handleDetailClick}
+                onCancelEdit={handleCancelEdit}
+                selectedDetail={selectedDetail?.debitCredit === 'debit' ? selectedDetail : null}
+                displayMode={displayMode}
                 total={debitTotal}
                 disabled={disabled || isSubmitting}
               />
@@ -233,7 +282,12 @@ export function JournalEntryForm({
                 type="credit"
                 details={details}
                 onAddDetail={handleAddDetail}
+                onUpdateDetail={handleUpdateDetail}
                 onRemoveDetail={handleRemoveDetail}
+                onDetailClick={handleDetailClick}
+                onCancelEdit={handleCancelEdit}
+                selectedDetail={selectedDetail?.debitCredit === 'credit' ? selectedDetail : null}
+                displayMode={displayMode}
                 total={creditTotal}
                 disabled={disabled || isSubmitting}
               />

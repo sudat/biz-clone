@@ -17,7 +17,12 @@ interface JournalEntrySideProps {
   type: 'debit' | 'credit';
   details: JournalDetailData[];
   onAddDetail: (detail: JournalDetailData) => void;
+  onUpdateDetail?: (detail: JournalDetailData) => void;
   onRemoveDetail: (index: number) => void;
+  onDetailClick?: (detail: JournalDetailData) => void;
+  onCancelEdit?: () => void;
+  selectedDetail?: JournalDetailData | null;
+  displayMode?: 'input' | 'edit';
   total: number;
   disabled?: boolean;
   className?: string;
@@ -27,7 +32,12 @@ export function JournalEntrySide({
   type,
   details,
   onAddDetail,
+  onUpdateDetail,
   onRemoveDetail,
+  onDetailClick,
+  onCancelEdit,
+  selectedDetail,
+  displayMode = 'input',
   total,
   disabled = false,
   className
@@ -39,6 +49,10 @@ export function JournalEntrySide({
         <JournalDetailInput
           type={type}
           onAdd={onAddDetail}
+          onUpdate={onUpdateDetail}
+          onCancelEdit={onCancelEdit}
+          editingDetail={selectedDetail}
+          mode={displayMode}
           disabled={disabled}
         />
       </div>
@@ -49,6 +63,8 @@ export function JournalEntrySide({
           type={type}
           details={details}
           onRemove={onRemoveDetail}
+          onDetailClick={onDetailClick}
+          selectedDetail={selectedDetail}
           total={total}
           disabled={disabled}
         />

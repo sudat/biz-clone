@@ -164,7 +164,10 @@ export async function getMasterName(type: 'account' | 'subAccount' | 'partner' |
     switch (type) {
       case 'account':
         const account = await prisma.account.findUnique({
-          where: { accountCode: code }
+          where: { 
+            accountCode: code,
+            isDetail: true  // 明細科目のみ
+          }
         });
         return account?.accountName || null;
 
@@ -205,10 +208,13 @@ export async function getMasterName(type: 'account' | 'subAccount' | 'partner' |
 // マスタ一覧取得機能（ダイアログ用）
 // ============================================================================
 
-// 全勘定科目取得
+// 全勘定科目取得（明細科目のみ）
 export async function getAllAccounts(): Promise<MasterSearchResult[]> {
   try {
     const accounts = await prisma.account.findMany({
+      where: {
+        isDetail: true  // 明細科目のみ
+      },
       orderBy: [
         { accountCode: 'asc' }
       ]

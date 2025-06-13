@@ -30,9 +30,9 @@ export class JournalNumberService {
       const lastSequence = await prisma.$queryRaw<
         [{ max_sequence: number | null }]
       >`
-        SELECT COALESCE(MAX(CAST(RIGHT(journal_number, 6) AS INTEGER)), 0) as max_sequence
+        SELECT COALESCE(MAX(CAST(SUBSTRING("journalNumber" FROM LENGTH("journalNumber") - 5) AS INTEGER)), 0) as max_sequence
         FROM journal_headers 
-        WHERE journal_number LIKE ${datePrefix + "%"}
+        WHERE "journalNumber" LIKE ${datePrefix + "%"}
       `;
 
       const nextSequence = (lastSequence[0]?.max_sequence || 0) + 1;
@@ -133,9 +133,9 @@ export class JournalNumberService {
       const lastSequence = await prisma.$queryRaw<
         [{ max_sequence: number | null }]
       >`
-        SELECT COALESCE(MAX(CAST(RIGHT(journal_number, 6) AS INTEGER)), 0) as max_sequence
+        SELECT COALESCE(MAX(CAST(SUBSTRING("journalNumber" FROM LENGTH("journalNumber") - 5) AS INTEGER)), 0) as max_sequence
         FROM journal_headers 
-        WHERE journal_number LIKE ${datePrefix + "%"}
+        WHERE "journalNumber" LIKE ${datePrefix + "%"}
       `;
 
       const currentSequence = lastSequence[0]?.max_sequence || 0;
@@ -175,9 +175,9 @@ export class JournalNumberService {
       const lastSequence = await prisma.$queryRaw<
         [{ max_sequence: number | null }]
       >`
-        SELECT COALESCE(MAX(CAST(RIGHT(journal_number, 6) AS INTEGER)), 0) as max_sequence
+        SELECT COALESCE(MAX(CAST(SUBSTRING("journalNumber" FROM LENGTH("journalNumber") - 5) AS INTEGER)), 0) as max_sequence
         FROM journal_headers 
-        WHERE journal_number LIKE ${datePrefix + "%"}
+        WHERE "journalNumber" LIKE ${datePrefix + "%"}
       `;
 
       const nextSequence = (lastSequence[0]?.max_sequence || 0) + 1;

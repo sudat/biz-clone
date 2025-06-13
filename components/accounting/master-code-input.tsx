@@ -196,7 +196,9 @@ export function MasterCodeInput({
           <span>
             {type === 'subAccount' && !parentCode 
               ? "親勘定科目を先に選択してください"
-              : "マスタに登録されていないコードです"
+              : type === 'account' 
+                ? "明細科目のみ選択可能です（集計科目は使用できません）"
+                : "マスタに登録されていないコードです"
             }
           </span>
         </div>

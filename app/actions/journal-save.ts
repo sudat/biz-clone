@@ -18,6 +18,8 @@ import {
   JournalSaveData, 
   JournalSaveResult 
 } from "@/types/journal";
+import { handleServerActionError, createValidationError } from "@/lib/utils/error-handler";
+import type { ActionResult } from "@/lib/types/errors";
 
 /**
  * 仕訳保存処理
@@ -87,13 +89,10 @@ export async function saveJournal(
       journalNumber: result.journalHeader.journalNumber,
     };
   } catch (error) {
-    console.error("仕訳保存エラー:", error);
-
+    const errorResult = handleServerActionError(error, "仕訳の保存", "仕訳");
     return {
       success: false,
-      error: error instanceof Error
-        ? error.message
-        : "予期しないエラーが発生しました",
+      error: errorResult.error?.message || "仕訳の保存に失敗しました",
     };
   }
 }
@@ -170,6 +169,99 @@ function validateJournalData(
   }
 
   return { isValid: true };
+}
+
+/**
+ * 仕訳更新処理
+ */
+export async function updateJournal(
+  journalNumber: string,
+  data: JournalSaveData,
+): Promise<JournalSaveResult> {
+  try {
+    // バリデーション
+    const validationResult = validateJournalData(data);
+    if (!validationResult.isValid) {
+      return {
+        success: false,
+        error: validationResult.error,
+      };
+    }
+
+    // データベーストランザクション内で仕訳更新
+    const result = await prisma.$transaction(async (tx) => {
+      // 既存仕訳の存在確認
+      const existingJournal = await tx.journalHeader.findUnique({
+        where: { journalNumber },
+        include: { journalDetails: true },
+      });
+
+      if (!existingJournal) {
+        throw new Error("更新対象の仕訳が見つかりません");
+      }
+
+      // 既存明細をすべて削除
+      await tx.journalDetail.deleteMany({
+        where: { journalNumber },
+      });
+
+      // 仕訳ヘッダー更新
+      const journalHeader = await tx.journalHeader.update({
+        where: { journalNumber },
+        data: {
+          journalDate: data.header.journalDate,
+          description: data.header.description || "",
+        },
+      });
+
+      // 新しい仕訳明細作成
+      const journalDetails = await Promise.all(
+        data.details.map(async (detail, index) => {
+          return tx.journalDetail.create({
+            data: {
+              journalNumber,
+              lineNumber: index + 1,
+              debitCredit: detail.debitCredit === "debit" ? "D" : "C",
+              accountCode: detail.accountCode,
+              subAccountCode: detail.subAccountCode || null,
+              partnerCode: detail.partnerCode || null,
+              analysisCode: detail.analysisCode || null,
+              baseAmount: detail.baseAmount,
+              taxAmount: detail.taxAmount,
+              totalAmount: detail.totalAmount,
+              taxRate: detail.taxRate || null,
+              taxType: detail.taxType,
+              lineDescription: detail.description || null,
+            },
+          });
+        }),
+      );
+
+      return {
+        journalHeader,
+        journalDetails,
+      };
+    });
+
+    // キャッシュ更新
+    revalidatePath("/siwake");
+    revalidatePath(`/siwake/${journalNumber}`);
+    revalidatePath(`/siwake/update/${journalNumber}`);
+
+    return {
+      success: true,
+      journalNumber: result.journalHeader.journalNumber,
+    };
+  } catch (error) {
+    console.error("仕訳更新エラー:", error);
+
+    return {
+      success: false,
+      error: error instanceof Error
+        ? error.message
+        : "予期しないエラーが発生しました",
+    };
+  }
 }
 
 /**

@@ -5,9 +5,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { AnalysisCode } from "@/lib/database/prisma";
-import { createAnalysisCode, updateAnalysisCode, getAnalysisTypes, checkAnalysisCodeExists } from "@/app/actions/analysis-codes";
+import { createAnalysisCode, updateAnalysisCode, getAnalysisTypes, checkAnalysisCodeExists, createAnalysisType } from "@/app/actions/analysis-codes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -73,8 +74,10 @@ export function AnalysisCodeMasterForm({
   const [codeCheckLoading, setCodeCheckLoading] = useState(false);
   const [codeCheckMessage, setCodeCheckMessage] = useState<string>("");
   const [codeCheckError, setCodeCheckError] = useState<boolean>(false);
-  const [analysisTypes, setAnalysisTypes] = useState<string[]>([]);
-  const [newAnalysisType, setNewAnalysisType] = useState("");
+  const [analysisTypes, setAnalysisTypes] = useState<{typeCode: string, typeName: string}[]>([]);
+  const [newAnalysisTypeCode, setNewAnalysisTypeCode] = useState("");
+  const [newAnalysisTypeName, setNewAnalysisTypeName] = useState("");
+  const [isAddingNewType, setIsAddingNewType] = useState(false);
   const isEditing = !!analysisCode;
 
   useEffect(() => {
@@ -185,19 +188,54 @@ export function AnalysisCodeMasterForm({
 
   const handleAnalysisTypeChange = (value: string) => {
     if (value === "new-type") {
-      setNewAnalysisType("");
+      setIsAddingNewType(true);
+      setNewAnalysisTypeCode("");
+      setNewAnalysisTypeName("");
     } else {
       form.setValue("analysisType", value);
-      setNewAnalysisType("");
+      setIsAddingNewType(false);
+      setNewAnalysisTypeCode("");
+      setNewAnalysisTypeName("");
     }
   };
 
-  const handleNewAnalysisTypeSubmit = () => {
-    if (newAnalysisType.trim()) {
-      form.setValue("analysisType", newAnalysisType.trim());
-      setAnalysisTypes((prev) => [...prev, newAnalysisType.trim()]);
-      setNewAnalysisType("");
+  const handleNewAnalysisTypeSubmit = async () => {
+    const typeCode = newAnalysisTypeCode.trim();
+    const typeName = newAnalysisTypeName.trim();
+    
+    if (typeCode && typeName) {
+      try {
+        // コードフォーマットバリデーション
+        if (!/^[a-zA-Z0-9_-]+$/.test(typeCode)) {
+          showErrorToast(createSystemError("分析種別コードは英数字、アンダースコア、ハイフンのみ使用可能です", "入力エラー"));
+          return;
+        }
+
+        // 分析種別マスタに保存
+        const result = await createAnalysisType(typeCode, typeName);
+        
+        if (result.success) {
+          // UIに反映
+          form.setValue("analysisType", typeCode);
+          setAnalysisTypes((prev) => [...prev, { typeCode, typeName }]);
+          setNewAnalysisTypeCode("");
+          setNewAnalysisTypeName("");
+          setIsAddingNewType(false);
+          showSuccessToast(`分析種別「${typeName}」を追加しました`);
+        } else {
+          showErrorToast(createSystemError(result.error || "分析種別の追加に失敗しました", "分析種別追加"));
+        }
+      } catch (error) {
+        console.error("分析種別追加エラー:", error);
+        showErrorToast(createSystemError("分析種別の追加に失敗しました", "ネットワークエラー"));
+      }
     }
+  };
+
+  const handleNewAnalysisTypeCancel = () => {
+    setNewAnalysisTypeCode("");
+    setNewAnalysisTypeName("");
+    setIsAddingNewType(false);
   };
 
   return (
@@ -274,34 +312,50 @@ export function AnalysisCodeMasterForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>分析種別</FormLabel>
-                {newAnalysisType !== "" ? (
-                  <div className="flex gap-2">
-                    <FormControl>
-                      <Input
-                        value={newAnalysisType}
-                        onChange={(e) => setNewAnalysisType(e.target.value)}
-                        placeholder="新しい分析種別を入力"
+                {isAddingNewType ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">分析種別コード *</Label>
+                        <Input
+                          value={newAnalysisTypeCode}
+                          onChange={(e) => setNewAnalysisTypeCode(e.target.value)}
+                          placeholder="例: cost_center"
+                          disabled={loading}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">分析種別名 *</Label>
+                        <Input
+                          value={newAnalysisTypeName}
+                          onChange={(e) => setNewAnalysisTypeName(e.target.value)}
+                          placeholder="例: コストセンター"
+                          disabled={loading}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleNewAnalysisTypeCancel}
                         disabled={loading}
-                      />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleNewAnalysisTypeSubmit}
-                      disabled={loading || !newAnalysisType.trim()}
-                    >
-                      追加
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setNewAnalysisType("")}
-                      disabled={loading}
-                    >
-                      キャンセル
-                    </Button>
+                      >
+                        キャンセル
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleNewAnalysisTypeSubmit}
+                        disabled={loading || !newAnalysisTypeCode.trim() || !newAnalysisTypeName.trim()}
+                      >
+                        追加
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <Select
@@ -316,8 +370,8 @@ export function AnalysisCodeMasterForm({
                     </FormControl>
                     <SelectContent>
                       {analysisTypes.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
+                        <SelectItem key={type.typeCode} value={type.typeCode}>
+                          {type.typeName}
                         </SelectItem>
                       ))}
                       <SelectItem value="new-type">

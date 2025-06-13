@@ -52,24 +52,57 @@ export async function getAnalysisCodes() {
 }
 
 /**
- * 分析種別一覧の取得
+ * 分析種別一覧の取得（マスタテーブルから）
  */
 export async function getAnalysisTypes() {
   try {
-    const types = await prisma.analysisCode.findMany({
+    const types = await prisma.analysisType.findMany({
       where: { isActive: true },
-      select: { analysisType: true },
-      distinct: ['analysisType'],
-      orderBy: { analysisType: 'asc' }
+      orderBy: [{ sortOrder: 'asc' }, { typeCode: 'asc' }]
     });
     
     return { 
       success: true, 
-      data: types.map(type => type.analysisType) 
+      data: types.map(type => ({
+        typeCode: type.typeCode,
+        typeName: type.typeName
+      }))
     };
   } catch (error) {
     console.error('分析種別取得エラー:', error);
     return { success: false, error: '分析種別の取得に失敗しました' };
+  }
+}
+
+/**
+ * 分析種別を作成
+ */
+export async function createAnalysisType(typeCode: string, typeName: string) {
+  try {
+    // 重複チェック
+    const existing = await prisma.analysisType.findUnique({
+      where: { typeCode }
+    });
+
+    if (existing) {
+      return { success: false, error: 'この種別コードは既に存在します' };
+    }
+
+    const analysisType = await prisma.analysisType.create({
+      data: {
+        typeCode,
+        typeName,
+        isActive: true
+      }
+    });
+    
+    return { 
+      success: true, 
+      data: analysisType
+    };
+  } catch (error) {
+    console.error('分析種別作成エラー:', error);
+    return { success: false, error: '分析種別の作成に失敗しました' };
   }
 }
 

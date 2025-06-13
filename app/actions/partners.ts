@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/database/prisma";
 import { createPartnerSchema, updatePartnerSchema } from "@/lib/schemas/master";
 import type { Partner } from "@/lib/database/prisma";
+import { handleServerActionError } from "@/lib/utils/error-handler";
+import type { ActionResult } from "@/lib/types/errors";
 
 /**
  * 取引先コードの重複チェック
@@ -50,7 +52,7 @@ export async function getPartners() {
 /**
  * 取引先の作成
  */
-export async function createPartner(formData: FormData) {
+export async function createPartner(formData: FormData): Promise<ActionResult<Partner>> {
   try {
     const data = {
       partnerCode: formData.get('partnerCode') as string,
@@ -64,7 +66,17 @@ export async function createPartner(formData: FormData) {
 
     const result = createPartnerSchema.safeParse(data);
     if (!result.success) {
-      return { success: false, error: '入力値が正しくありません' };
+      return { 
+        success: false, 
+        error: {
+          type: "validation" as const,
+          message: "入力値が正しくありません",
+          details: {
+            fieldErrors: result.error.formErrors.fieldErrors,
+            retryable: false
+          }
+        }
+      };
     }
 
     const partner = await prisma.partner.create({
@@ -77,15 +89,14 @@ export async function createPartner(formData: FormData) {
     revalidatePath('/master/partners');
     return { success: true, data: partner };
   } catch (error) {
-    console.error('取引先作成エラー:', error);
-    return { success: false, error: '取引先の作成に失敗しました' };
+    return handleServerActionError(error, "取引先の作成", "取引先");
   }
 }
 
 /**
  * 取引先の更新
  */
-export async function updatePartner(partnerCode: string, formData: FormData) {
+export async function updatePartner(partnerCode: string, formData: FormData): Promise<ActionResult<Partner>> {
   try {
     const data = {
       partnerName: formData.get('partnerName') as string,
@@ -98,7 +109,17 @@ export async function updatePartner(partnerCode: string, formData: FormData) {
 
     const result = updatePartnerSchema.safeParse(data);
     if (!result.success) {
-      return { success: false, error: '入力値が正しくありません' };
+      return { 
+        success: false, 
+        error: {
+          type: "validation" as const,
+          message: "入力値が正しくありません",
+          details: {
+            fieldErrors: result.error.formErrors.fieldErrors,
+            retryable: false
+          }
+        }
+      };
     }
 
     const partner = await prisma.partner.update({
@@ -109,15 +130,14 @@ export async function updatePartner(partnerCode: string, formData: FormData) {
     revalidatePath('/master/partners');
     return { success: true, data: partner };
   } catch (error) {
-    console.error('取引先更新エラー:', error);
-    return { success: false, error: '取引先の更新に失敗しました' };
+    return handleServerActionError(error, "取引先の更新", "取引先");
   }
 }
 
 /**
  * 取引先の削除
  */
-export async function deletePartner(partnerCode: string) {
+export async function deletePartner(partnerCode: string): Promise<ActionResult> {
   try {
     await prisma.partner.update({
       where: { partnerCode },
@@ -127,8 +147,7 @@ export async function deletePartner(partnerCode: string) {
     revalidatePath('/master/partners');
     return { success: true };
   } catch (error) {
-    console.error('取引先削除エラー:', error);
-    return { success: false, error: '取引先の削除に失敗しました' };
+    return handleServerActionError(error, "取引先の削除", "取引先");
   }
 }
 

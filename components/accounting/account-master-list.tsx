@@ -76,40 +76,52 @@ export function AccountMasterList() {
   const [refreshing, setRefreshing] = useState(false);
 
   // 階層深度計算関数
-  const calculateDepth = useCallback((accountCode: string, accounts: AccountForClient[]): number => {
-    const account = accounts.find(acc => acc.accountCode === accountCode);
-    if (!account?.parentAccountCode) return 0;
-    return 1 + calculateDepth(account.parentAccountCode, accounts);
-  }, []);
+  const calculateDepth = useCallback(
+    (accountCode: string, accounts: AccountForClient[]): number => {
+      const account = accounts.find((acc) => acc.accountCode === accountCode);
+      if (!account?.parentAccountCode) return 0;
+      return 1 + calculateDepth(account.parentAccountCode, accounts);
+    },
+    []
+  );
 
   // 階層ソート関数
-  const buildHierarchicalList = useCallback((accounts: AccountForClient[]): AccountForClient[] => {
-    const result: AccountForClient[] = [];
-    const processed = new Set<string>();
+  const buildHierarchicalList = useCallback(
+    (accounts: AccountForClient[]): AccountForClient[] => {
+      const result: AccountForClient[] = [];
+      const processed = new Set<string>();
 
-    // 親科目から子科目の順で追加する再帰関数
-    const addAccountWithChildren = (parentCode: string | null, depth: number = 0) => {
-      // 指定された親を持つ科目を取得（親科目がnullの場合はルート科目）
-      const children = accounts
-        .filter(acc => acc.parentAccountCode === parentCode)
-        .sort((a, b) => a.accountCode.localeCompare(b.accountCode));
+      // 親科目から子科目の順で追加する再帰関数
+      const addAccountWithChildren = (
+        parentCode: string | null,
+        depth: number = 0
+      ) => {
+        // 指定された親を持つ科目を取得（親科目がnullの場合はルート科目）
+        const children = accounts
+          .filter((acc) => acc.parentAccountCode === parentCode)
+          .sort((a, b) => a.accountCode.localeCompare(b.accountCode));
 
-      children.forEach(account => {
-        if (!processed.has(account.accountCode)) {
-          processed.add(account.accountCode);
-          // 深度情報を追加
-          result.push({ ...account, _hierarchyDepth: depth } as AccountForClient & { _hierarchyDepth: number });
-          // 子科目を再帰的に追加
-          addAccountWithChildren(account.accountCode, depth + 1);
-        }
-      });
-    };
+        children.forEach((account) => {
+          if (!processed.has(account.accountCode)) {
+            processed.add(account.accountCode);
+            // 深度情報を追加
+            result.push({
+              ...account,
+              _hierarchyDepth: depth,
+            } as AccountForClient & { _hierarchyDepth: number });
+            // 子科目を再帰的に追加
+            addAccountWithChildren(account.accountCode, depth + 1);
+          }
+        });
+      };
 
-    // ルート科目（親科目なし）から開始
-    addAccountWithChildren(null);
-    
-    return result;
-  }, []);
+      // ルート科目（親科目なし）から開始
+      addAccountWithChildren(null);
+
+      return result;
+    },
+    []
+  );
 
   // Manual refresh function using new Server Actions
   const refreshData = useCallback(async () => {
@@ -151,27 +163,30 @@ export function AccountMasterList() {
   };
 
   // サーバーサイド検索（新しいServer Actions使用、階層表示対応）
-  const performServerSearch = useCallback(async (searchState: SearchState) => {
-    setLoading(true);
-    try {
-      const result = await searchAccounts(searchState.searchTerm, {
-        accountType: searchState.filters.accountType,
-        isActive: searchState.activeOnly ? true : undefined,
-      });
+  const performServerSearch = useCallback(
+    async (searchState: SearchState) => {
+      setLoading(true);
+      try {
+        const result = await searchAccounts(searchState.searchTerm, {
+          accountType: searchState.filters.accountType,
+          isActive: searchState.activeOnly ? true : undefined,
+        });
 
-      if (result.success) {
-        // サーバーサイド検索結果も階層表示用にソート
-        const hierarchicalData = buildHierarchicalList(result.data || []);
-        setAccounts(hierarchicalData);
-      } else {
-        console.error("検索エラー:", result.error);
+        if (result.success) {
+          // サーバーサイド検索結果も階層表示用にソート
+          const hierarchicalData = buildHierarchicalList(result.data || []);
+          setAccounts(hierarchicalData);
+        } else {
+          console.error("検索エラー:", result.error);
+        }
+      } catch (error) {
+        console.error("検索エラー:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("検索エラー:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [buildHierarchicalList]);
+    },
+    [buildHierarchicalList]
+  );
 
   // クライアントサイド検索・フィルタリング（階層表示対応）
   const filteredAccounts = useMemo(() => {
@@ -350,7 +365,9 @@ export function AccountMasterList() {
                 </TableRow>
               ) : (
                 filteredAccounts.map((account) => {
-                  const depth = (account as AccountForClient & { _hierarchyDepth?: number })._hierarchyDepth || 0;
+                  const depth =
+                    (account as AccountForClient & { _hierarchyDepth?: number })
+                      ._hierarchyDepth || 0;
                   return (
                     <TableRow key={account.accountCode}>
                       <TableCell className="font-mono">
@@ -358,49 +375,51 @@ export function AccountMasterList() {
                       </TableCell>
                       <TableCell className="font-medium">
                         <div className="flex items-center">
-                          <span style={{ marginLeft: `${depth * 20}px` }}>
+                          <span style={{ marginLeft: `${depth * 10}px` }}>
                             {depth > 0 && (
-                              <span className="text-muted-foreground mr-1">└ </span>
+                              <span className="text-muted-foreground mr-1">
+                                └{" "}
+                              </span>
                             )}
                             {renderHighlightedText(account.accountName)}
                           </span>
                         </div>
                       </TableCell>
-                    <TableCell>
-                      {renderHighlightedText(account.accountType)}
-                    </TableCell>
-                    <TableCell>
-                      {account.isDetail ? (
-                        <Badge variant="default">明細科目</Badge>
-                      ) : (
-                        <Badge variant="outline">集計科目</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={account.isActive ? "default" : "secondary"}
-                      >
-                        {account.isActive ? "有効" : "無効"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(account)}
+                      <TableCell>
+                        {renderHighlightedText(account.accountType)}
+                      </TableCell>
+                      <TableCell>
+                        {account.isDetail ? (
+                          <Badge variant="default">明細科目</Badge>
+                        ) : (
+                          <Badge variant="outline">集計科目</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={account.isActive ? "default" : "outline"}
                         >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(account)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                          {account.isActive ? "有効" : "無効"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(account)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(account)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   );
                 })

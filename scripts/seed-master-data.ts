@@ -14,24 +14,24 @@ async function main() {
   await prisma.account.createMany({
     data: [
       // 資産
-      { accountCode: '1110', accountName: '現金', accountType: '流動資産', taxCategory: 'none', isTaxAccount: false },
-      { accountCode: '1210', accountName: '普通預金', accountType: '流動資産', taxCategory: 'none', isTaxAccount: false },
-      { accountCode: '1310', accountName: '売掛金', accountType: '流動資産', taxCategory: 'none', isTaxAccount: false },
-      { accountCode: '1355', accountName: '仮払消費税', accountType: '流動資産', taxCategory: 'deductible_tax', isTaxAccount: true },
+      { accountCode: '1110', accountName: '現金', accountType: '資産', taxCategory: 'none', isTaxAccount: false },
+      { accountCode: '1210', accountName: '普通預金', accountType: '資産', taxCategory: 'none', isTaxAccount: false },
+      { accountCode: '1310', accountName: '売掛金', accountType: '資産', taxCategory: 'none', isTaxAccount: false },
+      { accountCode: '1355', accountName: '仮払消費税', accountType: '資産', taxCategory: 'deductible_tax', isTaxAccount: true },
 
       // 負債
-      { accountCode: '2110', accountName: '買掛金', accountType: '流動負債', taxCategory: 'none', isTaxAccount: false },
-      { accountCode: '2250', accountName: '仮受消費税', accountType: '流動負債', taxCategory: 'payable_tax', isTaxAccount: true },
+      { accountCode: '2110', accountName: '買掛金', accountType: '負債', taxCategory: 'none', isTaxAccount: false },
+      { accountCode: '2250', accountName: '仮受消費税', accountType: '負債', taxCategory: 'payable_tax', isTaxAccount: true },
 
       // 収益
-      { accountCode: '4110', accountName: '売上高', accountType: '売上', taxCategory: 'none', isTaxAccount: false, defaultTaxRate: 10.00 },
-      { accountCode: '4120', accountName: '受取利息', accountType: 'その他売上', taxCategory: 'none', isTaxAccount: false },
+      { accountCode: '4110', accountName: '売上高', accountType: '収益', taxCategory: 'none', isTaxAccount: false, defaultTaxRate: 10.00 },
+      { accountCode: '4120', accountName: '受取利息', accountType: '収益', taxCategory: 'none', isTaxAccount: false },
 
       // 費用
-      { accountCode: '5110', accountName: '仕入高', accountType: '売上原価', taxCategory: 'none', isTaxAccount: false, defaultTaxRate: 10.00 },
-      { accountCode: '5210', accountName: '旅費交通費', accountType: '販売費及び一般管理費', taxCategory: 'none', isTaxAccount: false, defaultTaxRate: 10.00 },
-      { accountCode: '5220', accountName: '通信費', accountType: '販売費及び一般管理費', taxCategory: 'none', isTaxAccount: false, defaultTaxRate: 10.00 },
-      { accountCode: '5230', accountName: '消耗品費', accountType: '販売費及び一般管理費', taxCategory: 'none', isTaxAccount: false, defaultTaxRate: 10.00 },
+      { accountCode: '5110', accountName: '仕入高', accountType: '費用', taxCategory: 'none', isTaxAccount: false, defaultTaxRate: 10.00 },
+      { accountCode: '5210', accountName: '旅費交通費', accountType: '費用', taxCategory: 'none', isTaxAccount: false, defaultTaxRate: 10.00 },
+      { accountCode: '5220', accountName: '通信費', accountType: '費用', taxCategory: 'none', isTaxAccount: false, defaultTaxRate: 10.00 },
+      { accountCode: '5230', accountName: '消耗品費', accountType: '費用', taxCategory: 'none', isTaxAccount: false, defaultTaxRate: 10.00 },
     ],
     skipDuplicates: true,
   });
@@ -45,6 +45,16 @@ async function main() {
       { partnerCode: 'V001', partnerName: 'サンプル仕入先A', partnerType: 'vendor' },
       { partnerCode: 'V002', partnerName: 'サンプル仕入先B', partnerType: 'vendor' },
       { partnerCode: 'B001', partnerName: 'メイン銀行', partnerType: 'bank' },
+    ],
+    skipDuplicates: true,
+  });
+
+  // 分析種別マスタ
+  console.log('分析種別マスタを投入中...');
+  await prisma.analysisType.createMany({
+    data: [
+      { typeCode: 'department', typeName: '部門', sortOrder: 10 },
+      { typeCode: 'project', typeName: 'プロジェクト', sortOrder: 20 },
     ],
     skipDuplicates: true,
   });

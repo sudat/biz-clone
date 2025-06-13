@@ -7,7 +7,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -22,6 +22,10 @@ import { TAX_TYPE_OPTIONS, DEFAULT_TAX_TYPE } from "@/types/tax";
 interface JournalDetailInputProps {
   type: "debit" | "credit";
   onAdd: (detail: JournalDetailData) => void;
+  onUpdate?: (detail: JournalDetailData) => void;
+  onCancelEdit?: () => void;
+  editingDetail?: JournalDetailData | null;
+  mode?: 'input' | 'edit';
   disabled?: boolean;
   className?: string;
 }
@@ -46,6 +50,10 @@ const TYPE_CONFIG = {
 export function JournalDetailInput({
   type,
   onAdd,
+  onUpdate,
+  onCancelEdit,
+  editingDetail,
+  mode = 'input',
   disabled = false,
   className,
 }: JournalDetailInputProps) {
@@ -64,6 +72,31 @@ export function JournalDetailInput({
   });
 
   const config = TYPE_CONFIG[type];
+
+  // 編集時にフォームデータを初期化
+  useEffect(() => {
+    if (mode === 'edit' && editingDetail) {
+      setFormData({
+        debitCredit: editingDetail.debitCredit,
+        accountCode: editingDetail.accountCode || "",
+        accountName: editingDetail.accountName,
+        subAccountCode: editingDetail.subAccountCode || "",
+        subAccountName: editingDetail.subAccountName,
+        partnerCode: editingDetail.partnerCode || "",
+        partnerName: editingDetail.partnerName,
+        analysisCode: editingDetail.analysisCode || "",
+        analysisCodeName: editingDetail.analysisCodeName,
+        baseAmount: editingDetail.baseAmount,
+        taxAmount: editingDetail.taxAmount,
+        totalAmount: editingDetail.totalAmount,
+        taxRate: editingDetail.taxRate || 10,
+        taxType: editingDetail.taxType || DEFAULT_TAX_TYPE,
+        description: editingDetail.description || "",
+      });
+    } else if (mode === 'input') {
+      resetForm();
+    }
+  }, [mode, editingDetail, type]);
 
   // フォームリセット
   const resetForm = () => {
@@ -117,8 +150,8 @@ export function JournalDetailInput({
     }));
   };
 
-  // 追加処理
-  const handleAdd = () => {
+  // 追加・更新処理
+  const handleSubmit = () => {
     if (
       !formData.accountCode ||
       formData.totalAmount == null ||
@@ -145,19 +178,33 @@ export function JournalDetailInput({
       description: formData.description,
     };
 
-    onAdd(detail);
-    resetForm();
+    if (mode === 'edit' && onUpdate) {
+      onUpdate(detail);
+    } else {
+      onAdd(detail);
+      resetForm();
+    }
+  };
+
+  // キャンセル処理
+  const handleCancel = () => {
+    if (onCancelEdit) {
+      onCancelEdit();
+    }
   };
 
   // 入力可能判定
-  const canAdd =
+  const canSubmit =
     formData.accountCode && formData.totalAmount != null && formData.totalAmount > 0;
 
   // Enterキー処理
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && canAdd) {
+    if (e.key === "Enter" && canSubmit) {
       e.preventDefault();
-      handleAdd();
+      handleSubmit();
+    } else if (e.key === "Escape" && mode === 'edit') {
+      e.preventDefault();
+      handleCancel();
     }
   };
 
@@ -171,9 +218,16 @@ export function JournalDetailInput({
       )}
     >
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold text-slate-700">
-          {config.title}明細を追加
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base font-semibold text-slate-700">
+            {mode === 'edit' ? `${config.title}明細を編集` : `${config.title}明細を追加`}
+          </CardTitle>
+          {mode === 'edit' && (
+            <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+              編集中
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {/* 勘定科目 */}
@@ -354,27 +408,59 @@ export function JournalDetailInput({
           </div>
         </div>
 
-        {/* 追加ボタン */}
-        <Button
-          onClick={handleAdd}
-          disabled={!canAdd || disabled}
-          className={cn(
-            "w-full text-white font-medium transition-all duration-200",
-            config.buttonColor
+        {/* ボタンエリア */}
+        <div className="flex gap-2">
+          {mode === 'edit' ? (
+            <>
+              <Button
+                onClick={handleCancel}
+                variant="outline"
+                disabled={disabled}
+                className="flex-1"
+              >
+                キャンセル
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={!canSubmit || disabled}
+                className={cn(
+                  "flex-1 text-white font-medium transition-all duration-200",
+                  config.buttonColor
+                )}
+              >
+                明細を更新
+              </Button>
+            </>
+          ) : (
+            <Button
+              onClick={handleSubmit}
+              disabled={!canSubmit || disabled}
+              className={cn(
+                "w-full text-white font-medium transition-all duration-200",
+                config.buttonColor
+              )}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {config.title}明細を追加
+            </Button>
           )}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          {config.title}明細を追加
-        </Button>
+        </div>
 
         {/* バリデーションメッセージ */}
-        {!canAdd &&
+        {!canSubmit &&
           (formData.accountCode ||
             (formData.totalAmount != null && formData.totalAmount !== 0)) && (
             <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
               勘定科目と金額（1円以上）の入力が必要です
             </div>
           )}
+        
+        {/* 編集モード時のヒント */}
+        {mode === 'edit' && (
+          <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200">
+            Enterで更新、Escapeでキャンセルできます
+          </div>
+        )}
       </CardContent>
     </Card>
   );

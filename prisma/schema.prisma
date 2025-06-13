@@ -88,6 +88,21 @@ model Partner {
   @@map("partners")
 }
 
+// 分析種別マスタ
+model AnalysisType {
+  typeCode   String   @id @db.VarChar(20)
+  typeName   String   @db.VarChar(50)
+  isActive   Boolean  @default(true)
+  sortOrder  Int?
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  
+  // 関係
+  analysisCodes AnalysisCode[]
+  
+  @@map("analysis_types")
+}
+
 // 分析コードマスタ
 model AnalysisCode {
   analysisCode       String   @id @db.VarChar(15)
@@ -102,6 +117,9 @@ model AnalysisCode {
   // 自己参照関係
   parentAnalysisCode_rel AnalysisCode?  @relation("AnalysisCodeParent", fields: [parentAnalysisCode], references: [analysisCode])
   childAnalysisCodes     AnalysisCode[] @relation("AnalysisCodeParent")
+
+  // 分析種別との関係
+  analysisTypeRel AnalysisType @relation(fields: [analysisType], references: [typeCode])
 
   // 他テーブルとの関係
   journalDetails JournalDetail[]
