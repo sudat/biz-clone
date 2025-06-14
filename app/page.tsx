@@ -1,4 +1,3 @@
-import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Users, Receipt, BarChart3, TrendingUp, Clock } from "lucide-react";
@@ -6,9 +5,7 @@ import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <Header />
-      <main className="container mx-auto px-8 py-16 max-w-7xl">
+    <main className="py-8">
         {/* ヒーローセクション */}
         <div className="text-center space-y-12 mb-20">
           <div className="space-y-6">
@@ -148,6 +145,5 @@ export default function HomePage() {
           </div>
         </div>
       </main>
-    </div>
   );
 }

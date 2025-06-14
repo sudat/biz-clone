@@ -6,7 +6,6 @@
  */
 
 import { Metadata } from 'next';
-import { Header } from '@/components/layout/header';
 
 export const metadata: Metadata = {
   title: '仕訳入力 | Biz Clone',
@@ -19,11 +18,8 @@ interface SiwakeLayoutProps {
 
 export default function SiwakeLayout({ children }: SiwakeLayoutProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
-      <Header />
-      <div className="container mx-auto px-8 py-8 max-w-7xl">
-        {children}
-      </div>
-    </div>
+    <>
+      {children}
+    </>
   );
 }
