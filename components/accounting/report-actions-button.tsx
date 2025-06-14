@@ -14,13 +14,15 @@ interface ReportActionsProps {
   onPrint?: () => void;
   onDownloadPdf?: () => void;
   onDownloadExcel?: () => void;
+  onDownloadCsv?: () => void;
   className?: string;
 }
 
-export function ReportActions({
+export function ReportActionsButton({
   onPrint,
   onDownloadPdf,
   onDownloadExcel,
+  onDownloadCsv,
   className = "",
 }: ReportActionsProps) {
   const handlePrint = () => {
@@ -42,7 +44,7 @@ export function ReportActions({
         <Printer className="h-4 w-4" />
         印刷
       </Button>
-      
+
       {onDownloadPdf && (
         <Button
           variant="outline"
@@ -54,12 +56,24 @@ export function ReportActions({
           PDF出力
         </Button>
       )}
-      
+
       {onDownloadExcel && (
         <Button
           variant="outline"
           size="sm"
           onClick={onDownloadExcel}
+          className="flex items-center gap-2"
+        >
+          <Download className="h-4 w-4" />
+          Excel出力
+        </Button>
+      )}
+
+      {onDownloadCsv && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onDownloadCsv}
           className="flex items-center gap-2"
         >
           <Download className="h-4 w-4" />

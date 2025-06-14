@@ -27,14 +27,13 @@ export function AmountDisplay({
   const numericAmount =
     typeof amount === "string" ? parseFloat(amount) || 0 : amount;
 
-  // 金額の符号を判定
-  const isPositive = positive || numericAmount > 0;
-  const isNegative = negative || numericAmount < 0;
+  // 金額の符号を判定（カラー表示は廃止）
   const isZero = numericAmount === 0;
 
-  // 金額をフォーマット（3桁区切り）
+  // 金額をフォーマット（3桁区切り、負数はマイナス記号付き）
   const formatAmount = (value: number) => {
-    return Math.abs(value).toLocaleString("ja-JP");
+    const abs = Math.abs(value).toLocaleString("ja-JP");
+    return value < 0 ? `-${abs}` : abs;
   };
 
   const sizeClasses = {
@@ -55,8 +54,6 @@ export function AmountDisplay({
         "font-mono font-medium",
         sizeClasses[size],
         alignClasses[align],
-        isPositive && !isZero && "text-blue-600 dark:text-blue-400",
-        isNegative && "text-red-600 dark:text-red-400",
         isZero && "text-muted-foreground",
         className
       )}
