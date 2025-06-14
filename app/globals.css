@@ -133,7 +133,7 @@
 /* 印刷用スタイル */
 @media print {
   @page {
-    margin: 1cm;
+    margin: 1.5cm 1cm;
     size: A4 landscape;
   }
   
@@ -142,9 +142,30 @@
     display: none !important;
   }
   
+  /* ヘッダー・フッターの非表示 */
+  header, .print\:hide-header {
+    display: none !important;
+  }
+  
+  /* 検索条件エリアの非表示 */
+  .print\:hide-search {
+    display: none !important;
+  }
+  
+  /* 印刷時のコンテナ調整 */
+  .print\:full-width {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
   /* 印刷時のテーブルスタイル */
   table {
     page-break-inside: auto;
+    border-collapse: collapse !important;
+    width: 100% !important;
+    font-size: 10px !important;
   }
   
   tr {
@@ -156,6 +177,17 @@
     display: table-header-group;
   }
   
+  th, td {
+    border: 1px solid #000 !important;
+    padding: 2px 4px !important;
+    font-size: 10px !important;
+  }
+  
+  /* ヘッダー行の背景 */
+  thead tr {
+    background-color: #f0f0f0 !important;
+  }
+  
   /* 印刷時の色を保持 */
   * {
     -webkit-print-color-adjust: exact !important;
@@ -163,12 +195,30 @@
   }
   
   /* 印刷時のボーダー色を明確に */
-  .border-gray-300 {
+  .border-gray-300, .border-r {
     border-color: #000 !important;
   }
   
   /* 印刷時の背景色 */
   .bg-gray-50 {
-    background-color: #f9f9f9 !important;
+    background-color: #f0f0f0 !important;
+  }
+  
+  /* 印刷時の文字サイズ調整 */
+  .print\:text-xs {
+    font-size: 8px !important;
+  }
+  
+  .print\:text-sm {
+    font-size: 10px !important;
+  }
+  
+  /* 印刷時のページブレーク制御 */
+  .print\:break-before {
+    page-break-before: always !important;
+  }
+  
+  .print\:break-avoid {
+    page-break-inside: avoid !important;
   }
 }

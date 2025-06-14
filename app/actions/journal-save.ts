@@ -13,6 +13,7 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/database/prisma";
 import { generateJournalNumber } from "@/lib/database/journal-number";
+import { convertToJapaneseDate } from "@/lib/utils/date-utils";
 import { 
   JournalDetailData, 
   JournalSaveData, 
@@ -40,14 +41,23 @@ export async function saveJournal(
     // 仕訳番号生成（計上日ベース）
     const journalNumber = await generateJournalNumber(data.header.journalDate);
 
+    // 明細の合計金額を計算（借方合計を使用）
+    const totalAmount = data.details
+      .filter((d) => d.debitCredit === "debit")
+      .reduce((sum, d) => sum + d.totalAmount, 0);
+
     // データベーストランザクション内で仕訳保存
     const result = await prisma.$transaction(async (tx) => {
-      // 仕訳ヘッダー作成
+      // 日付を日本時間で保存するための変換
+      const journalDateJST = convertToJapaneseDate(data.header.journalDate);
+
+      // 仕訳ヘッダー作成（totalAmountを含む）
       const journalHeader = await tx.journalHeader.create({
         data: {
           journalNumber,
-          journalDate: data.header.journalDate,
+          journalDate: journalDateJST,
           description: data.header.description || "",
+          totalAmount: totalAmount,
         },
       });
 
@@ -188,6 +198,11 @@ export async function updateJournal(
       };
     }
 
+    // 明細の合計金額を計算（借方合計を使用）
+    const totalAmount = data.details
+      .filter((d) => d.debitCredit === "debit")
+      .reduce((sum, d) => sum + d.totalAmount, 0);
+
     // データベーストランザクション内で仕訳更新
     const result = await prisma.$transaction(async (tx) => {
       // 既存仕訳の存在確認
@@ -205,12 +220,16 @@ export async function updateJournal(
         where: { journalNumber },
       });
 
-      // 仕訳ヘッダー更新
+      // 日付を日本時間で保存するための変換
+      const journalDateJST = convertToJapaneseDate(data.header.journalDate);
+
+      // 仕訳ヘッダー更新（totalAmountを含む）
       const journalHeader = await tx.journalHeader.update({
         where: { journalNumber },
         data: {
-          journalDate: data.header.journalDate,
+          journalDate: journalDateJST,
           description: data.header.description || "",
+          totalAmount: totalAmount,
         },
       });
 

@@ -275,9 +275,9 @@ export class JournalNumberService {
 export async function generateJournalNumber(
   journalDate: string | Date,
 ): Promise<string> {
-  // 日付を YYYY-MM-DD 形式の文字列に変換
+  // 日付を YYYY-MM-DD 形式の文字列に変換（ローカルタイムゾーンを使用）
   const dateStr = journalDate instanceof Date
-    ? journalDate.toISOString().split("T")[0]
+    ? `${journalDate.getFullYear()}-${String(journalDate.getMonth() + 1).padStart(2, '0')}-${String(journalDate.getDate()).padStart(2, '0')}`
     : journalDate;
 
   const result = await JournalNumberService.generateNextJournalNumber(dateStr);

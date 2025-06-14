@@ -63,7 +63,7 @@ export function ReportActions({
           className="flex items-center gap-2"
         >
           <Download className="h-4 w-4" />
-          Excel出力
+          CSV出力
         </Button>
       )}
     </div>

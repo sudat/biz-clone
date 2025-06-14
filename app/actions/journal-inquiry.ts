@@ -9,6 +9,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/database/prisma";
+import { toJST } from "@/lib/utils/date-utils";
 // Journal inquiry specific types
 
 // 仕訳照会用の詳細データ型
@@ -70,14 +71,14 @@ export async function getJournalByNumber(
       };
     }
 
-    // Decimal型をnumber型に変換
+    // Decimal型をnumber型に変換、日時を日本時間に変換
     const journalData: JournalInquiryData = {
       journalNumber: journal.journalNumber,
       journalDate: journal.journalDate,
       description: journal.description,
       totalAmount: journal.totalAmount.toNumber(),
-      createdAt: journal.createdAt,
-      updatedAt: journal.updatedAt,
+      createdAt: toJST(journal.createdAt),
+      updatedAt: toJST(journal.updatedAt),
       details: journal.journalDetails.map((detail) => ({
         lineNumber: detail.lineNumber,
         debitCredit: detail.debitCredit,
@@ -168,14 +169,14 @@ export async function getJournals(params: {
       prisma.journalHeader.count({ where }),
     ]);
 
-    // データ変換
+    // データ変換（日時を日本時間に変換）
     const journalData: JournalInquiryData[] = journals.map((journal) => ({
       journalNumber: journal.journalNumber,
       journalDate: journal.journalDate,
       description: journal.description,
       totalAmount: journal.totalAmount.toNumber(),
-      createdAt: journal.createdAt,
-      updatedAt: journal.updatedAt,
+      createdAt: toJST(journal.createdAt),
+      updatedAt: toJST(journal.updatedAt),
       details: journal.journalDetails.map((detail) => ({
         lineNumber: detail.lineNumber,
         debitCredit: detail.debitCredit,
@@ -326,15 +327,15 @@ export async function getJournalLedgerData(params: {
         { journalNumber: 'asc' },
       ],
     });
-
-    // データ変換
+    
+    // データ変換（日時を日本時間に変換）
     const journalData: JournalInquiryData[] = journals.map((journal) => ({
       journalNumber: journal.journalNumber,
       journalDate: journal.journalDate,
       description: journal.description,
-      totalAmount: journal.totalAmount.toNumber(),
-      createdAt: journal.createdAt,
-      updatedAt: journal.updatedAt,
+      totalAmount: journal.totalAmount?.toNumber() || 0,
+      createdAt: toJST(journal.createdAt),
+      updatedAt: toJST(journal.updatedAt),
       details: journal.journalDetails.map((detail) => ({
         lineNumber: detail.lineNumber,
         debitCredit: detail.debitCredit,
@@ -346,9 +347,9 @@ export async function getJournalLedgerData(params: {
         partnerName: detail.partner?.partnerName || null,
         analysisCode: detail.analysisCode,
         analysisCodeName: detail.analysisCodeRel?.analysisName || null,
-        baseAmount: detail.baseAmount.toNumber(),
-        taxAmount: detail.taxAmount.toNumber(),
-        totalAmount: detail.totalAmount.toNumber(),
+        baseAmount: detail.baseAmount?.toNumber() || 0,
+        taxAmount: detail.taxAmount?.toNumber() || 0,
+        totalAmount: detail.totalAmount?.toNumber() || 0,
         taxRate: detail.taxRate?.toNumber() || null,
         taxType: detail.taxType,
         lineDescription: detail.lineDescription,

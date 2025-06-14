@@ -6,6 +6,7 @@ import { createAccountSchema, updateAccountSchema } from "@/lib/schemas/master";
 import type { Account } from "@/lib/database/prisma";
 import { handleServerActionError } from "@/lib/utils/error-handler";
 import type { ActionResult } from "@/lib/types/errors";
+import { toJST } from "@/lib/utils/date-utils";
 
 // ====================
 // 勘定科目のシンプルなServer Actions
@@ -27,10 +28,12 @@ export async function getAccounts(): Promise<
       orderBy: { accountCode: "asc" },
     });
 
-    // Decimal型をnumber型に変換
+    // Decimal型をnumber型に変換、日時を日本時間に変換
     const accountsForClient: AccountForClient[] = accounts.map(account => ({
       ...account,
       defaultTaxRate: account.defaultTaxRate ? account.defaultTaxRate.toNumber() : null,
+      createdAt: toJST(account.createdAt),
+      updatedAt: toJST(account.updatedAt),
     }));
 
     return { success: true, data: accountsForClient };
@@ -214,10 +217,12 @@ export async function searchAccounts(
       orderBy: { accountCode: "asc" },
     });
 
-    // Decimal型をnumber型に変換
+    // Decimal型をnumber型に変換、日時を日本時間に変換
     const accountsForClient: AccountForClient[] = accounts.map(account => ({
       ...account,
       defaultTaxRate: account.defaultTaxRate ? account.defaultTaxRate.toNumber() : null,
+      createdAt: toJST(account.createdAt),
+      updatedAt: toJST(account.updatedAt),
     }));
 
     return { success: true, data: accountsForClient };

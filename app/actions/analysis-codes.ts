@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/database/prisma";
 import { createAnalysisCodeSchema, updateAnalysisCodeSchema } from "@/lib/schemas/master";
 import type { AnalysisCode } from "@/lib/database/prisma";
+import { toJST } from "@/lib/utils/date-utils";
 
 /**
  * 分析コードの重複チェック
@@ -44,7 +45,14 @@ export async function getAnalysisCodes() {
       ]
     });
     
-    return { success: true, data: analysisCodes };
+    // 日時を日本時間に変換
+    const analysisCodesForClient = analysisCodes.map(analysisCode => ({
+      ...analysisCode,
+      createdAt: toJST(analysisCode.createdAt),
+      updatedAt: toJST(analysisCode.updatedAt),
+    }));
+    
+    return { success: true, data: analysisCodesForClient };
   } catch (error) {
     console.error('分析コード取得エラー:', error);
     return { success: false, error: '分析コードの取得に失敗しました' };
@@ -210,7 +218,14 @@ export async function searchAnalysisCodes(searchTerm: string, filters: Record<st
       ]
     });
     
-    return { success: true, data: analysisCodes };
+    // 日時を日本時間に変換
+    const analysisCodesForClient = analysisCodes.map(analysisCode => ({
+      ...analysisCode,
+      createdAt: toJST(analysisCode.createdAt),
+      updatedAt: toJST(analysisCode.updatedAt),
+    }));
+    
+    return { success: true, data: analysisCodesForClient };
   } catch (error) {
     console.error('分析コード検索エラー:', error);
     return { success: false, error: '分析コードの検索に失敗しました' };

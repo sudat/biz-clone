@@ -6,6 +6,7 @@ import { createPartnerSchema, updatePartnerSchema } from "@/lib/schemas/master";
 import type { Partner } from "@/lib/database/prisma";
 import { handleServerActionError } from "@/lib/utils/error-handler";
 import type { ActionResult } from "@/lib/types/errors";
+import { toJST } from "@/lib/utils/date-utils";
 
 /**
  * 取引先コードの重複チェック
@@ -42,7 +43,14 @@ export async function getPartners() {
       orderBy: { partnerCode: 'asc' }
     });
     
-    return { success: true, data: partners };
+    // 日時を日本時間に変換
+    const partnersForClient = partners.map(partner => ({
+      ...partner,
+      createdAt: toJST(partner.createdAt),
+      updatedAt: toJST(partner.updatedAt),
+    }));
+    
+    return { success: true, data: partnersForClient };
   } catch (error) {
     console.error('取引先取得エラー:', error);
     return { success: false, error: '取引先の取得に失敗しました' };
@@ -173,7 +181,14 @@ export async function searchPartners(searchTerm: string, filters: Record<string,
       orderBy: { partnerCode: 'asc' }
     });
     
-    return { success: true, data: partners };
+    // 日時を日本時間に変換
+    const partnersForClient = partners.map(partner => ({
+      ...partner,
+      createdAt: toJST(partner.createdAt),
+      updatedAt: toJST(partner.updatedAt),
+    }));
+    
+    return { success: true, data: partnersForClient };
   } catch (error) {
     console.error('取引先検索エラー:', error);
     return { success: false, error: '取引先の検索に失敗しました' };
