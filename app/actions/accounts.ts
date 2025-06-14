@@ -6,6 +6,7 @@ import { createAccountSchema, updateAccountSchema } from "@/lib/schemas/master";
 import type { Account } from "@/lib/database/prisma";
 import { handleServerActionError } from "@/lib/utils/error-handler";
 import type { ActionResult } from "@/lib/types/errors";
+import { ErrorType } from "@/lib/types/errors";
 import { toJST } from "@/lib/utils/date-utils";
 
 // ====================
@@ -13,7 +14,7 @@ import { toJST } from "@/lib/utils/date-utils";
 // ====================
 
 // Client Component用の勘定科目型（Decimal型をnumber型に変換）
-export type AccountForClient = Omit<Account, 'defaultTaxRate'> & {
+export type AccountForClient = Omit<Account, "defaultTaxRate"> & {
   defaultTaxRate: number | null;
 };
 
@@ -29,9 +30,11 @@ export async function getAccounts(): Promise<
     });
 
     // Decimal型をnumber型に変換、日時を日本時間に変換
-    const accountsForClient: AccountForClient[] = accounts.map(account => ({
+    const accountsForClient: AccountForClient[] = accounts.map((account) => ({
       ...account,
-      defaultTaxRate: account.defaultTaxRate ? account.defaultTaxRate.toNumber() : null,
+      defaultTaxRate: account.defaultTaxRate
+        ? account.defaultTaxRate.toNumber()
+        : null,
       createdAt: toJST(account.createdAt),
       updatedAt: toJST(account.updatedAt),
     }));
@@ -49,7 +52,9 @@ export async function getAccounts(): Promise<
 /**
  * 勘定科目コードの重複チェック
  */
-export async function checkAccountCodeExists(accountCode: string): Promise<{ exists: boolean; account?: any }> {
+export async function checkAccountCodeExists(
+  accountCode: string,
+): Promise<{ exists: boolean; account?: any }> {
   try {
     const existingAccount = await prisma.account.findUnique({
       where: { accountCode },
@@ -57,13 +62,13 @@ export async function checkAccountCodeExists(accountCode: string): Promise<{ exi
         accountCode: true,
         accountName: true,
         accountType: true,
-        isActive: true
-      }
+        isActive: true,
+      },
     });
 
     return {
       exists: !!existingAccount,
-      account: existingAccount || undefined
+      account: existingAccount || undefined,
     };
   } catch (error) {
     console.error("勘定科目コード重複チェックエラー:", error);
@@ -71,7 +76,9 @@ export async function checkAccountCodeExists(accountCode: string): Promise<{ exi
   }
 }
 
-export async function createAccount(formData: FormData): Promise<ActionResult<Account>> {
+export async function createAccount(
+  formData: FormData,
+): Promise<ActionResult<Account>> {
   const data = {
     accountCode: formData.get("accountCode") as string,
     accountName: formData.get("accountName") as string,
@@ -82,16 +89,16 @@ export async function createAccount(formData: FormData): Promise<ActionResult<Ac
     // バリデーション
     const result = createAccountSchema.safeParse(data);
     if (!result.success) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: {
-          type: "validation" as const,
+          type: ErrorType.VALIDATION,
           message: "入力値が正しくありません",
           details: {
             fieldErrors: result.error.formErrors.fieldErrors,
-            retryable: false
-          }
-        }
+            retryable: false,
+          },
+        },
       };
     }
 
@@ -115,7 +122,10 @@ export async function createAccount(formData: FormData): Promise<ActionResult<Ac
 /**
  * 勘定科目の更新
  */
-export async function updateAccount(accountCode: string, formData: FormData): Promise<ActionResult<AccountForClient>> {
+export async function updateAccount(
+  accountCode: string,
+  formData: FormData,
+): Promise<ActionResult<AccountForClient>> {
   try {
     // FormDataから全フィールドを取得
     const data = {
@@ -124,7 +134,9 @@ export async function updateAccount(accountCode: string, formData: FormData): Pr
       parentAccountCode: formData.get("parentAccountCode") as string || null,
       isDetail: formData.get("isDetail") === "true",
       isActive: formData.get("isActive") === "true",
-      sortOrder: formData.get("sortOrder") ? parseInt(formData.get("sortOrder") as string) : null,
+      sortOrder: formData.get("sortOrder")
+        ? parseInt(formData.get("sortOrder") as string)
+        : null,
     };
 
     // バリデーション（updateSchemaに必要なフィールドのみ）
@@ -133,19 +145,19 @@ export async function updateAccount(accountCode: string, formData: FormData): Pr
       accountType: data.accountType,
       sortOrder: data.sortOrder,
     };
-    
+
     const result = updateAccountSchema.safeParse(validationData);
     if (!result.success) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: {
-          type: "validation" as const,
+          type: ErrorType.VALIDATION,
           message: "入力値が正しくありません",
           details: {
             fieldErrors: result.error.formErrors.fieldErrors,
-            retryable: false
-          }
-        }
+            retryable: false,
+          },
+        },
       };
     }
 
@@ -165,7 +177,9 @@ export async function updateAccount(accountCode: string, formData: FormData): Pr
     // AccountForClient型に変換（Decimal型を処理）
     const accountForClient: AccountForClient = {
       ...account,
-      defaultTaxRate: account.defaultTaxRate ? account.defaultTaxRate.toNumber() : null,
+      defaultTaxRate: account.defaultTaxRate
+        ? account.defaultTaxRate.toNumber()
+        : null,
     };
 
     revalidatePath("/master/accounts");
@@ -178,7 +192,9 @@ export async function updateAccount(accountCode: string, formData: FormData): Pr
 /**
  * 勘定科目の削除
  */
-export async function deleteAccount(accountCode: string): Promise<ActionResult> {
+export async function deleteAccount(
+  accountCode: string,
+): Promise<ActionResult> {
   try {
     // 論理削除
     await prisma.account.update({
@@ -218,9 +234,11 @@ export async function searchAccounts(
     });
 
     // Decimal型をnumber型に変換、日時を日本時間に変換
-    const accountsForClient: AccountForClient[] = accounts.map(account => ({
+    const accountsForClient: AccountForClient[] = accounts.map((account) => ({
       ...account,
-      defaultTaxRate: account.defaultTaxRate ? account.defaultTaxRate.toNumber() : null,
+      defaultTaxRate: account.defaultTaxRate
+        ? account.defaultTaxRate.toNumber()
+        : null,
       createdAt: toJST(account.createdAt),
       updatedAt: toJST(account.updatedAt),
     }));

@@ -55,7 +55,7 @@ export default function NewSiwakePage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* ページヘッダー */}
       <div className="flex items-center gap-4">
         <Link href="/siwake">
@@ -64,7 +64,7 @@ export default function NewSiwakePage() {
             一覧に戻る
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold tracking-tight">新規仕訳作成</h1>
+        <h1 className="text-3xl font-bold tracking-tight">仕訳作成</h1>
       </div>
 
       {/* 仕訳作成フォーム */}

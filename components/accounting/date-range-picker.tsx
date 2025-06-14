@@ -90,7 +90,7 @@ export function DateRangePicker({
               variant="outline"
               className="w-40 justify-start text-left font-normal"
             >
-              <CalendarIcon className="mr-2 h-4 w-4" />
+              <CalendarIcon className="h-4 w-4" />
               {from ? format(from, "yyyy/MM/dd", { locale: ja }) : "選択してください"}
             </Button>
           </PopoverTrigger>
@@ -114,7 +114,7 @@ export function DateRangePicker({
               variant="outline"
               className="w-40 justify-start text-left font-normal"
             >
-              <CalendarIcon className="mr-2 h-4 w-4" />
+              <CalendarIcon className="h-4 w-4" />
               {to ? format(to, "yyyy/MM/dd", { locale: ja }) : "選択してください"}
             </Button>
           </PopoverTrigger>

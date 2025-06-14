@@ -142,7 +142,7 @@ export default function JournalDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* ページヘッダー */}
       <div className="flex items-center gap-4">
         <Link href="/siwake">

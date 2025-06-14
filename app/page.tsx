@@ -22,13 +22,13 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
             <Link href="/siwake/new">
               <Button size="lg" className="px-8 py-6 text-lg shadow-lg hover:shadow-xl transition-all duration-300">
-                <FileText className="mr-2 h-5 w-5" />
+                <FileText className="h-5 w-5" />
                 仕訳を作成する
               </Button>
             </Link>
             <Link href="/siwake">
               <Button variant="outline" size="lg" className="px-8 py-6 text-lg shadow-lg hover:shadow-xl transition-all duration-300">
-                <BarChart3 className="mr-2 h-5 w-5" />
+                <BarChart3 className="h-5 w-5" />
                 仕訳を確認する
               </Button>
             </Link>

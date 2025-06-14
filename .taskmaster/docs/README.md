@@ -5,21 +5,30 @@
 Biz Clone は、日本の中小企業向けに開発された現代的な会計システムです。  
 複式簿記に基づく正確な会計処理と、使いやすいユーザーインターフェースを提供します。
 
-**このプロジェクトは[TaskMaster](https://github.com/taskmaster-ai/taskmaster)を使用してタスク管理を行っています。**
+**本プロジェクトでは [TaskMaster AI](https://github.com/taskmaster-ai/taskmaster) を核とした AI 支援開発手法を実践しており、効率的なタスク管理と継続的な品質向上を実現しています。**
 
 ## TaskMaster 開発ワークフロー
 
-### 1. 基本コマンド
+### 1. 基本コマンド（MCP 統合環境推奨）
 
 **Cursor/MCP 統合環境での推奨使用方法:**
 
-- TaskMaster の MCP サーバーを通じて、AI 支援による効率的な開発を実現
-- 詳細な使用方法は `.cursor/rules/taskmaster.mdc` を参照
+TaskMaster の MCP サーバーを通じて、以下のツールを Cursor IDE から直接使用できます：
 
-**CLI コマンド（フォールバック用）:**
+- `get_tasks` - タスク一覧表示
+- `next_task` - 次のタスク確認
+- `get_task` - タスクの詳細表示
+- `set_task_status` - タスクステータス更新
+- `expand_task` - 複雑なタスクの分解
+- `update_subtask` - 実装過程の記録
+- `analyze_project_complexity` - プロジェクト複雑度分析
+
+詳細な使用方法は `.cursor/rules/taskmaster.mdc` を参照してください。
+
+**CLI コマンド（フォールバック・直接操作用）:**
 
 ```bash
-# タスク一覧表示
+# プロジェクト状況確認
 task-master list
 
 # 次のタスク確認
@@ -33,34 +42,61 @@ task-master set-status --id=<task-id> --status=done
 
 # 複雑なタスクの分解
 task-master expand --id=<task-id> --research --force
+
+# 実装過程の記録
+task-master update-subtask --id=<subtask-id> --prompt="実装詳細..."
+
+# プロジェクト複雑度分析
+task-master analyze-complexity --research --threshold=6
 ```
 
 ### 2. 開発セッション開始時の標準手順
 
 1. **プロジェクト状況確認**
 
-   ```bash
-   task-master list
-   ```
+   - `get_tasks` ツールまたは `task-master list` で現在の状況を把握
+   - 完了済み、進行中、保留中のタスクを確認
 
 2. **次のタスク特定**
 
-   ```bash
-   task-master next
-   ```
+   - `next_task` ツールまたは `task-master next` で依存関係を考慮した最適なタスクを特定
+   - 前提条件が満たされているタスクを優先的に選択
 
-3. **タスクの詳細確認**
+3. **タスクの詳細分析**
 
-   ```bash
-   task-master show <task-id>
-   ```
+   - `get_task` ツールまたは `task-master show <task-id>` でタスクの詳細を確認
+   - 実装要件、テスト戦略、依存関係を理解
 
 4. **必要に応じてタスク分解**
-   ```bash
-   task-master expand --id=<task-id> --research --force
-   ```
 
-### 3. タスク管理の原則
+   - 複雑なタスクは `expand_task` ツールまたは `task-master expand --id=<task-id> --research --force` で分解
+   - 実装可能な単位まで細分化
+
+5. **実装過程の記録**
+   - `update_subtask` ツールまたは `task-master update-subtask` で実装の詳細を記録
+   - 学習内容、課題、解決策を継続的に蓄積
+
+### 3. TaskMaster 統合の利点
+
+#### 🎯 効率的なタスク管理
+
+- **自動タスク生成**: PRD から実装可能なタスク群を AI が自動生成
+- **複雑度分析**: 各タスクの複雑度を分析し、適切な分解レベルを提案
+- **依存関係管理**: タスク間の依存関係を自動で管理・可視化
+
+#### 🔄 継続的な品質向上
+
+- **実装記録**: 各サブタスクに実装過程を詳細に記録
+- **学習の蓄積**: 成功・失敗パターンを蓄積し、今後の開発に活用
+- **AI 支援レビュー**: 実装パターンの分析と改善提案
+
+#### 🚀 スケーラブルな開発
+
+- **一貫性の保持**: 統一された開発プロセスによる品質担保
+- **知識の共有**: 実装ノウハウの組織レベルでの蓄積
+- **効率的なオンボーディング**: 新メンバーへの効率的な知識伝達
+
+### 4. タスク管理の原則
 
 - **依存関係の遵守**: 前提タスクが完了してから次のタスクに着手
 - **適切な分解**: 複雑なタスクは実装可能な単位まで分解
@@ -73,11 +109,11 @@ task-master expand --id=<task-id> --research --force
 
 ### 📋 [01\_プロジェクト概要.md](./01_プロジェクト概要.md)
 
-- **内容**: プロジェクトの概要、技術スタック、主要機能
+- **内容**: プロジェクトの概要、技術スタック、主要機能、AI 支援開発プロセス
 - **対象読者**: 全ステークホルダー（開発者、PM、経営陣）
 - **重要度**: ⭐⭐⭐⭐⭐
 
-プロジェクトの全体像を理解するための出発点です。ビジネス要件と技術選択の背景を説明しています。
+プロジェクトの全体像を理解するための出発点です。ビジネス要件と技術選択の背景、TaskMaster 統合による開発効率化について説明しています。
 
 ### 🏗️ [02\_アーキテクチャ設計.md](./02_アーキテクチャ設計.md)
 
@@ -101,15 +137,15 @@ task-master expand --id=<task-id> --research --force
 - **対象読者**: フロントエンドエンジニア、UI/UX デザイナー
 - **重要度**: ⭐⭐⭐⭐
 
-React/Next.js を使用したモダンなフロントエンド構成と、会計システムに特化した画面設計を説明しています。
+Next.js 15 と React 19 を使用したモダンなフロントエンド構成と、会計システムに特化した画面設計を説明しています。
 
 ### ⚙️ [05\_バックエンド構造.md](./05_バックエンド構造.md)
 
-- **内容**: Service 層、Repository パターン、ビジネスロジック実装
+- **内容**: Server Actions、Repository パターン、ビジネスロジック実装
 - **対象読者**: バックエンドエンジニア
 - **重要度**: ⭐⭐⭐⭐⭐
 
-レイヤードアーキテクチャに基づくバックエンド実装の詳細。会計システム特有のビジネスルールとその実装方法を理解できます。
+Server Actions を使用した直接的なデータフローと、会計システム特有のビジネスルールとその実装方法を理解できます。
 
 ### 🧪 [06\_開発・テスト環境.md](./06_開発・テスト環境.md)
 
@@ -141,14 +177,14 @@ React/Next.js を使用したモダンなフロントエンド構成と、会計
 - **対象読者**: 全開発者
 - **重要度**: ⭐⭐⭐⭐⭐
 
-システム全体で使用する型定義の統一方針とベストプラクティス。2025 年 6 月の大型リファクタリングで確立された型システムを説明。
+システム全体で使用する型定義の統一方針とベストプラクティス。Prisma を基盤とした型システムの統一を説明。
 
 ## 技術スタック概要
 
 ```mermaid
 graph TB
     subgraph "Frontend (UI層)"
-        NEXT[Next.js 15]
+        NEXT[Next.js 15.3.3]
         REACT[React 19]
         TS[TypeScript]
         TAILWIND[Tailwind CSS]
@@ -165,10 +201,11 @@ graph TB
         POSTGRES[PostgreSQL]
     end
 
-    subgraph "Project Management"
+    subgraph "Development & Project Management"
         TASKMASTER[TaskMaster AI]
         MCP[MCP Integration]
         CURSOR[Cursor IDE]
+        PLAYWRIGHT[Playwright E2E]
     end
 
     NEXT --> ACTIONS
@@ -198,214 +235,171 @@ graph TB
 
 - **総勘定元帳**: 勘定科目別の取引履歴
 - **試算表**: 貸借対照表・損益計算書の基礎資料
-- **補助元帳**: 補助科目別の詳細履歴
 
-## 開発環境クイックスタート
-
-### 1. 基本環境構築
-
-```bash
-# 1. リポジトリクローン
-git clone <repository-url>
-cd biz-clone
-
-# 2. 依存関係インストール
-npm install
-
-# 3. 環境変数設定
-cp .env.example .env
-# .env ファイルを編集
-
-# 4. データベース初期化
-npx prisma generate
-npx prisma migrate dev
-
-# 5. 開発サーバー起動
-npm run dev
-```
-
-### 2. TaskMaster 初期設定
-
-```bash
-# TaskMaster プロジェクト初期化（初回のみ）
-task-master init
-
-# PRD解析によるタスク生成（初回のみ）
-task-master parse-prd --input='.taskmaster/docs/prd.txt' --research
-
-# 現在のタスク状況確認
-task-master list
-```
-
-### 3. AI モデル設定
-
-```bash
-# 対話式で AI モデルを設定
-task-master models --setup
-
-# 現在の設定確認
-task-master models
-```
-
-詳細な環境構築手順は [06\_開発・テスト環境.md](./06_開発・テスト環境.md) を参照してください。
-
-## プロジェクト構造
+## プロジェクト構成
 
 ```
-biz-clone/
-├── .taskmaster/             # TaskMaster 設定・タスク管理
-│   ├── config.json         # AI モデル・設定
-│   ├── tasks/              # タスクファイル
-│   ├── docs/               # プロジェクト設計ドキュメント
-│   └── reports/            # 複雑度分析レポート等
-├── app/                     # Next.js App Router (UI層)
-│   ├── actions/            # Server Actions (ビジネスロジック層)
-│   │   ├── accounts.ts     # 勘定科目操作
-│   │   ├── partners.ts     # 取引先操作
-│   │   └── analysis-codes.ts # 分析コード操作
-│   ├── master/             # マスタ管理画面
-│   │   ├── accounts/       # 勘定科目管理
-│   │   ├── partners/       # 取引先管理
-│   │   └── analysis-codes/ # 分析コード管理
-│   └── siwake/             # 仕訳関連画面
-├── components/             # UI コンポーネント (UI層)
-│   ├── ui/                 # 基本 UI コンポーネント
-│   ├── accounting/         # 会計特化コンポーネント
-│   └── layout/             # レイアウトコンポーネント
-├── lib/                    # ユーティリティ・データベース層
-│   ├── database/           # Prismaクライアント (Database層)
-│   ├── schemas/            # Zodバリデーションスキーマ
-│   └── utils/              # ユーティリティ関数
-├── types/                  # 統一TypeScript型定義
-├── prisma/                 # データベーススキーマ・マイグレーション
-└── __tests__/              # テストファイル
+.
+├── .cursor/                 # Cursor IDE設定
+│   ├── rules/              # 開発ルール・規約
+│   └── mcp.json            # MCP設定
+├── .taskmaster/            # TaskMaster設定・データ
+│   ├── config.json         # AI設定・プロジェクト設定
+│   ├── docs/               # プロジェクトドキュメント
+│   ├── tasks/              # タスクデータ
+│   ├── reports/            # 分析レポート
+│   └── templates/          # テンプレート
+├── app/                    # Next.js App Router
+│   ├── (dashboard)/        # ダッシュボード関連
+│   ├── siwake/            # 仕訳機能
+│   ├── master/            # マスタ管理
+│   └── components/        # 共通コンポーネント
+├── lib/                   # 共通ライブラリ
+│   ├── actions/           # Server Actions
+│   ├── schemas/           # Zod schemas
+│   ├── types/             # TypeScript型定義
+│   └── utils/             # ユーティリティ
+├── prisma/                # データベース
+│   ├── schema.prisma      # Prismaスキーマ
+│   └── migrations/        # マイグレーション
+└── tests/                 # テストファイル
+    ├── e2e/               # E2Eテスト
+    └── unit/              # 単体テスト
 ```
 
 ## 開発フロー
 
-### TaskMaster 統合開発フロー
+### TaskMaster 統合開発フロー（推奨）
 
-1. **セッション開始**
+1. **プロジェクト初期化**
 
-   - `task-master list` で現在の状況確認
-   - `task-master next` で次のタスク特定
+   ```bash
+   task-master init --name="Biz Clone" --description="会計システム"
+   ```
 
-2. **タスク分析**
+2. **タスク生成**
 
-   - `task-master show <id>` で詳細確認
-   - 必要に応じて `task-master expand --id=<id> --research --force` で分解
+   ```bash
+   task-master parse-prd --input='.taskmaster/docs/prd.txt' --research
+   ```
 
-3. **実装**
+3. **開発サイクル**
 
-   - サブタスクに実装過程を詳細記録
-   - `task-master update-subtask --id=<subtask-id> --prompt='実装詳細...'`
+   - タスク確認: `task-master next`
+   - 実装: コード作成 + 実装記録
+   - 完了: `task-master set-status --id=<id> --status=done`
 
-4. **完了処理**
-   - `task-master set-status --id=<id> --status=done`
-   - 関連タスク更新時は `task-master update --from=<id> --prompt='変更内容...'`
-
-### 従来開発フロー（参考）
-
-1. **要件分析** → [01\_プロジェクト概要.md](./01_プロジェクト概要.md)
-2. **設計** → [02\_アーキテクチャ設計.md](./02_アーキテクチャ設計.md), [03\_データベース設計.md](./03_データベース設計.md)
-3. **実装** → [04\_フロントエンド構造.md](./04_フロントエンド構造.md), [05\_バックエンド構造.md](./05_バックエンド構造.md)
-4. **品質保証** → [06\_開発・テスト環境.md](./06_開発・テスト環境.md), [08\_コーディング規約.md](./08_コーディング規約.md)
-5. **運用** → [07\_運用・保守.md](./07_運用・保守.md)
-
-## 貢献ガイド
-
-### 新機能開発
-
-1. **TaskMaster によるタスク管理**
-
-   - 新機能要求を `task-master add-task --prompt="機能詳細" --research` でタスク化
+4. **品質管理**
    - 複雑度分析: `task-master analyze-complexity --research`
-   - タスク分解: `task-master expand --id=<id> --research --force`
+   - テスト実行: `npm run test`
+   - 型チェック: `npm run type-check`
 
-2. **設計・実装**
-   - [02\_アーキテクチャ設計.md](./02_アーキテクチャ設計.md) の設計原則に従う
-   - [08\_コーディング規約.md](./08_コーディング規約.md) のコーディング規約を遵守
-   - [06\_開発・テスト環境.md](./06_開発・テスト環境.md) のテスト戦略に基づくテスト作成
+### 従来の開発フロー（フォールバック）
 
-### バグ修正
+1. **環境セットアップ**
 
-1. **TaskMaster によるバグ管理**
+   ```bash
+   npm install
+   npx prisma migrate dev
+   ```
 
-   - バグ報告を `task-master add-task --prompt="バグ詳細と修正方針" --priority=high` でタスク化
-   - 関連タスクの依存関係設定: `task-master add-dependency --id=<new-id> --depends-on=<blocking-id>`
+2. **開発サーバー起動**
 
-2. **修正プロセス**
-   - [07\_運用・保守.md](./07_運用・保守.md) の障害対応フローに従う
-   - 根本原因の調査と再発防止策の検討
-   - 必要に応じて設計ドキュメントの更新
+   ```bash
+   npm run dev
+   ```
 
-### ドキュメント更新
+3. **機能開発**
+   - 要件定義 → 設計 → 実装 → テスト → レビュー
 
-- **自動化されたタスク管理**: TaskMaster により実装とドキュメントの整合性を維持
-- **継続的改善**: 新しいパターンやベストプラクティスが確立された場合は、規約に反映
-- **実装優先**: 実装と乖離が生じた場合は、速やかにドキュメントを更新
+## セットアップ手順
 
-## よくある質問
-
-### Q: TaskMaster の基本的な使い方を教えてください
-
-A: [TaskMaster 公式ドキュメント](https://github.com/taskmaster-ai/taskmaster) と `.cursor/rules/taskmaster.mdc` を参照してください。基本的なワークフローは以下の通りです：
+### 1. 基本環境構築
 
 ```bash
-# 1. 現在の状況確認
-task-master list
+# リポジトリクローン
+git clone <repository-url>
+cd biz-clone
 
-# 2. 次のタスク確認
-task-master next
+# 依存関係インストール
+npm install
 
-# 3. タスク詳細表示
-task-master show <task-id>
-
-# 4. 必要に応じてタスク分解
-task-master expand --id=<task-id> --research --force
+# 環境変数設定
+cp .env.example .env
+# .env ファイルを編集
 ```
 
-### Q: 新しい勘定科目タイプを追加したい
+### 2. TaskMaster 初期化
 
-A: 以下の手順で進めてください：
+```bash
+# TaskMasterインストール（グローバル）
+npm install -g task-master-ai
 
-1. `task-master add-task --prompt="新しい勘定科目タイプ: [具体的な要件]" --research` でタスク作成
-2. [03\_データベース設計.md](./03_データベース設計.md) の Account テーブル仕様を確認
-3. [05\_バックエンド構造.md](./05_バックエンド構造.md) のバリデーションロジックを参照して実装
+# プロジェクト初期化
+task-master init --name="Biz Clone" --description="会計システム"
 
-### Q: 新しい画面を追加したい
+# AI設定
+task-master models --setup
 
-A: TaskMaster を使用した開発手順：
+# タスク生成
+task-master parse-prd --input='.taskmaster/docs/prd.txt' --research
+```
 
-1. `task-master add-task --prompt="新画面追加: [画面名と要件]" --research` でタスク作成
-2. 複雑度分析: `task-master analyze-complexity --research`
-3. タスク分解: `task-master expand --id=<task-id> --research --force`
-4. [04\_フロントエンド構造.md](./04_フロントエンド構造.md) のページ構成とコンポーネント設計パターンに従って実装
+### 3. データベースセットアップ
 
-### Q: パフォーマンス問題が発生している
+```bash
+# Prismaクライアント生成
+npx prisma generate
 
-A: TaskMaster によるシステマティックな対応：
+# データベースマイグレーション
+npx prisma migrate dev
 
-1. `task-master add-task --prompt="パフォーマンス問題調査・修正: [具体的な症状]" --priority=high --research` でタスク作成
-2. [07\_運用・保守.md](./07_運用・保守.md) のモニタリング・パフォーマンス最適化セクションを参照
-3. 実装過程をサブタスクに詳細記録
+# 開発サーバー起動
+npm run dev
+```
 
-### Q: テストケースの書き方がわからない
+## FAQ
 
-A: [06\_開発・テスト環境.md](./06_開発・テスト環境.md) のテスト戦略と [08\_コーディング規約.md](./08_コーディング規約.md) のテスト規約を参照してください。
+### Q: TaskMaster の利用に API キーは必要ですか？
 
-## ライセンス
+A: はい。使用する AI プロバイダーの API キーが必要です：
 
-本プロジェクトは [MIT License](../LICENSE) の下で公開されています。
+- **Anthropic**: Claude 3.5 Sonnet（メイン）
+- **Perplexity**: Sonar Pro（リサーチ）
+- **Google**: Gemini（高速処理）
+
+詳細は `.env.example` を参照してください。
+
+### Q: Cursor IDE なしでも開発できますか？
+
+A: はい。TaskMaster CLI を使用することで、VS Code など他のエディターでも開発可能です。ただし、MCP 統合による効率化の恩恵は受けられません。
+
+### Q: 既存のタスクを修正したい場合は？
+
+A: 以下の方法で修正できます：
+
+- `task-master update-task --id=<id> --prompt="修正内容"`
+- `task-master expand --id=<id> --force` （サブタスクの再生成）
+- 直接 `.taskmaster/tasks/tasks.json` を編集（非推奨）
+
+### Q: 複雑度分析の閾値はどう設定すべきですか？
+
+A: 一般的に：
+
+- **閾値 6-7**: 中程度の複雑度（通常の分解推奨）
+- **閾値 8-9**: 高複雑度（必須分解）
+- **閾値 10**: 非常に高い複雑度（詳細な分解が必要）
+
+### Q: TaskMaster の学習データはどこに保存されますか？
+
+A: 以下の場所に保存されます：
+
+- **タスクデータ**: `.taskmaster/tasks/`
+- **分析レポート**: `.taskmaster/reports/`
+- **実装記録**: 各サブタスクの `details` フィールド
 
 ## 更新履歴
 
-| 日付       | バージョン | 内容                                                                                                       |
-| ---------- | ---------- | ---------------------------------------------------------------------------------------------------------- |
-| 2025-01-21 | 2.0.0      | TaskMaster 統合、AI 支援開発ワークフロー導入                                                               |
-| 2025-06-12 | 1.2.0      | 型システム統一、ユニークチェック機能、ダイアログシステム統一、エラートーストシステム、消費税計算機能の実装 |
-| 2025-01-09 | 1.0.0      | 初版設計ドキュメント作成                                                                                   |
-
----
-
-📚 **Note**: このドキュメントは living document として、プロジェクトの進行に合わせて継続的に更新されます。TaskMaster による自動化されたタスク管理により、実装とドキュメントの整合性が保たれています。最新の情報については、各ドキュメントの更新日時を確認してください。
+- **2025 年 1 月 21 日**: TaskMaster AI 統合による開発プロセスの最適化を完了
+- **2024 年**: 基本的な会計システム機能の実装
+- **2023 年**: プロジェクト開始・技術選定

@@ -140,7 +140,7 @@ export function BalanceMonitor({
               disabled={disabled || isSubmitting || (!hasDetails)}
               className="min-w-[80px]"
             >
-              <RefreshCw className="h-3 w-3 mr-1" />
+              <RefreshCw className="h-3 w-3" />
               リセット
             </Button>
 
@@ -156,12 +156,12 @@ export function BalanceMonitor({
             >
               {isSubmitting ? (
                 <>
-                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                  <RefreshCw className="h-3 w-3 animate-spin" />
                   保存中...
                 </>
               ) : (
                 <>
-                  <Save className="h-3 w-3 mr-1" />
+                  <Save className="h-3 w-3" />
                   仕訳を保存
                 </>
               )}
@@ -178,7 +178,7 @@ export function BalanceMonitor({
                 disabled={disabled}
                 className="min-w-[80px]"
               >
-                <Edit className="h-3 w-3 mr-1" />
+                <Edit className="h-3 w-3" />
                 更新
               </Button>
             )}
@@ -192,7 +192,7 @@ export function BalanceMonitor({
                 disabled={disabled}
                 className="min-w-[80px]"
               >
-                <Trash2 className="h-3 w-3 mr-1" />
+                <Trash2 className="h-3 w-3" />
                 削除
               </Button>
             )}

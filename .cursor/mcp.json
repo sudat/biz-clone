@@ -1,15 +1,3 @@
 {
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp"]
-    },
-    "taskmaster-ai": {
-      "command": "npx",
-      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
-      "env": {
-        "GOOGLE_API_KEY": "AIzaSyD55YlGMlg3HL51ql8Dtk96h15x6hua3rU"
-      }
-    }
-  }
+  "mcpServers": {}
 }

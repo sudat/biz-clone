@@ -132,7 +132,7 @@ export function MasterDataSearch({
           <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" className="relative">
-                <Filter className="h-4 w-4 mr-2" />
+                <Filter className="h-4 w-4" />
                 フィルタ
                 {activeFilterCount > 0 && (
                   <Badge

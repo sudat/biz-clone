@@ -28,7 +28,7 @@ export default function NotFound() {
           <div className="grid grid-cols-1 gap-2">
             <Link href="/siwake">
               <Button className="w-full">
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="h-4 w-4" />
                 仕訳一覧に戻る
               </Button>
             </Link>

@@ -28,19 +28,19 @@ export default function NotFoundPage() {
           <div className="grid grid-cols-1 gap-2">
             <Link href="/">
               <Button className="w-full">
-                <Home className="h-4 w-4 mr-2" />
+                <Home className="h-4 w-4" />
                 ホームに戻る
               </Button>
             </Link>
             <Link href="/siwake">
               <Button variant="outline" className="w-full">
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="h-4 w-4" />
                 仕訳一覧
               </Button>
             </Link>
             <Link href="/siwake/new">
               <Button variant="outline" className="w-full">
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4" />
                 新規仕訳作成
               </Button>
             </Link>

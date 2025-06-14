@@ -377,7 +377,7 @@ export function AccountMasterList() {
                         <div className="flex items-center">
                           <span style={{ marginLeft: `${depth * 10}px` }}>
                             {depth > 0 && (
-                              <span className="text-muted-foreground mr-1">
+                              <span className="text-muted-foreground">
                                 └{" "}
                               </span>
                             )}

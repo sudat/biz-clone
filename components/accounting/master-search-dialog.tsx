@@ -305,7 +305,7 @@ export function MasterSearchDialog({
                         >
                           {selectedCode === item.code ? (
                             <>
-                              <Check className="h-4 w-4 mr-1" />
+                              <Check className="h-4 w-4" />
                               {COMMON_TEXTS.selected}
                             </>
                           ) : (

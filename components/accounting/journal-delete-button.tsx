@@ -61,7 +61,7 @@ export function JournalDeleteButton({
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button variant="destructive" disabled={isDeleting}>
-          <Trash2 className="h-4 w-4 mr-2" />
+          <Trash2 className="h-4 w-4" />
           {isDeleting ? "削除中..." : "削除"}
         </Button>
       </AlertDialogTrigger>

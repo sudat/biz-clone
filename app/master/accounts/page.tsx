@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { Header } from "@/components/layout/header";
 import { AccountMasterList } from "@/components/accounting/account-master-list";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -31,9 +30,7 @@ export default function AccountMasterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
-      <Header />
-      <main className="container mx-auto px-8 py-8 space-y-4 max-w-7xl">
+    <main className="space-y-4">
         {/* ページヘッダー */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-card/40 backdrop-blur-sm rounded-xl p-6 shadow-md border">
           <div className="space-y-2">
@@ -48,7 +45,7 @@ export default function AccountMasterPage() {
             onClick={() => setIsCreateDialogOpen(true)}
             className="px-6 py-2 shadow-md hover:shadow-lg transition-all duration-300"
           >
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="h-4 w-4" />
             新規作成
           </Button>
         </div>
@@ -93,7 +90,6 @@ export default function AccountMasterPage() {
             />
           </DialogContent>
         </Dialog>
-      </main>
-    </div>
+    </main>
   );
 }

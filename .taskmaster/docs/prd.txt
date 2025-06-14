@@ -1,8 +1,8 @@
 # 会計システム PRD（Product Requirements Document）
 
 ## プロジェクト概要
-Next.jsベースの会計システムを構築する。主な機能は仕訳の作成、照会、更新である。
-TaskMaster AIを活用したAI支援開発手法により効率的な開発を行う。
+Next.js ベースの会計システムを構築する。主な機能は仕訳の作成、照会、更新である。
+TaskMaster AI を活用した AI 支援開発手法により効率的な開発を行う。
 
 ## システム要件
 
@@ -11,8 +11,15 @@ TaskMaster AIを活用したAI支援開発手法により効率的な開発を�
 - **UI**: React 19, TypeScript, Tailwind CSS, Shadcn/UI
 - **バックエンド**: Server Actions, Zod バリデーション
 - **データベース**: PostgreSQL + Prisma ORM
-- **開発支援**: TaskMaster AI, Cursor IDE, MCP統合
+- **開発支援**: TaskMaster AI, Cursor IDE, MCP 統合
 - **テスト**: Playwright (E2E), Jest (Unit)
+
+### TaskMaster 統合開発要件
+- **自動タスク生成**: 本 PRD から実装可能なタスク群を AI が自動生成
+- **複雑度分析**: 各タスクの複雑度を分析し、適切な分解レベルを提案
+- **依存関係管理**: タスク間の依存関係を自動で管理・可視化
+- **実装記録**: 各サブタスクに実装過程を詳細に記録し、学習効果を最大化
+- **品質向上**: AI 支援による実装パターンの分析と改善提案
 
 ### 全体レイアウト
 - 最上部にトップレベルメニューを配置（初期はBizメニューのみ）
@@ -32,11 +39,11 @@ TaskMaster AIを活用したAI支援開発手法により効率的な開発を�
 
 **伝票ヘッダ部:**
 - 仕訳計上日（必須、日付ピッカー対応）
-- 伝票摘要（任意、200文字まで）
+- 伝票摘要（任意、200 文字まで）
 - 仕訳番号（表示のみ、初期は空欄、保存時自動採番）
 
 **仕訳入力欄:**
-- 借方（左側）と貸方（右側）の2列構成
+- 借方（左側）と貸方（右側）の 2 列構成
 - 入力項目：
   - 勘定科目コード（必須、コード入力またはドロップダウン選択）
   - 勘定科目名（自動表示、編集不可）
@@ -45,26 +52,27 @@ TaskMaster AIを活用したAI支援開発手法により効率的な開発を�
   - 取引先コード（任意、コード入力またはドロップダウン選択）
   - 取引先名（自動表示、編集不可）
   - 分析コード（任意、プロジェクト・部門等の管理）
-  - 明細摘要（任意、100文字まで）
-  - 金額（必須、数値入力、3桁区切り表示）
+  - 明細摘要（任意、100 文字まで）
+  - 金額（必須、数値入力、3 桁区切り表示）
 
 **仕訳行表示欄:**
-- 複数行の仕訳を1行目、2行目、3行目として表示
+- 複数行の仕訳を 1 行目、2 行目、3 行目として表示
 - 表示項目：勘定科目名・コード、補助科目名・コード、取引先名、金額
 - 借方合計・貸方合計の自動計算・表示
 - 貸借バランスチェック機能
 
 **バリデーション機能:**
-- 貸借の金額バランスチェック
-- 必須項目の入力チェック
-- 勘定科目コードの存在チェック
+- 貸借の金額バランスチェック（Zod スキーマによる厳密な検証）
+- 必須項目の入力チェック（TypeScript 型レベルでの保証）
+- 勘定科目コードの存在チェック（Prisma による DB 制約）
 - 金額の妥当性チェック（負の値、過大値の防止）
+- リアルタイムバリデーション（入力時の即座フィードバック）
 
 **保存機能:**
-- 保存ボタン押下で仕訳データを保存
-- 仕訳番号をYYYYMMDDxxxxxxx形式で自動採番（xxxxxxxはインクリメント）
-- 保存成功時は確認メッセージ表示
-- エラー時は具体的なエラーメッセージ表示
+- 保存ボタン押下で仕訳データを保存（Server Actions による処理）
+- 仕訳番号を YYYYMMDDXXXXXXX 形式で自動採番（XXXXXXX はインクリメント）
+- 保存成功時は確認メッセージ表示（Toast 通知）
+- エラー時は具体的なエラーメッセージ表示（フィールド単位のエラー表示）
 
 #### 2. 仕訳照会ページ (URL: /siwake/[仕訳番号])
 **画面構成:**
@@ -156,89 +164,179 @@ TaskMaster AIを活用したAI支援開発手法により効率的な開発を�
 ## データ構造
 
 ### 仕訳テーブル (Journal)
-- id (UUID, PK)
-- journalNumber (String, Unique) - 仕訳番号
-- journalDate (Date) - 仕訳計上日
-- description (String, Optional) - 伝票摘要
-- totalAmount (Decimal) - 合計金額
-- status (Enum) - ステータス（下書き、確定、削除）
-- createdAt (DateTime)
-- updatedAt (DateTime)
-- createdBy (String) - 作成者
-- updatedBy (String) - 更新者
+```prisma
+model Journal {
+  id            String   @id @default(cuid())
+  journalNumber String   @unique // 仕訳番号 (YYYYMMDDXXXXXXX)
+  journalDate   DateTime // 仕訳計上日
+  description   String?  // 伝票摘要 (200文字まで)
+  totalAmount   Decimal  // 合計金額
+  status        JournalStatus @default(DRAFT) // ステータス
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String   // 作成者
+  updatedBy     String   // 更新者
+  
+  // リレーション
+  entries       JournalEntry[]
+  
+  @@map("journals")
+}
+
+enum JournalStatus {
+  DRAFT     // 下書き
+  CONFIRMED // 確定
+  DELETED   // 削除
+}
+```
 
 ### 仕訳明細テーブル (JournalEntry)
-- id (UUID, PK)
-- journalId (UUID, FK) - 仕訳ID
-- lineNumber (Integer) - 行番号
-- debitCredit (Enum) - 借方・貸方区分
-- accountId (UUID, FK) - 勘定科目ID
-- subAccountId (UUID, FK, Optional) - 補助科目ID
-- partnerId (UUID, FK, Optional) - 取引先ID
-- analysisCodeId (UUID, FK, Optional) - 分析コードID
-- description (String, Optional) - 明細摘要
-- amount (Decimal) - 金額
-- createdAt (DateTime)
-- updatedAt (DateTime)
+```prisma
+model JournalEntry {
+  id             String      @id @default(cuid())
+  journalId      String      // 仕訳ID
+  lineNumber     Int         // 行番号
+  debitCredit    DebitCredit // 借方・貸方区分
+  accountId      String      // 勘定科目ID
+  subAccountId   String?     // 補助科目ID
+  partnerId      String?     // 取引先ID
+  analysisCodeId String?     // 分析コードID
+  description    String?     // 明細摘要 (100文字まで)
+  amount         Decimal     // 金額
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  
+  // リレーション
+  journal       Journal      @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  account       Account      @relation(fields: [accountId], references: [id])
+  subAccount    SubAccount?  @relation(fields: [subAccountId], references: [id])
+  partner       Partner?     @relation(fields: [partnerId], references: [id])
+  analysisCode  AnalysisCode? @relation(fields: [analysisCodeId], references: [id])
+  
+  @@map("journal_entries")
+}
+
+enum DebitCredit {
+  DEBIT  // 借方
+  CREDIT // 貸方
+}
+```
 
 ### 勘定科目マスタ (Account)
-- id (UUID, PK)
-- accountCode (String, Unique) - 勘定科目コード
-- accountName (String) - 勘定科目名
-- accountType (Enum) - 科目タイプ
-- parentId (UUID, FK, Optional) - 親科目ID
-- level (Integer) - 階層レベル
-- isDetail (Boolean) - 明細科目フラグ
-- isActive (Boolean) - 有効フラグ
-- sortOrder (Integer) - 表示順序
-- createdAt (DateTime)
-- updatedAt (DateTime)
+```prisma
+model Account {
+  id          String      @id @default(cuid())
+  accountCode String      @unique // 勘定科目コード (3-10文字)
+  accountName String      // 勘定科目名
+  accountType AccountType // 科目タイプ
+  parentId    String?     // 親科目ID
+  level       Int         // 階層レベル (1-5)
+  isDetail    Boolean     // 明細科目フラグ
+  isActive    Boolean     @default(true) // 有効フラグ
+  sortOrder   Int         // 表示順序
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // リレーション
+  parent       Account?        @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children     Account[]       @relation("AccountHierarchy")
+  subAccounts  SubAccount[]
+  journalEntries JournalEntry[]
+  
+  @@map("accounts")
+}
+
+enum AccountType {
+  ASSET     // 資産
+  LIABILITY // 負債
+  EQUITY    // 純資産
+  REVENUE   // 収益
+  EXPENSE   // 費用
+}
+```
 
 ### 取引先マスタ (Partner)
-- id (UUID, PK)
-- partnerCode (String, Unique) - 取引先コード
-- partnerName (String) - 取引先名
-- partnerType (Enum) - 取引先分類
-- contactInfo (JSON, Optional) - 連絡先情報
-- isActive (Boolean) - 有効フラグ
-- createdAt (DateTime)
-- updatedAt (DateTime)
+```prisma
+model Partner {
+  id          String      @id @default(cuid())
+  partnerCode String      @unique // 取引先コード
+  partnerName String      // 取引先名
+  partnerType PartnerType // 取引先分類
+  isActive    Boolean     @default(true) // 有効フラグ
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // リレーション
+  journalEntries JournalEntry[]
+  
+  @@map("partners")
+}
+
+enum PartnerType {
+  CUSTOMER // 得意先
+  VENDOR   // 仕入先
+  OTHER    // その他
+}
+```
 
 ### 補助科目マスタ (SubAccount)
-- id (UUID, PK)
-- subAccountCode (String) - 補助科目コード
-- subAccountName (String) - 補助科目名
-- accountId (UUID, FK) - 親勘定科目ID
-- isActive (Boolean) - 有効フラグ
-- sortOrder (Integer) - 表示順序
-- createdAt (DateTime)
-- updatedAt (DateTime)
+```prisma
+model SubAccount {
+  id             String   @id @default(cuid())
+  subAccountCode String   // 補助科目コード
+  subAccountName String   // 補助科目名
+  accountId      String   // 親勘定科目ID
+  isActive       Boolean  @default(true) // 有効フラグ
+  sortOrder      Int      // 表示順序
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // リレーション
+  account        Account        @relation(fields: [accountId], references: [id])
+  journalEntries JournalEntry[]
+  
+  @@unique([accountId, subAccountCode])
+  @@map("sub_accounts")
+}
+```
 
 ### 分析コードマスタ (AnalysisCode)
-- id (UUID, PK)
-- analysisCode (String, Unique) - 分析コード
-- analysisName (String) - 分析名称
-- analysisType (Enum) - 分析タイプ（部門、プロジェクト等）
-- isActive (Boolean) - 有効フラグ
-- createdAt (DateTime)
-- updatedAt (DateTime)
+```prisma
+model AnalysisCode {
+  id               String   @id @default(cuid())
+  analysisCodeType String   // 分析コード種別 (部門、プロジェクト等)
+  analysisCode     String   // 分析コード
+  analysisName     String   // 分析コード名
+  isActive         Boolean  @default(true) // 有効フラグ
+  sortOrder        Int      // 表示順序
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // リレーション
+  journalEntries   JournalEntry[]
+  
+  @@unique([analysisCodeType, analysisCode])
+  @@map("analysis_codes")
+}
+```
 
-## TaskMaster統合開発要件
 
-### AI支援開発プロセス
-- **タスク自動生成**: 本PRDからTaskMasterが実装タスクを自動生成
+## TaskMaster 統合開発要件
+
+### AI 支援開発プロセス
+- **タスク自動生成**: 本 PRD から TaskMaster が実装タスクを自動生成
 - **複雑度分析**: 各機能の実装複雑度を分析し、適切な分解を実施
 - **依存関係管理**: 機能間の依存関係を自動管理
 - **進捗追跡**: 実装進捗をリアルタイムで追跡
 
 ### 品質管理要件
 - **実装パターン学習**: 過去の実装から最適パターンを学習・適用
-- **コードレビュー支援**: AI支援によるコード品質チェック
+- **コードレビュー支援**: AI 支援によるコード品質チェック
 - **テストケース生成**: 機能に応じたテストケースの自動生成提案
 - **ドキュメント同期**: 実装とドキュメントの自動整合性維持
 
 ### 開発環境統合
-- **Cursor IDE**: MCP統合によるシームレスなAI支援
+- **Cursor IDE**: MCP 統合によるシームレスな AI 支援
 - **自動化ワークフロー**: コミット、テスト、デプロイの自動化
 - **品質メトリクス**: コード品質、テストカバレッジの継続監視
 
@@ -264,50 +362,78 @@ TaskMaster AIを活用したAI支援開発手法により効率的な開発を�
 
 ## 実装優先順位
 
-### Phase 1（基盤構築）
-1. プロジェクト初期化・環境構築
-2. データベース設計・マイグレーション
-3. 基本認証機能
-4. マスタ管理機能（勘定科目、取引先）
+### Phase 1: 基盤構築（TaskMaster 統合）
+1. **TaskMaster プロジェクト初期化**
+   - `task-master init` による基本構造作成
+   - 本 PRD からの自動タスク生成 (`task-master parse-prd`)
+   - 複雑度分析による実装計画策定
+2. **開発環境構築**
+   - Next.js 15.3.3 + React 19 セットアップ
+   - Prisma + PostgreSQL 環境構築
+   - Cursor IDE + MCP 統合設定
+3. **データベース設計**
+   - Prisma スキーマ作成（上記データ構造に基づく）
+   - マイグレーション実行
+   - 初期マスタデータ投入
 
-### Phase 2（核心機能）
-1. 仕訳作成機能
-2. 仕訳照会・更新機能
-3. 基本バリデーション
-4. エラーハンドリング
+### Phase 2: 基本機能（AI 支援実装）
+1. **マスタ管理機能**
+   - 勘定科目マスタ CRUD（Server Actions + Zod バリデーション）
+   - 取引先マスタ CRUD
+   - 補助科目・分析コードマスタ CRUD
+2. **仕訳作成機能**
+   - 仕訳入力フォーム（Shadcn/UI コンポーネント）
+   - リアルタイムバリデーション
+   - 貸借バランスチェック
+   - 自動採番機能
 
-### Phase 3（拡張機能）
-1. 仕訳検索・一覧機能
-2. 補助科目・分析コード機能
-3. 高度なバリデーション
-4. レポート機能（基本）
+### Phase 3: 拡張機能（品質向上）
+1. **仕訳照会・検索機能**
+   - 仕訳一覧表示（ページネーション対応）
+   - 高度な検索・フィルタリング
+   - ソート機能
+2. **UI/UX 改善**
+   - レスポンシブデザイン対応
+   - アクセシビリティ向上
+   - パフォーマンス最適化
 
-### Phase 4（品質向上）
-1. パフォーマンス最適化
-2. セキュリティ強化
-3. ユーザビリティ改善
-4. 運用監視機能
+### Phase 4: 運用・保守（継続的改善）
+1. **テスト・品質保証**
+   - Unit テスト（Jest）
+   - E2E テスト（Playwright）
+   - TaskMaster 統合テスト
+2. **運用機能**
+   - ログ機能・監査証跡
+   - エラーハンドリング強化
+   - セキュリティ対策
 
 ## 成功指標
 
 ### 技術指標
-- **開発速度**: TaskMaster活用による30%の開発効率向上
-- **品質指標**: バグ発生率10%以下
-- **テストカバレッジ**: 90%以上維持
-- **パフォーマンス**: 全画面2秒以内の初期表示
+- **開発速度**: TaskMaster 活用による 30% の開発効率向上
+- **品質指標**: バグ発生率 10% 以下
+- **テストカバレッジ**: 90% 以上維持
+- **パフォーマンス**: 全画面 2 秒以内の初期表示
 
 ### ビジネス指標
-- **ユーザー満足度**: 4.0/5.0以上
-- **操作習得時間**: 新規ユーザー30分以内
-- **データ正確性**: 仕訳エラー率0.1%以下
-- **システム稼働率**: 99.9%以上
+- **ユーザー満足度**: 4.0/5.0 以上
+- **操作習得時間**: 新規ユーザー 30 分以内
+- **データ正確性**: 仕訳エラー率 0.1% 以下
+- **システム稼働率**: 99.9% 以上
+
+### TaskMaster 統合効果指標
+- **タスク自動生成精度**: 手動修正率 20% 以下
+- **実装時間短縮**: 従来比 40% 削減
+- **コード品質向上**: 静的解析スコア 8.5/10 以上
+- **学習効果**: 開発者スキル向上度 30% 向上
 
 ## 制約事項・前提条件
 
 ### 技術制約
-- PostgreSQL 15以上必須
-- Node.js 20以上必須
-- モダンブラウザ対応（IE11非対応）
+- PostgreSQL 15 以上必須
+- Node.js 20 以上必須
+- モダンブラウザ対応（IE11 非対応）
+- TaskMaster AI 利用のため各種 API キー必須
 
 ### ビジネス制約
 - 日本の会計基準準拠
@@ -317,4 +443,5 @@ TaskMaster AIを活用したAI支援開発手法により効率的な開発を�
 ### 運用制約
 - 月次バックアップ必須
 - セキュリティアップデート即座適用
-- 利用ログの保管義務（3年間） 
+- 利用ログの保管義務（3 年間）
+- TaskMaster 設定ファイルのバージョン管理必須 

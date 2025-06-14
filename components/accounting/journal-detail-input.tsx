@@ -440,7 +440,7 @@ export function JournalDetailInput({
                 config.buttonColor
               )}
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               {config.title}明細を追加
             </Button>
           )}

@@ -52,12 +52,12 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-2">
             <Button onClick={reset} className="w-full">
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-4 w-4" />
               再試行
             </Button>
             <Link href="/">
               <Button variant="outline" className="w-full">
-                <Home className="h-4 w-4 mr-2" />
+                <Home className="h-4 w-4" />
                 ホームに戻る
               </Button>
             </Link>
