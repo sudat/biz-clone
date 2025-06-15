@@ -13,7 +13,7 @@ import { prisma } from "@/lib/database/prisma";
 export interface MasterSearchResult {
   code: string;
   name: string;
-  type: 'account' | 'subAccount' | 'partner' | 'analysisCode';
+  type: 'account' | 'subAccount' | 'partner' | 'analysisCode' | 'role';
 }
 
 // 勘定科目検索
@@ -292,6 +292,30 @@ export async function getAllAnalysisCodes(): Promise<MasterSearchResult[]> {
     }));
   } catch (error) {
     console.error('全分析コード取得エラー:', error);
+    return [];
+  }
+}
+
+// 全ロール取得
+export async function getAllRoles(): Promise<MasterSearchResult[]> {
+  try {
+    const roles = await prisma.role.findMany({
+      where: {
+        isActive: true  // 有効なロールのみ
+      },
+      orderBy: [
+        { sortOrder: 'asc' },
+        { roleCode: 'asc' }
+      ]
+    });
+
+    return roles.map(role => ({
+      code: role.roleCode,
+      name: role.roleName,
+      type: 'role' as const
+    }));
+  } catch (error) {
+    console.error('全ロール取得エラー:', error);
     return [];
   }
 }

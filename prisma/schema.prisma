@@ -146,6 +146,42 @@ model TaxRate {
   @@map("tax_rates")
 }
 
+// ロールマスタ
+model Role {
+  roleCode    String   @id @db.VarChar(20)
+  roleName    String   @db.VarChar(100)
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  sortOrder   Int?
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // 関係
+  users User[]
+
+  @@map("roles")
+}
+
+// ユーザマスタ
+model User {
+  userId       String   @id @db.Uuid @default(dbgenerated("gen_random_uuid()"))
+  userCode     String   @unique @db.VarChar(20)
+  userName     String   @db.VarChar(100)
+  userKana     String?  @db.VarChar(100)
+  email        String   @unique @db.VarChar(100)
+  passwordHash String   @db.VarChar(255)
+  roleCode     String   @db.VarChar(20)
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime? @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // 関係
+  role Role @relation(fields: [roleCode], references: [roleCode])
+
+  @@map("users")
+}
+
 // ============================================================================
 // 仕訳テーブル群（完全camelCase統一）
 // ============================================================================

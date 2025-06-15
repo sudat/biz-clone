@@ -247,7 +247,7 @@ export function AnalysisCodeMasterForm({
             name="analysisCode"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>分析コード</FormLabel>
+                <FormLabel>分析コード *</FormLabel>
                 <FormControl>
                   <Input
                     {...field}
@@ -290,7 +290,7 @@ export function AnalysisCodeMasterForm({
             name="analysisName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>分析名称</FormLabel>
+                <FormLabel>分析名称 *</FormLabel>
                 <FormControl>
                   <Input
                     {...field}
@@ -311,7 +311,7 @@ export function AnalysisCodeMasterForm({
             name="analysisType"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>分析種別</FormLabel>
+                <FormLabel>分析種別 *</FormLabel>
                 {isAddingNewType ? (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">

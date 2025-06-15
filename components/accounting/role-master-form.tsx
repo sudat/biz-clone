@@ -1,21 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { SubAccount } from "@/lib/database/prisma";
-import { createSubAccount, updateSubAccount, checkSubAccountCodeExists } from "@/app/actions/sub-accounts";
-import { getAccounts, type AccountForClient } from "@/app/actions/accounts";
+import { createRole, updateRole, checkRoleCodeExists, type RoleForClient } from "@/app/actions/roles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -32,91 +24,60 @@ import {
 } from "@/components/ui/error-toast";
 import { createSystemError } from "@/lib/types/errors";
 
-interface SubAccountWithAccount extends SubAccount {
-  account?: {
-    accountCode: string;
-    accountName: string;
-  };
-}
-
-const subAccountFormSchema = z.object({
-  accountCode: z.string().min(1, "勘定科目は必須です"),
-  subAccountCode: z
-    .string()
-    .min(1, "補助科目コードは必須です")
-    .max(10, "補助科目コードは10文字以内で入力してください"),
-  subAccountName: z
-    .string()
-    .min(1, "補助科目名称は必須です")
-    .max(100, "補助科目名称は100文字以内で入力してください"),
+// 統一スキーマを使用（新規・更新共通）
+const roleFormSchema = z.object({
+  roleCode: z.string().min(1, "ロールコードは必須です").max(50),
+  roleName: z.string().min(1, "ロール名は必須です").max(100),
+  description: z.string().max(500).optional().nullable(),
   isActive: z.boolean(),
   sortOrder: z.number().int().min(0).optional().nullable(),
 });
 
-type SubAccountFormData = z.infer<typeof subAccountFormSchema>;
+type RoleFormData = z.infer<typeof roleFormSchema>;
 
-interface SubAccountMasterFormProps {
-  subAccount?: SubAccountWithAccount | null;
-  accounts?: AccountForClient[];
+interface RoleMasterFormProps {
+  role?: RoleForClient | null;
   onSubmit: () => void;
   onCancel: () => void;
 }
 
-export function SubAccountMasterForm({
-  subAccount,
-  accounts: propAccounts,
+export function RoleMasterForm({
+  role,
   onSubmit,
   onCancel,
-}: SubAccountMasterFormProps) {
+}: RoleMasterFormProps) {
   const [loading, setLoading] = useState(false);
   const [codeCheckLoading, setCodeCheckLoading] = useState(false);
   const [codeCheckMessage, setCodeCheckMessage] = useState<string>("");
   const [codeCheckError, setCodeCheckError] = useState<boolean>(false);
-  const [accounts, setAccounts] = useState<AccountForClient[]>(propAccounts || []);
-  const isEditing = !!subAccount;
+  const isEditing = !!role;
 
-  const form = useForm<SubAccountFormData>({
-    resolver: zodResolver(subAccountFormSchema),
+  const form = useForm<RoleFormData>({
+    resolver: zodResolver(roleFormSchema),
     defaultValues: {
-      accountCode: subAccount?.accountCode || "",
-      subAccountCode: subAccount?.subAccountCode || "",
-      subAccountName: subAccount?.subAccountName || "",
-      isActive: subAccount?.isActive ?? true,
-      sortOrder: subAccount?.sortOrder || null,
+      roleCode: role?.roleCode || "",
+      roleName: role?.roleName || "",
+      description: role?.description || "",
+      isActive: role?.isActive ?? true,
+      sortOrder: role?.sortOrder || null,
     },
   });
 
-  useEffect(() => {
-    if (!propAccounts || propAccounts.length === 0) {
-      const loadAccounts = async () => {
-        try {
-          const result = await getAccounts();
-          if (result.success && result.data) {
-            setAccounts(result.data);
-          }
-        } catch (error) {
-          console.error("勘定科目データの取得エラー:", error);
-        }
-      };
-      loadAccounts();
-    }
-  }, [propAccounts]);
-
-  // 補助科目コードの重複チェック
-  const checkSubAccountCode = async (accountCode: string, subAccountCode: string) => {
-    if (!accountCode || !subAccountCode || isEditing) return; // 編集時はチェックしない
+  // ロールコードの重複チェック
+  const checkRoleCode = async (code: string) => {
+    if (!code || isEditing) return; // 編集時はチェックしない
     
     setCodeCheckLoading(true);
     setCodeCheckMessage("");
     setCodeCheckError(false);
 
     try {
-      const result = await checkSubAccountCodeExists(accountCode, subAccountCode);
-      if (result.exists && result.subAccount) {
-        const subAccount = result.subAccount;
-        const status = subAccount.isActive ? "有効" : "無効";
+      const result = await checkRoleCodeExists(code);
+      if (result.exists && result.role) {
+        const role = result.role;
+        const status = role.isActive ? "有効" : "無効";
         setCodeCheckMessage(
-          `このコード（${subAccount.account?.accountName} / ${subAccount.subAccountName} / ${status}）は既に使用されています。`
+          `このコード（${role.roleName} / ${status}）は既に使用されています。`
         );
         setCodeCheckError(true);
       } else {
@@ -131,51 +92,50 @@ export function SubAccountMasterForm({
     }
   };
 
-  const handleSubmit = async (data: SubAccountFormData) => {
+  const handleSubmit = async (data: RoleFormData) => {
     // 新規作成時に重複エラーがある場合は送信しない
     if (!isEditing && codeCheckError) {
-      showErrorToast(createSystemError("補助科目コードが重複しています", "登録処理"));
+      showErrorToast(createSystemError("ロールコードが重複しています", "登録処理"));
       return;
     }
+
     setLoading(true);
     try {
       let result;
-      if (isEditing && subAccount) {
+      if (isEditing && role) {
+        // 更新
         const formData = new FormData();
-        formData.append('subAccountName', data.subAccountName);
+        formData.append('roleName', data.roleName);
+        if (data.description) formData.append('description', data.description);
         formData.append('isActive', data.isActive.toString());
         if (data.sortOrder !== null && data.sortOrder !== undefined) {
           formData.append('sortOrder', data.sortOrder.toString());
         }
-        result = await updateSubAccount(
-          subAccount.accountCode,
-          subAccount.subAccountCode,
-          formData
-        );
+        result = await updateRole(role.roleCode, formData);
       } else {
+        // 新規作成
         const formData = new FormData();
-        formData.append('accountCode', data.accountCode);
-        formData.append('subAccountCode', data.subAccountCode);
-        formData.append('subAccountName', data.subAccountName);
-        formData.append('isActive', data.isActive.toString());
+        formData.append('roleCode', data.roleCode);
+        formData.append('roleName', data.roleName);
+        if (data.description) formData.append('description', data.description);
         if (data.sortOrder !== null && data.sortOrder !== undefined) {
           formData.append('sortOrder', data.sortOrder.toString());
         }
-        result = await createSubAccount(formData);
+        result = await createRole(formData);
       }
 
       if (result.success) {
         showSuccessToast(
-          isEditing ? "補助科目を更新しました" : "補助科目を作成しました"
+          isEditing ? "ロールを更新しました" : "ロールを作成しました"
         );
         onSubmit();
       } else {
-        showErrorToast(createSystemError(result.error || "エラーが発生しました", "バリデーションエラー"));
+        showErrorToast(createSystemError(String(result.error) || "エラーが発生しました", "バリデーションエラー"));
       }
     } catch (error) {
-      console.error("補助科目の保存エラー:", error);
+      console.error("ロールの保存エラー:", error);
       const systemError = createSystemError(
-        "補助科目の保存に失敗しました",
+        "ロールの保存に失敗しました",
         error instanceof Error ? error.message : "不明なエラー"
       );
       showErrorToast(systemError);
@@ -189,56 +149,18 @@ export function SubAccountMasterForm({
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <FormField
           control={form.control}
-          name="accountCode"
+          name="roleCode"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>勘定科目 *</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-                disabled={isEditing || loading}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="勘定科目を選択してください" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {accounts.map((account) => (
-                    <SelectItem
-                      key={account.accountCode}
-                      value={account.accountCode}
-                    >
-                      {account.accountCode} - {account.accountName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormDescription>
-                {isEditing
-                  ? "勘定科目は編集できません"
-                  : "補助科目が属する勘定科目を選択してください"}
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="subAccountCode"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>補助科目コード *</FormLabel>
+              <FormLabel>ロールコード *</FormLabel>
               <FormControl>
                 <Input
                   {...field}
-                  placeholder="例: 001"
+                  placeholder="例: ADMIN"
                   disabled={isEditing || loading}
                   onBlur={(e) => {
                     field.onBlur();
-                    const accountCode = form.getValues("accountCode");
-                    checkSubAccountCode(accountCode, e.target.value);
+                    checkRoleCode(e.target.value);
                   }}
                 />
               </FormControl>
@@ -247,7 +169,7 @@ export function SubAccountMasterForm({
                   ? "コードは編集できません"
                   : codeCheckMessage && !codeCheckError
                     ? "" // チェック成功時は説明文を非表示
-                    : "補助科目を識別するコードを入力してください"}
+                    : "ロールを識別するコードを入力してください"}
               </FormDescription>
               
               {/* 重複チェック結果の表示 */}
@@ -270,17 +192,36 @@ export function SubAccountMasterForm({
 
         <FormField
           control={form.control}
-          name="subAccountName"
+          name="roleName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>補助科目名称 *</FormLabel>
+              <FormLabel>ロール名 *</FormLabel>
               <FormControl>
-                <Input
+                <Input {...field} placeholder="例: 管理者" disabled={loading} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>説明</FormLabel>
+              <FormControl>
+                <Textarea
                   {...field}
-                  placeholder="例: ○○銀行普通預金"
+                  placeholder="ロールの説明を入力してください（省略可）"
                   disabled={loading}
+                  rows={3}
+                  value={field.value || ""}
                 />
               </FormControl>
+              <FormDescription>
+                ロールの役割や権限について説明を記載してください
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -319,7 +260,7 @@ export function SubAccountMasterForm({
               <div className="space-y-0.5">
                 <FormLabel className="text-base">有効</FormLabel>
                 <FormDescription>
-                  無効にすると新規仕訳で選択できなくなります
+                  無効にするとユーザーに割り当てできなくなります
                 </FormDescription>
               </div>
               <FormControl>

@@ -207,7 +207,7 @@ export function PartnerMasterForm({
           name="partnerCode"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>取引先コード</FormLabel>
+              <FormLabel>取引先コード *</FormLabel>
               <FormControl>
                 <Input
                   {...field}
@@ -250,7 +250,7 @@ export function PartnerMasterForm({
           name="partnerType"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>取引先種別</FormLabel>
+              <FormLabel>取引先種別 *</FormLabel>
               <Select
                 onValueChange={field.onChange}
                 defaultValue={field.value}
@@ -279,7 +279,7 @@ export function PartnerMasterForm({
           name="partnerName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>取引先名称</FormLabel>
+              <FormLabel>取引先名称 *</FormLabel>
               <FormControl>
                 <Input
                   {...field}

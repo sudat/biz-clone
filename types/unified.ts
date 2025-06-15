@@ -13,7 +13,9 @@ import type {
   Partner,
   AnalysisCode,
   JournalHeader,
-  JournalDetail
+  JournalDetail,
+  Role,
+  User
 } from "@/lib/database/prisma";
 
 export type {
@@ -22,7 +24,14 @@ export type {
   Partner,
   AnalysisCode,
   JournalHeader,
-  JournalDetail
+  JournalDetail,
+  Role,
+  User
+};
+
+// フロントエンド用のユーザー型（パスワードハッシュなしのセキュア版）
+export type UserForClient = Omit<User, 'passwordHash'> & {
+  passwordHash?: string;
 };
 
 // よく使用される複合型
@@ -55,4 +64,28 @@ export interface PartnerFilter {
 export interface AnalysisCodeFilter {
   analysisType?: string;
   isActive?: boolean;
+}
+
+export interface RoleFilter {
+  isActive?: boolean;
+}
+
+export interface UserFilter {
+  roleCode?: string;
+  isActive?: boolean;
+}
+
+// よく使用される複合型（認証・認可用）
+export interface UserWithRole extends User {
+  role: Role;
+}
+
+export interface UserProfile {
+  userId: string;
+  userCode: string;
+  userName: string;
+  email: string;
+  roleCode: string;
+  roleName: string;
+  isActive: boolean;
 }

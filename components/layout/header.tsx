@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { useUser } from "@/lib/contexts/user-context";
 import {
   Menubar,
   MenubarContent,
@@ -16,9 +17,11 @@ import {
   MenubarTrigger,
 } from "@/components/ui/menubar";
 import { Menu, X, Calculator, Edit3, Database, BarChart3 } from "lucide-react";
+import { UserAvatarMenu } from "./user-avatar-menu";
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { currentUser, isLoading, setCurrentUser } = useUser();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
@@ -93,6 +96,16 @@ export function Header() {
                         分析コード
                       </Link>
                     </MenubarItem>
+                    <MenubarItem asChild>
+                      <Link href="/master/roles" className="px-4 py-3 text-base">
+                        ロール
+                      </Link>
+                    </MenubarItem>
+                    <MenubarItem asChild>
+                      <Link href="/master/users" className="px-4 py-3 text-base">
+                        ユーザ
+                      </Link>
+                    </MenubarItem>
                   </MenubarSubContent>
                 </MenubarPortal>
               </MenubarSub>
@@ -131,6 +144,17 @@ export function Header() {
 
         {/* 右側のアクション */}
         <div className="flex items-center space-x-3">
+          {!isLoading && (
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground hidden sm:inline">
+                {currentUser?.userName || 'ユーザー未選択'}
+              </span>
+              <UserAvatarMenu 
+                currentUser={currentUser}
+                onUserChange={setCurrentUser}
+              />
+            </div>
+          )}
           <ThemeToggle />
 
           {/* モバイルメニューボタン */}
@@ -213,6 +237,20 @@ export function Header() {
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     分析コード
+                  </Link>
+                  <Link
+                    href="/master/roles"
+                    className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors ml-4"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    ロール
+                  </Link>
+                  <Link
+                    href="/master/users"
+                    className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors ml-4"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    ユーザ
                   </Link>
                 </div>
 

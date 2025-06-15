@@ -317,7 +317,7 @@ export function AccountMasterForm({
           name="accountCode"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>勘定科目コード</FormLabel>
+              <FormLabel>勘定科目コード *</FormLabel>
               <FormControl>
                 <Input
                   {...field}
@@ -360,7 +360,7 @@ export function AccountMasterForm({
           name="accountName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>勘定科目名称</FormLabel>
+              <FormLabel>勘定科目名称 *</FormLabel>
               <FormControl>
                 <Input {...field} placeholder="例: 現金" disabled={loading} />
               </FormControl>
@@ -374,7 +374,7 @@ export function AccountMasterForm({
           name="accountType"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>勘定科目種別</FormLabel>
+              <FormLabel>勘定科目種別 *</FormLabel>
               <Select
                 onValueChange={field.onChange}
                 defaultValue={field.value}

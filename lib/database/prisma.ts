@@ -21,6 +21,8 @@ export type {
   JournalHeader,
   Partner,
   Prisma,
+  Role,
   SubAccount,
   TaxRate,
+  User,
 } from "../generated/prisma";

@@ -67,3 +67,33 @@ export const isValidPartnerType = (value: string): value is PartnerType => {
   return PARTNER_TYPE_LIST.includes(value as PartnerType);
 };
 
+// ロール区分（配列ベース一元管理）
+export const ROLE_TYPE_LIST = [
+  "管理者",
+  "経理担当",
+  "一般ユーザー",
+  "閲覧のみ"
+] as const;
+
+// 型定義は配列から自動生成
+export type RoleType = typeof ROLE_TYPE_LIST[number];
+
+// オプション配列も自動生成
+export const ROLE_TYPE_OPTIONS = ROLE_TYPE_LIST.map(type => ({
+  value: type,
+  label: type
+}));
+
+// 後方互換性のためのオブジェクト（必要に応じて）
+export const ROLE_TYPES = {
+  ADMIN: ROLE_TYPE_LIST[0],        // "管理者"
+  ACCOUNTANT: ROLE_TYPE_LIST[1],   // "経理担当"
+  USER: ROLE_TYPE_LIST[2],         // "一般ユーザー"
+  VIEWER: ROLE_TYPE_LIST[3]        // "閲覧のみ"
+} as const;
+
+// 型ガード関数
+export const isValidRoleType = (value: string): value is RoleType => {
+  return ROLE_TYPE_LIST.includes(value as RoleType);
+};
+

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { UserContextProvider } from "@/lib/contexts/user-context";
 import { Toaster } from "@/components/ui/sonner";
 import { Header } from "@/components/layout/header";
 import "./globals.css";
@@ -36,13 +37,15 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
-            <Header />
-            <div className="container mx-auto px-8 py-8 max-w-7xl">
-              {children}
+          <UserContextProvider>
+            <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
+              <Header />
+              <div className="container mx-auto px-8 py-8 max-w-7xl">
+                {children}
+              </div>
             </div>
-          </div>
-          <Toaster />
+            <Toaster />
+          </UserContextProvider>
         </ThemeProvider>
       </body>
     </html>

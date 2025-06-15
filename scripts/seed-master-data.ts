@@ -3,6 +3,7 @@
  */
 
 import { PrismaClient } from '../lib/generated/prisma';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -71,17 +72,83 @@ async function main() {
     skipDuplicates: true,
   });
 
+  // ロールマスタ
+  console.log('ロールマスタを投入中...');
+  await prisma.role.createMany({
+    data: [
+      { 
+        roleCode: 'GENERAL', 
+        roleName: '一般ユーザー', 
+        description: '基本的な業務操作を行う一般ユーザー',
+        sortOrder: 10
+      },
+      { 
+        roleCode: 'APPROVER', 
+        roleName: '承認者', 
+        description: '仕訳の承認権限を持つユーザー',
+        sortOrder: 20
+      },
+      { 
+        roleCode: 'MANAGER', 
+        roleName: '責任者', 
+        description: 'マスタデータの管理権限を持つ責任者',
+        sortOrder: 30
+      },
+      { 
+        roleCode: 'ADMIN', 
+        roleName: 'システム管理者', 
+        description: 'システム全体の管理権限を持つ管理者',
+        sortOrder: 40
+      },
+    ],
+    skipDuplicates: true,
+  });
+
+  // パスワードのハッシュ化
+  const defaultPassword = 'password123';
+  const passwordHash = await bcrypt.hash(defaultPassword, 12);
+
+  // ユーザマスタ（初期管理者ユーザー）
+  console.log('初期ユーザを投入中...');
+  await prisma.user.createMany({
+    data: [
+      {
+        userCode: 'ADMIN001',
+        userName: 'システム管理者',
+        userKana: 'システムカンリシャ',
+        email: 'admin@example.com',
+        passwordHash,
+        roleCode: 'ADMIN',
+        isActive: true,
+      },
+      {
+        userCode: 'USER001',
+        userName: '一般ユーザー',
+        userKana: 'イッパンユーザー',
+        email: 'user@example.com',
+        passwordHash,
+        roleCode: 'GENERAL',
+        isActive: true,
+      },
+    ],
+    skipDuplicates: true,
+  });
+
   console.log('マスタデータの投入が完了しました！');
 
   // 投入結果の確認
   const accountCount = await prisma.account.count();
   const partnerCount = await prisma.partner.count();
   const analysisCodeCount = await prisma.analysisCode.count();
+  const roleCount = await prisma.role.count();
+  const userCount = await prisma.user.count();
 
   console.log(`投入結果:`);
   console.log(`- 勘定科目: ${accountCount}件`);
   console.log(`- 取引先: ${partnerCount}件`);
   console.log(`- 分析コード: ${analysisCodeCount}件`);
+  console.log(`- ロール: ${roleCount}件`);
+  console.log(`- ユーザー: ${userCount}件`);
 
   // 消費税科目の確認
   const taxAccounts = await prisma.account.findMany({
@@ -92,6 +159,26 @@ async function main() {
   taxAccounts.forEach(acc => {
     console.log(`- ${acc.accountCode}: ${acc.accountName}`);
   });
+
+  // 作成されたロールの確認
+  const roles = await prisma.role.findMany({
+    orderBy: { sortOrder: 'asc' },
+    select: { roleCode: true, roleName: true },
+  });
+  console.log(`ロール一覧:`);
+  roles.forEach(role => {
+    console.log(`- ${role.roleCode}: ${role.roleName}`);
+  });
+
+  // 作成されたユーザーの確認
+  const users = await prisma.user.findMany({
+    select: { userCode: true, userName: true, email: true, roleCode: true },
+  });
+  console.log(`ユーザー一覧:`);
+  users.forEach(user => {
+    console.log(`- ${user.userCode}: ${user.userName} (${user.email}) - ${user.roleCode}`);
+  });
+  console.log(`デフォルトパスワード: ${defaultPassword}`);
 }
 
 main()
