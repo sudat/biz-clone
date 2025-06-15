@@ -20,17 +20,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/accounting/date-range-picker";
-import { MasterSearchDialog } from "@/components/accounting/master-search-dialog";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 
 export interface JournalSearchParams {
   searchTerm?: string;
   dateFrom?: Date;
   dateTo?: Date;
-  accountCode?: string;
-  accountName?: string;
-  partnerCode?: string;
-  partnerName?: string;
 }
 
 interface JournalSearchFormProps {
@@ -45,10 +40,6 @@ export function JournalSearchForm({
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
-  const [accountCode, setAccountCode] = useState("");
-  const [accountName, setAccountName] = useState("");
-  const [partnerCode, setPartnerCode] = useState("");
-  const [partnerName, setPartnerName] = useState("");
 
   // デバウンス処理でリアルタイム検索
   const debouncedSearch = useDebounce(() => {
@@ -61,20 +52,14 @@ export function JournalSearchForm({
     if (searchTerm.trim()) params.searchTerm = searchTerm.trim();
     if (dateFrom) params.dateFrom = dateFrom;
     if (dateTo) params.dateTo = dateTo;
-    if (accountCode.trim()) params.accountCode = accountCode.trim();
-    if (partnerCode.trim()) params.partnerCode = partnerCode.trim();
 
     onSearch(params);
-  }, [searchTerm, dateFrom, dateTo, accountCode, partnerCode, onSearch]);
+  }, [searchTerm, dateFrom, dateTo, onSearch]);
 
   const handleReset = () => {
     setSearchTerm("");
     setDateFrom(undefined);
     setDateTo(undefined);
-    setAccountCode("");
-    setAccountName("");
-    setPartnerCode("");
-    setPartnerName("");
     onSearch({});
   };
 
@@ -92,23 +77,6 @@ export function JournalSearchForm({
     debouncedSearch();
   };
 
-  const handleAccountSelect = (account: {
-    accountCode: string;
-    accountName: string;
-  }) => {
-    setAccountCode(account.accountCode);
-    setAccountName(account.accountName);
-    debouncedSearch();
-  };
-
-  const handlePartnerSelect = (partner: {
-    partnerCode: string;
-    partnerName: string;
-  }) => {
-    setPartnerCode(partner.partnerCode);
-    setPartnerName(partner.partnerName);
-    debouncedSearch();
-  };
 
   return (
     <Card className="shadow-lg border-0 bg-card/50 backdrop-blur-sm gap-0">
@@ -144,68 +112,6 @@ export function JournalSearchForm({
           />
         </div>
 
-        {/* 勘定科目・取引先検索 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* 勘定科目 */}
-          <div className="space-y-2">
-            <Label>勘定科目</Label>
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="科目コード"
-                value={accountCode}
-                onChange={(e) => {
-                  setAccountCode(e.target.value);
-                  if (!e.target.value) setAccountName("");
-                }}
-                className="w-32"
-              />
-              <Input
-                type="text"
-                placeholder="科目名"
-                value={accountName}
-                readOnly
-                className="flex-1"
-              />
-              <MasterSearchDialog
-                type="account"
-                onSelect={handleAccountSelect}
-                triggerText="検索"
-                size="sm"
-              />
-            </div>
-          </div>
-
-          {/* 取引先 */}
-          <div className="space-y-2">
-            <Label>取引先</Label>
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="取引先コード"
-                value={partnerCode}
-                onChange={(e) => {
-                  setPartnerCode(e.target.value);
-                  if (!e.target.value) setPartnerName("");
-                }}
-                className="w-32"
-              />
-              <Input
-                type="text"
-                placeholder="取引先名"
-                value={partnerName}
-                readOnly
-                className="flex-1"
-              />
-              <MasterSearchDialog
-                type="partner"
-                onSelect={handlePartnerSelect}
-                triggerText="検索"
-                size="sm"
-              />
-            </div>
-          </div>
-        </div>
 
         {/* アクションボタン */}
         <div className="flex flex-wrap gap-3 pt-4">

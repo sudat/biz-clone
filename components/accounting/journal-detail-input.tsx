@@ -8,16 +8,29 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { MasterCodeInput } from "./master-code-input";
 import { JournalDetailData } from "@/types/journal";
-import { TAX_TYPE_OPTIONS, DEFAULT_TAX_TYPE } from "@/types/tax";
+import { getTaxRates, type TaxRateForClient } from "@/app/actions/tax-rates";
+import { getAccounts, type AccountForClient } from "@/app/actions/accounts";
+import { 
+  showErrorToast, 
+  showSuccessToast
+} from "@/components/ui/error-toast";
+import { createSystemError } from "@/lib/types/errors";
 
 interface JournalDetailInputProps {
   type: "debit" | "credit";
@@ -66,12 +79,34 @@ export function JournalDetailInput({
     baseAmount: undefined,
     taxAmount: 0,
     totalAmount: undefined,
-    taxRate: 10,
-    taxType: DEFAULT_TAX_TYPE,
+    taxCode: "TAX0", // デフォルトは非課税
     description: "",
   });
 
+  // 税区分マスタ関連の状態
+  const [taxRateOptions, setTaxRateOptions] = useState<TaxRateForClient[]>([]);
+  const [taxRatesLoading, setTaxRatesLoading] = useState(false);
+
   const config = TYPE_CONFIG[type];
+
+  // 税区分マスタデータを取得
+  useEffect(() => {
+    const loadTaxRates = async () => {
+      setTaxRatesLoading(true);
+      try {
+        const result = await getTaxRates();
+        if (result.success && result.data) {
+          setTaxRateOptions(result.data);
+        }
+      } catch (error) {
+        console.error("税区分の取得に失敗:", error);
+      } finally {
+        setTaxRatesLoading(false);
+      }
+    };
+
+    loadTaxRates();
+  }, []);
 
   // 編集時にフォームデータを初期化
   useEffect(() => {
@@ -89,8 +124,7 @@ export function JournalDetailInput({
         baseAmount: editingDetail.baseAmount,
         taxAmount: editingDetail.taxAmount,
         totalAmount: editingDetail.totalAmount,
-        taxRate: editingDetail.taxRate || 10,
-        taxType: editingDetail.taxType || DEFAULT_TAX_TYPE,
+        taxCode: editingDetail.taxCode || "TAX0",
         description: editingDetail.description || "",
       });
     } else if (mode === 'input') {
@@ -109,23 +143,25 @@ export function JournalDetailInput({
       baseAmount: undefined,
       taxAmount: 0,
       totalAmount: undefined,
-      taxRate: 10,
-      taxType: DEFAULT_TAX_TYPE,
+      taxCode: "TAX0", // デフォルトは非課税
       description: "",
     });
   };
 
-  // 消費税自動計算
-  const calculateTax = (baseAmount: number, taxRate: number, taxType: string) => {
-    if (taxType === "taxable" && taxRate > 0) {
-      return Math.floor(baseAmount * (taxRate / 100));
+  // 消費税自動計算（税区分コードから税率を取得）
+  const calculateTax = (baseAmount: number, taxCode: string) => {
+    if (taxCode && taxCode !== "TAX0") {
+      const taxRateOption = taxRateOptions.find(rate => rate.taxCode === taxCode);
+      if (taxRateOption && taxRateOption.taxRate > 0) {
+        return Math.floor(baseAmount * (taxRateOption.taxRate / 100));
+      }
     }
     return 0;
   };
 
   // 本体額変更時の処理
   const handleBaseAmountChange = (baseAmount: number) => {
-    const taxAmount = calculateTax(baseAmount, formData.taxRate || 0, formData.taxType || "non_taxable");
+    const taxAmount = calculateTax(baseAmount, formData.taxCode || "TAX0");
     const totalAmount = baseAmount + taxAmount;
     
     setFormData(prev => ({
@@ -136,19 +172,21 @@ export function JournalDetailInput({
     }));
   };
 
-  // 課税区分変更時の処理
-  const handleTaxTypeChange = (taxType: "taxable" | "non_taxable" | "tax_free" | "tax_entry") => {
+
+  // 税区分変更時の処理
+  const handleTaxCodeChange = (value: string) => {
     const baseAmount = formData.baseAmount || 0;
-    const taxAmount = calculateTax(baseAmount, formData.taxRate || 0, taxType);
+    const taxAmount = calculateTax(baseAmount, value);
     const totalAmount = baseAmount + taxAmount;
     
     setFormData(prev => ({
       ...prev,
-      taxType,
+      taxCode: value,
       taxAmount,
       totalAmount,
     }));
   };
+
 
   // 追加・更新処理
   const handleSubmit = () => {
@@ -173,8 +211,7 @@ export function JournalDetailInput({
       baseAmount: formData.baseAmount || 0,
       taxAmount: formData.taxAmount || 0,
       totalAmount: formData.totalAmount || 0,
-      taxRate: formData.taxRate,
-      taxType: formData.taxType || "non_taxable",
+      taxCode: formData.taxCode,
       description: formData.description,
     };
 
@@ -239,13 +276,39 @@ export function JournalDetailInput({
             <MasterCodeInput
               type="account"
               value={formData.accountCode || ""}
-              onChange={(code, name) =>
+              onChange={async (code, name) => {
+                // 勘定科目選択時のデフォルト税区分自動設定
+                let defaultTaxCode = "TAX0"; // デフォルトは非課税
+                
+                if (code) {
+                  try {
+                    // 勘定科目の情報を取得してデフォルト税区分をチェック
+                    const accountResult = await getAccounts();
+                    if (accountResult.success && accountResult.data) {
+                      const account = accountResult.data.find(acc => acc.accountCode === code);
+                      if (account?.defaultTaxCode) {
+                        defaultTaxCode = account.defaultTaxCode;
+                      }
+                    }
+                  } catch (error) {
+                    console.error("勘定科目のデフォルト税区分取得エラー:", error);
+                  }
+                }
+                
+                // 税額を再計算
+                const baseAmount = formData.baseAmount || 0;
+                const taxAmount = calculateTax(baseAmount, defaultTaxCode);
+                const totalAmount = baseAmount + taxAmount;
+                
                 setFormData((prev) => ({
                   ...prev,
                   accountCode: code,
                   accountName: name,
-                }))
-              }
+                  taxCode: defaultTaxCode,
+                  taxAmount,
+                  totalAmount,
+                }));
+              }}
               disabled={disabled}
               placeholder="勘定科目を選択..."
             />
@@ -323,22 +386,28 @@ export function JournalDetailInput({
           </div>
         </div>
 
-        {/* 課税区分 */}
+        {/* 税区分 */}
         <div className="flex items-center gap-2">
           <Label className="min-w-[80px] text-sm font-medium whitespace-nowrap">
-            課税区分
+            税区分
           </Label>
-          <div className="w-40">
-            <select
-              value={formData.taxType || "non_taxable"}
-              onChange={(e) => handleTaxTypeChange(e.target.value as "taxable" | "non_taxable" | "tax_free" | "tax_entry")}
-              disabled={disabled}
-              className="w-full h-9 px-3 border border-input bg-background text-sm rounded-md"
+          <div className="w-64">
+            <Select
+              value={formData.taxCode || "TAX0"}
+              onValueChange={handleTaxCodeChange}
+              disabled={disabled || taxRatesLoading}
             >
-              <option value="non_taxable">非課税</option>
-              <option value="taxable">課税</option>
-              <option value="tax_free">免税</option>
-            </select>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="税区分を選択..." />
+              </SelectTrigger>
+              <SelectContent>
+                {taxRateOptions.map(option => (
+                  <SelectItem key={option.taxCode} value={option.taxCode}>
+                    {option.taxName} ({option.taxRate}%)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

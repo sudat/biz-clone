@@ -64,5 +64,8 @@
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.4",
     "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "ts-node scripts/seed-master-data.ts && ts-node scripts/seed-sample-journals.ts"
   }
 }

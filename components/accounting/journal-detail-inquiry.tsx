@@ -125,14 +125,14 @@ export function JournalDetailInquiry({
           </div>
         </div>
 
-        {/* 課税区分 */}
+        {/* 税区分 */}
         <div className="flex items-center gap-2">
           <Label className="min-w-[80px] text-sm font-medium whitespace-nowrap">
-            課税区分
+            税区分
           </Label>
           <div className="w-40">
             <div className="h-10 px-3 py-2 border border-input bg-background rounded-md text-sm flex items-center">
-              {getTaxTypeLabel(detail.taxType)}
+              {detail.taxCode || "未設定"}
             </div>
           </div>
         </div>
@@ -185,20 +185,3 @@ export function JournalDetailInquiry({
   );
 }
 
-/**
- * 税区分のラベルを取得
- */
-function getTaxTypeLabel(taxType: string): string {
-  switch (taxType) {
-    case "taxable":
-      return "課税";
-    case "non_taxable":
-      return "対象外";
-    case "tax_free":
-      return "免税";
-    case "tax_entry":
-      return "税額";
-    default:
-      return taxType;
-  }
-}

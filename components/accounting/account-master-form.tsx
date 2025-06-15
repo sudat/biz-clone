@@ -5,9 +5,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createAccount, updateAccount, checkAccountCodeExists, getAccounts, type AccountForClient } from "@/app/actions/accounts";
+import { getTaxRates, createTaxRate, type TaxRateForClient } from "@/app/actions/tax-rates";
 import { ACCOUNT_TYPE_LIST, ACCOUNT_TYPE_OPTIONS, type AccountType } from "@/types/master-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -43,6 +45,7 @@ const accountFormSchema = z.object({
   isDetail: z.boolean(),
   isActive: z.boolean(),
   sortOrder: z.number().int().min(0).optional().nullable(),
+  defaultTaxCode: z.string().optional().nullable(),
 });
 
 type AccountFormData = z.infer<typeof accountFormSchema>;
@@ -64,6 +67,12 @@ export function AccountMasterForm({
   const [codeCheckError, setCodeCheckError] = useState<boolean>(false);
   const [parentAccountOptions, setParentAccountOptions] = useState<AccountForClient[]>([]);
   const [parentAccountsLoading, setParentAccountsLoading] = useState(false);
+  const [taxRateOptions, setTaxRateOptions] = useState<TaxRateForClient[]>([]);
+  const [taxRatesLoading, setTaxRatesLoading] = useState(false);
+  const [newTaxCode, setNewTaxCode] = useState("");
+  const [newTaxName, setNewTaxName] = useState("");
+  const [newTaxRate, setNewTaxRate] = useState("");
+  const [isAddingNewTaxRate, setIsAddingNewTaxRate] = useState(false);
   const isEditing = !!account;
 
   const form = useForm<AccountFormData>({
@@ -76,6 +85,7 @@ export function AccountMasterForm({
       isDetail: account?.isDetail ?? true,
       isActive: account?.isActive ?? true,
       sortOrder: account?.sortOrder || null,
+      defaultTaxCode: account?.defaultTaxCode || null,
     },
   });
 
@@ -116,6 +126,25 @@ export function AccountMasterForm({
     loadParentAccountOptions();
   }, [isEditing, account?.accountCode, isDescendant]);
 
+  // 税区分候補データを取得
+  useEffect(() => {
+    const loadTaxRateOptions = async () => {
+      setTaxRatesLoading(true);
+      try {
+        const result = await getTaxRates();
+        if (result.success && result.data) {
+          setTaxRateOptions(result.data);
+        }
+      } catch (error) {
+        console.error("税区分候補の取得に失敗:", error);
+      } finally {
+        setTaxRatesLoading(false);
+      }
+    };
+
+    loadTaxRateOptions();
+  }, []);
+
   // 勘定科目コードの重複チェック
   const checkAccountCode = async (code: string) => {
     if (!code || isEditing) return; // 編集時はチェックしない
@@ -145,6 +174,82 @@ export function AccountMasterForm({
     }
   };
 
+  // 税区分選択の変更ハンドラー
+  const handleTaxRateChange = (value: string) => {
+    if (value === "new-tax-rate") {
+      setIsAddingNewTaxRate(true);
+      setNewTaxCode("");
+      setNewTaxName("");
+      setNewTaxRate("");
+    } else {
+      form.setValue("defaultTaxCode", value === "" ? null : value);
+      setIsAddingNewTaxRate(false);
+      setNewTaxCode("");
+      setNewTaxName("");
+      setNewTaxRate("");
+    }
+  };
+
+  // 新規税区分追加ハンドラー
+  const handleNewTaxRateSubmit = async () => {
+    const taxCode = newTaxCode.trim();
+    const taxName = newTaxName.trim();
+    const taxRateValue = parseFloat(newTaxRate.trim());
+    
+    if (taxCode && taxName && !isNaN(taxRateValue)) {
+      try {
+        // コードフォーマットバリデーション
+        if (!/^[a-zA-Z0-9_-]+$/.test(taxCode)) {
+          showErrorToast(createSystemError("税区分コードは英数字、アンダースコア、ハイフンのみ使用可能です", "入力エラー"));
+          return;
+        }
+
+        // 税区分マスタに保存
+        const formData = new FormData();
+        formData.append('taxCode', taxCode);
+        formData.append('taxName', taxName);
+        formData.append('taxRate', taxRateValue.toString());
+        formData.append('sortOrder', '999'); // 新規追加は最後に配置
+        
+        const result = await createTaxRate(formData);
+        
+        if (result.success) {
+          // UIに反映
+          const newTaxRateOption: TaxRateForClient = {
+            taxCode,
+            taxName,
+            taxRate: taxRateValue,
+            isActive: true,
+            sortOrder: 999,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
+          
+          form.setValue("defaultTaxCode", taxCode);
+          setTaxRateOptions((prev) => [...prev, newTaxRateOption]);
+          setNewTaxCode("");
+          setNewTaxName("");
+          setNewTaxRate("");
+          setIsAddingNewTaxRate(false);
+          showSuccessToast(`税区分「${taxName}」を追加しました`);
+        } else {
+          showErrorToast(createSystemError(result.error || "税区分の追加に失敗しました", "税区分追加"));
+        }
+      } catch (error) {
+        console.error("税区分追加エラー:", error);
+        showErrorToast(createSystemError("税区分の追加に失敗しました", "ネットワークエラー"));
+      }
+    }
+  };
+
+  // 新規税区分追加のキャンセル
+  const handleNewTaxRateCancel = () => {
+    setNewTaxCode("");
+    setNewTaxName("");
+    setNewTaxRate("");
+    setIsAddingNewTaxRate(false);
+  };
+
   const handleSubmit = async (data: AccountFormData) => {
     // 新規作成時に重複エラーがある場合は送信しない
     if (!isEditing && codeCheckError) {
@@ -166,6 +271,7 @@ export function AccountMasterForm({
         if (data.sortOrder !== null && data.sortOrder !== undefined) {
           formData.append('sortOrder', data.sortOrder.toString());
         }
+        if (data.defaultTaxCode) formData.append('defaultTaxCode', data.defaultTaxCode);
         result = await updateAccount(account.accountCode, formData);
       } else {
         // 新規作成
@@ -179,6 +285,7 @@ export function AccountMasterForm({
         if (data.sortOrder !== null && data.sortOrder !== undefined) {
           formData.append('sortOrder', data.sortOrder.toString());
         }
+        if (data.defaultTaxCode) formData.append('defaultTaxCode', data.defaultTaxCode);
         result = await createAccount(formData);
       }
 
@@ -188,7 +295,7 @@ export function AccountMasterForm({
         );
         onSubmit();
       } else {
-        showErrorToast(createSystemError(result.error || "エラーが発生しました", "バリデーションエラー"));
+        showErrorToast(createSystemError(String(result.error) || "エラーが発生しました", "バリデーションエラー"));
       }
     } catch (error) {
       console.error("勘定科目の保存エラー:", error);
@@ -333,6 +440,120 @@ export function AccountMasterForm({
                 {parentAccountsLoading 
                   ? "親科目候補を読み込み中..." 
                   : "階層構造を作成する場合に親科目を選択してください。クリアボタンで親科目を削除できます。"}
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="defaultTaxCode"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>デフォルト税区分</FormLabel>
+              {isAddingNewTaxRate ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700">税区分コード *</Label>
+                      <Input
+                        value={newTaxCode}
+                        onChange={(e) => setNewTaxCode(e.target.value)}
+                        placeholder="例: TAX15"
+                        disabled={loading}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700">税区分名 *</Label>
+                      <Input
+                        value={newTaxName}
+                        onChange={(e) => setNewTaxName(e.target.value)}
+                        placeholder="例: 消費税15%"
+                        disabled={loading}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700">税率(%) *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={newTaxRate}
+                        onChange={(e) => setNewTaxRate(e.target.value)}
+                        placeholder="例: 15.00"
+                        disabled={loading}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleNewTaxRateCancel}
+                      disabled={loading}
+                    >
+                      キャンセル
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleNewTaxRateSubmit}
+                      disabled={loading || !newTaxCode.trim() || !newTaxName.trim() || !newTaxRate.trim()}
+                    >
+                      追加
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Select
+                    onValueChange={handleTaxRateChange}
+                    value={field.value || ""}
+                    disabled={loading || taxRatesLoading}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="税区分を選択（省略可）" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {taxRateOptions.map(option => (
+                        <SelectItem key={option.taxCode} value={option.taxCode}>
+                          {option.taxName} ({option.taxRate}%)
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="new-tax-rate">
+                        + 新しい税区分を追加
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {field.value && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => field.onChange(null)}
+                      disabled={loading || taxRatesLoading}
+                      className="px-3"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+              <FormDescription>
+                {taxRatesLoading 
+                  ? "税区分候補を読み込み中..." 
+                  : isAddingNewTaxRate
+                    ? "新しい税区分の情報を入力してください"
+                    : "仕訳入力時のデフォルト税区分を選択するか、新しい税区分を追加してください。BS科目は不課税、PL科目は課税が推奨されます。"}
               </FormDescription>
               <FormMessage />
             </FormItem>

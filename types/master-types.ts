@@ -57,37 +57,6 @@ export const PARTNER_TYPES = {
   OTHER: PARTNER_TYPE_LIST[3]       // "その他"
 } as const;
 
-// 消費税区分
-export const TAX_CATEGORIES = {
-  NONE: "none",
-  DEDUCTIBLE_TAX: "deductible_tax",
-  PAYABLE_TAX: "payable_tax"
-} as const;
-
-export type TaxCategory = typeof TAX_CATEGORIES[keyof typeof TAX_CATEGORIES];
-
-export const TAX_CATEGORY_OPTIONS = [
-  { value: TAX_CATEGORIES.NONE, label: "対象外" },
-  { value: TAX_CATEGORIES.DEDUCTIBLE_TAX, label: "仮払消費税" },
-  { value: TAX_CATEGORIES.PAYABLE_TAX, label: "仮受消費税" }
-] as const;
-
-// 税区分タイプ
-export const TAX_TYPES = {
-  TAXABLE: "taxable",
-  NON_TAXABLE: "non_taxable", 
-  TAX_FREE: "tax_free",
-  TAX_ENTRY: "tax_entry"
-} as const;
-
-export type TaxType = typeof TAX_TYPES[keyof typeof TAX_TYPES];
-
-export const TAX_TYPE_OPTIONS = [
-  { value: TAX_TYPES.TAXABLE, label: "課税" },
-  { value: TAX_TYPES.NON_TAXABLE, label: "対象外" },
-  { value: TAX_TYPES.TAX_FREE, label: "免税" },
-  { value: TAX_TYPES.TAX_ENTRY, label: "税額" }
-] as const;
 
 // 型ガード関数
 export const isValidAccountType = (value: string): value is AccountType => {
@@ -98,10 +67,3 @@ export const isValidPartnerType = (value: string): value is PartnerType => {
   return PARTNER_TYPE_LIST.includes(value as PartnerType);
 };
 
-export const isValidTaxCategory = (value: string): value is TaxCategory => {
-  return Object.values(TAX_CATEGORIES).includes(value as TaxCategory);
-};
-
-export const isValidTaxType = (value: string): value is TaxType => {
-  return Object.values(TAX_TYPES).includes(value as TaxType);
-};

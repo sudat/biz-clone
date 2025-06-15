@@ -59,12 +59,7 @@ export default function JournalUpdatePage({ params }: UpdatePageProps) {
       baseAmount: detail.baseAmount,
       taxAmount: detail.taxAmount,
       totalAmount: detail.totalAmount,
-      taxRate: detail.taxRate || undefined,
-      taxType: detail.taxType as
-        | "taxable"
-        | "non_taxable"
-        | "tax_free"
-        | "tax_entry",
+      taxCode: detail.taxCode || undefined,
       description: detail.lineDescription || undefined,
     };
   };

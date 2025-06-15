@@ -83,3 +83,6 @@ export function ReportActionsButton({
     </div>
   );
 }
+
+// エイリアス
+export const ReportActions = ReportActionsButton;

@@ -28,11 +28,17 @@ import { deleteJournalFromInquiry } from "@/app/actions/journal-inquiry";
 interface JournalDeleteButtonProps {
   journalNumber: string;
   journalDescription?: string;
+  onDelete?: () => void;
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | null | undefined;
+  size?: "default" | "sm" | "lg" | "icon" | null | undefined;
 }
 
 export function JournalDeleteButton({ 
   journalNumber, 
-  journalDescription 
+  journalDescription,
+  onDelete,
+  variant = "destructive",
+  size = "default"
 }: JournalDeleteButtonProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
@@ -44,8 +50,12 @@ export function JournalDeleteButton({
       const result = await deleteJournalFromInquiry(journalNumber);
       
       if (result.success) {
-        // 削除成功時は仕訳一覧ページにリダイレクト
-        router.push("/siwake");
+        // 削除成功時は onDelete コールバックを実行、または仕訳一覧ページにリダイレクト
+        if (onDelete) {
+          onDelete();
+        } else {
+          router.push("/siwake");
+        }
       } else {
         alert(`削除に失敗しました: ${result.error}`);
       }
@@ -60,7 +70,7 @@ export function JournalDeleteButton({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive" disabled={isDeleting}>
+        <Button variant={variant} size={size} disabled={isDeleting}>
           <Trash2 className="h-4 w-4" />
           {isDeleting ? "削除中..." : "削除"}
         </Button>

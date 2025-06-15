@@ -5,9 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { SubAccount } from "@/lib/database/prisma";
-import type { AccountForClient } from "@/types/client";
 import { createSubAccount, updateSubAccount, checkSubAccountCodeExists } from "@/app/actions/sub-accounts";
-import { getAccounts } from "@/app/actions/accounts";
+import { getAccounts, type AccountForClient } from "@/app/actions/accounts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

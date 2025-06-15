@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { faker } from "@faker-js/faker";
 import { generateJournalNumber } from "../../lib/database/journal-number";
 
-faker.locale = "ja";
+// faker.setLocale("ja"); // 新しいバージョンでは不要または異なる設定方法
 
 const prisma = new PrismaClient();
 
@@ -20,7 +20,7 @@ export class TestDataHelper {
   ) {
     const accountData = {
       accountCode: data?.accountCode ||
-        faker.datatype.number({ min: 1000, max: 9999 }).toString(),
+        faker.number.int({ min: 1000, max: 9999 }).toString(),
       accountName: data?.accountName || faker.company.name(),
       accountType: data?.accountType || "asset",
       isActive: data?.isActive ?? true,
@@ -43,7 +43,7 @@ export class TestDataHelper {
   ) {
     const partnerData = {
       partnerCode: data?.partnerCode ||
-        faker.datatype.number({ min: 1000, max: 9999 }).toString(),
+        faker.number.int({ min: 1000, max: 9999 }).toString(),
       partnerName: data?.partnerName || faker.company.name(),
       isActive: data?.isActive ?? true,
     };
@@ -66,7 +66,7 @@ export class TestDataHelper {
   ) {
     const analysisData = {
       analysisCode: data?.analysisCode ||
-        faker.datatype.number({ min: 100, max: 999 }).toString(),
+        faker.number.int({ min: 100, max: 999 }).toString(),
       analysisName: data?.analysisName || faker.commerce.department(),
       analysisType: data?.analysisType || "cost_center",
       isActive: data?.isActive ?? true,
@@ -92,8 +92,8 @@ export class TestDataHelper {
       analysisCode?: string;
     }>;
   }) {
-    const journalNumber = await generateJournalNumber();
     const journalDate = data?.journalDate || new Date();
+    const journalNumber = await generateJournalNumber(journalDate);
     const description = data?.description || faker.lorem.sentence();
 
     // 仕訳ヘッダーを作成
@@ -133,18 +133,18 @@ export class TestDataHelper {
 
     for (let i = 0; i < count; i++) {
       const journal = await this.createTestJournal({
-        journalDate: faker.date.recent(30),
+        journalDate: faker.date.recent({ days: 30 }),
         description: faker.lorem.sentence(),
         details: [
           {
             accountCode: "1000",
-            amount: faker.datatype.number({ min: 1000, max: 100000 }),
+            amount: faker.number.int({ min: 1000, max: 100000 }),
             side: "debit" as const,
             description: faker.commerce.productDescription(),
           },
           {
             accountCode: "2000",
-            amount: faker.datatype.number({ min: 1000, max: 100000 }),
+            amount: faker.number.int({ min: 1000, max: 100000 }),
             side: "credit" as const,
             description: faker.commerce.productDescription(),
           },
@@ -341,7 +341,7 @@ export const testUtils = {
   generateRandomJournalNumber: (): string => {
     const today = new Date();
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, "");
-    const random = faker.datatype.number({ min: 1000000, max: 9999999 });
+    const random = faker.number.int({ min: 1000000, max: 9999999 });
     return `${dateStr}${random}`;
   },
 

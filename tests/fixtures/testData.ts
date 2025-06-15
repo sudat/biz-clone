@@ -209,7 +209,7 @@ export const testJournalPatterns = {
     description: '水道光熱費支払',
     details: [
       {
-        accountCode: testAccounts.utilities.accountCode,
+        accountCode: testAccounts.communicationExpense.accountCode,
         amount: 15000,
         side: 'debit' as const,
         description: '電気代',
@@ -265,7 +265,7 @@ export const testJournalPatterns = {
         analysisCode: testAnalysisCodes.salesDept.analysisCode,
       },
       {
-        accountCode: testAccounts.inventory.accountCode,
+        accountCode: testAccounts.purchases.accountCode,
         amount: 100000,
         side: 'debit' as const,
         description: '期末商品棚卸',

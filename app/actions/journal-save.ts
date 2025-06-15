@@ -76,8 +76,7 @@ export async function saveJournal(
               baseAmount: detail.baseAmount,
               taxAmount: detail.taxAmount,
               totalAmount: detail.totalAmount,
-              taxRate: detail.taxRate || null,
-              taxType: detail.taxType,
+              taxCode: detail.taxCode || null,
               lineDescription: detail.description || null,
             },
           });
@@ -99,10 +98,10 @@ export async function saveJournal(
       journalNumber: result.journalHeader.journalNumber,
     };
   } catch (error) {
-    const errorResult = handleServerActionError(error, "仕訳の保存", "仕訳");
+    console.error("仕訳保存エラー:", error);
     return {
       success: false,
-      error: errorResult.error?.message || "仕訳の保存に失敗しました",
+      error: error instanceof Error ? error.message : "仕訳の保存に失敗しました",
     };
   }
 }
@@ -248,8 +247,7 @@ export async function updateJournal(
               baseAmount: detail.baseAmount,
               taxAmount: detail.taxAmount,
               totalAmount: detail.totalAmount,
-              taxRate: detail.taxRate || null,
-              taxType: detail.taxType,
+              taxCode: detail.taxCode || null,
               lineDescription: detail.description || null,
             },
           });

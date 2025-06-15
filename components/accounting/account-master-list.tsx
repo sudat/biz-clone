@@ -345,6 +345,7 @@ export function AccountMasterList() {
                 <TableHead>名称</TableHead>
                 <TableHead>種別</TableHead>
                 <TableHead>区分</TableHead>
+                <TableHead>税区分</TableHead>
                 <TableHead>状態</TableHead>
                 <TableHead className="text-right">操作</TableHead>
               </TableRow>
@@ -353,7 +354,7 @@ export function AccountMasterList() {
               {filteredAccounts.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     className="text-center text-muted-foreground py-8"
                   >
                     {searchState.searchTerm ||
@@ -393,6 +394,15 @@ export function AccountMasterList() {
                           <Badge variant="default">明細科目</Badge>
                         ) : (
                           <Badge variant="outline">集計科目</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {account.defaultTaxRate ? (
+                          <Badge variant="secondary">
+                            {account.defaultTaxRate.taxName} ({account.defaultTaxRate.taxRate}%)
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">未設定</span>
                         )}
                       </TableCell>
                       <TableCell>

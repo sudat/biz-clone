@@ -37,8 +37,7 @@ export interface JournalDetailInquiryData {
   baseAmount: number;
   taxAmount: number;
   totalAmount: number;
-  taxRate: number | null;
-  taxType: string;
+  taxCode: string | null;
   lineDescription: string | null;
 }
 
@@ -93,8 +92,7 @@ export async function getJournalByNumber(
         baseAmount: detail.baseAmount.toNumber(),
         taxAmount: detail.taxAmount.toNumber(),
         totalAmount: detail.totalAmount.toNumber(),
-        taxRate: detail.taxRate?.toNumber() || null,
-        taxType: detail.taxType,
+        taxCode: detail.taxCode || null,
         lineDescription: detail.lineDescription,
       })),
     };
@@ -191,8 +189,7 @@ export async function getJournals(params: {
         baseAmount: detail.baseAmount.toNumber(),
         taxAmount: detail.taxAmount.toNumber(),
         totalAmount: detail.totalAmount.toNumber(),
-        taxRate: detail.taxRate?.toNumber() || null,
-        taxType: detail.taxType,
+        taxCode: detail.taxCode || null,
         lineDescription: detail.lineDescription,
       })),
     }));
@@ -350,8 +347,7 @@ export async function getJournalLedgerData(params: {
         baseAmount: detail.baseAmount?.toNumber() || 0,
         taxAmount: detail.taxAmount?.toNumber() || 0,
         totalAmount: detail.totalAmount?.toNumber() || 0,
-        taxRate: detail.taxRate?.toNumber() || null,
-        taxType: detail.taxType,
+        taxCode: detail.taxCode || null,
         lineDescription: detail.lineDescription,
       })),
     }));

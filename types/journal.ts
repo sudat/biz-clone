@@ -5,7 +5,6 @@
  * ============================================================================
  */
 
-import { TaxType } from "./tax";
 
 // 仕訳明細データ（UI・Server Action共通）
 export interface JournalDetailData {
@@ -25,8 +24,7 @@ export interface JournalDetailData {
   totalAmount: number;     // 合計額（本体+税）
   
   // 消費税関連
-  taxRate?: number;        // 消費税率（10.00, 8.00など）
-  taxType: TaxType;        // 課税区分（共通タイプ）
+  taxCode?: string;        // 税区分コード
   
   description?: string;
 }

@@ -17,12 +17,39 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { JournalDetailInquiryData } from "@/app/actions/journal-inquiry";
+import { useState, useEffect } from "react";
+import { getTaxRates, type TaxRateForClient } from "@/app/actions/tax-rates";
 
 interface JournalDetailViewProps {
   details: JournalDetailInquiryData[];
 }
 
 export function JournalDetailView({ details }: JournalDetailViewProps) {
+  const [taxRates, setTaxRates] = useState<TaxRateForClient[]>([]);
+
+  // 税区分マスタを取得
+  useEffect(() => {
+    const loadTaxRates = async () => {
+      try {
+        const result = await getTaxRates();
+        if (result.success && result.data) {
+          setTaxRates(result.data);
+        }
+      } catch (error) {
+        console.error("税区分の取得に失敗:", error);
+      }
+    };
+
+    loadTaxRates();
+  }, []);
+
+  // 税区分名を取得するヘルパー関数
+  const getTaxRateName = (taxCode: string | null) => {
+    if (!taxCode) return "未設定";
+    const taxRate = taxRates.find(rate => rate.taxCode === taxCode);
+    return taxRate ? `${taxRate.taxName} (${taxRate.taxRate}%)` : taxCode;
+  };
+
   if (!details || details.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -123,13 +150,8 @@ export function JournalDetailView({ details }: JournalDetailViewProps) {
               <TableCell>
                 <div className="space-y-1">
                   <Badge variant="outline" className="text-xs">
-                    {getTaxTypeLabel(detail.taxType)}
+                    {getTaxRateName(detail.taxCode)}
                   </Badge>
-                  {detail.taxRate && detail.taxRate > 0 && (
-                    <div className="text-xs text-muted-foreground">
-                      {detail.taxRate}%
-                    </div>
-                  )}
                 </div>
               </TableCell>
               <TableCell>
@@ -147,20 +169,3 @@ export function JournalDetailView({ details }: JournalDetailViewProps) {
   );
 }
 
-/**
- * 税区分のラベルを取得
- */
-function getTaxTypeLabel(taxType: string): string {
-  switch (taxType) {
-    case "taxable":
-      return "課税";
-    case "non_taxable":
-      return "対象外";
-    case "tax_free":
-      return "免税";
-    case "tax_entry":
-      return "税額";
-    default:
-      return taxType;
-  }
-}

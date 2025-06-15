@@ -22,4 +22,5 @@ export type {
   Partner,
   Prisma,
   SubAccount,
+  TaxRate,
 } from "../generated/prisma";

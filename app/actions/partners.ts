@@ -6,6 +6,7 @@ import { createPartnerSchema, updatePartnerSchema } from "@/lib/schemas/master";
 import type { Partner } from "@/lib/database/prisma";
 import { handleServerActionError } from "@/lib/utils/error-handler";
 import type { ActionResult } from "@/lib/types/errors";
+import { ErrorType } from "@/lib/types/errors";
 import { toJST } from "@/lib/utils/date-utils";
 
 /**
@@ -77,7 +78,7 @@ export async function createPartner(formData: FormData): Promise<ActionResult<Pa
       return { 
         success: false, 
         error: {
-          type: "validation" as const,
+          type: ErrorType.VALIDATION,
           message: "入力値が正しくありません",
           details: {
             fieldErrors: result.error.formErrors.fieldErrors,
@@ -120,7 +121,7 @@ export async function updatePartner(partnerCode: string, formData: FormData): Pr
       return { 
         success: false, 
         error: {
-          type: "validation" as const,
+          type: ErrorType.VALIDATION,
           message: "入力値が正しくありません",
           details: {
             fieldErrors: result.error.formErrors.fieldErrors,

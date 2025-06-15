@@ -185,7 +185,7 @@ export function PartnerMasterForm({
         );
         onSubmit();
       } else {
-        showErrorToast(createSystemError(result.error || "エラーが発生しました", "バリデーションエラー"));
+        showErrorToast(createSystemError(String(result.error) || "エラーが発生しました", "バリデーションエラー"));
       }
     } catch (error) {
       console.error("取引先の保存エラー:", error);
