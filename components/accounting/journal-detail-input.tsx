@@ -26,10 +26,7 @@ import { MasterCodeInput } from "./master-code-input";
 import { JournalDetailData } from "@/types/journal";
 import { getTaxRates, type TaxRateForClient } from "@/app/actions/tax-rates";
 import { getAccounts, type AccountForClient } from "@/app/actions/accounts";
-import { 
-  showErrorToast, 
-  showSuccessToast
-} from "@/components/ui/error-toast";
+import { showErrorToast, showSuccessToast } from "@/components/ui/error-toast";
 import { createSystemError } from "@/lib/types/errors";
 
 interface JournalDetailInputProps {
@@ -38,7 +35,7 @@ interface JournalDetailInputProps {
   onUpdate?: (detail: JournalDetailData) => void;
   onCancelEdit?: () => void;
   editingDetail?: JournalDetailData | null;
-  mode?: 'input' | 'edit';
+  mode?: "input" | "edit";
   disabled?: boolean;
   className?: string;
 }
@@ -66,7 +63,7 @@ export function JournalDetailInput({
   onUpdate,
   onCancelEdit,
   editingDetail,
-  mode = 'input',
+  mode = "input",
   disabled = false,
   className,
 }: JournalDetailInputProps) {
@@ -110,7 +107,7 @@ export function JournalDetailInput({
 
   // 編集時にフォームデータを初期化
   useEffect(() => {
-    if (mode === 'edit' && editingDetail) {
+    if (mode === "edit" && editingDetail) {
       setFormData({
         debitCredit: editingDetail.debitCredit,
         accountCode: editingDetail.accountCode || "",
@@ -127,7 +124,7 @@ export function JournalDetailInput({
         taxCode: editingDetail.taxCode || "TAX0",
         description: editingDetail.description || "",
       });
-    } else if (mode === 'input') {
+    } else if (mode === "input") {
       resetForm();
     }
   }, [mode, editingDetail, type]);
@@ -151,7 +148,9 @@ export function JournalDetailInput({
   // 消費税自動計算（税区分コードから税率を取得）
   const calculateTax = (baseAmount: number, taxCode: string) => {
     if (taxCode && taxCode !== "TAX0") {
-      const taxRateOption = taxRateOptions.find(rate => rate.taxCode === taxCode);
+      const taxRateOption = taxRateOptions.find(
+        (rate) => rate.taxCode === taxCode
+      );
       if (taxRateOption && taxRateOption.taxRate > 0) {
         return Math.floor(baseAmount * (taxRateOption.taxRate / 100));
       }
@@ -163,8 +162,8 @@ export function JournalDetailInput({
   const handleBaseAmountChange = (baseAmount: number) => {
     const taxAmount = calculateTax(baseAmount, formData.taxCode || "TAX0");
     const totalAmount = baseAmount + taxAmount;
-    
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
       baseAmount,
       taxAmount,
@@ -172,21 +171,19 @@ export function JournalDetailInput({
     }));
   };
 
-
   // 税区分変更時の処理
   const handleTaxCodeChange = (value: string) => {
     const baseAmount = formData.baseAmount || 0;
     const taxAmount = calculateTax(baseAmount, value);
     const totalAmount = baseAmount + taxAmount;
-    
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
       taxCode: value,
       taxAmount,
       totalAmount,
     }));
   };
-
 
   // 追加・更新処理
   const handleSubmit = () => {
@@ -215,7 +212,7 @@ export function JournalDetailInput({
       description: formData.description,
     };
 
-    if (mode === 'edit' && onUpdate) {
+    if (mode === "edit" && onUpdate) {
       onUpdate(detail);
     } else {
       onAdd(detail);
@@ -232,14 +229,16 @@ export function JournalDetailInput({
 
   // 入力可能判定
   const canSubmit =
-    formData.accountCode && formData.totalAmount != null && formData.totalAmount > 0;
+    formData.accountCode &&
+    formData.totalAmount != null &&
+    formData.totalAmount > 0;
 
   // Enterキー処理
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && canSubmit) {
       e.preventDefault();
       handleSubmit();
-    } else if (e.key === "Escape" && mode === 'edit') {
+    } else if (e.key === "Escape" && mode === "edit") {
       e.preventDefault();
       handleCancel();
     }
@@ -257,9 +256,11 @@ export function JournalDetailInput({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold text-slate-700">
-            {mode === 'edit' ? `${config.title}明細を編集` : `${config.title}明細を追加`}
+            {mode === "edit"
+              ? `${config.title}明細を編集`
+              : `${config.title}明細を追加`}
           </CardTitle>
-          {mode === 'edit' && (
+          {mode === "edit" && !disabled && (
             <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
               編集中
             </div>
@@ -279,27 +280,32 @@ export function JournalDetailInput({
               onChange={async (code, name) => {
                 // 勘定科目選択時のデフォルト税区分自動設定
                 let defaultTaxCode = "TAX0"; // デフォルトは非課税
-                
+
                 if (code) {
                   try {
                     // 勘定科目の情報を取得してデフォルト税区分をチェック
                     const accountResult = await getAccounts();
                     if (accountResult.success && accountResult.data) {
-                      const account = accountResult.data.find(acc => acc.accountCode === code);
+                      const account = accountResult.data.find(
+                        (acc) => acc.accountCode === code
+                      );
                       if (account?.defaultTaxCode) {
                         defaultTaxCode = account.defaultTaxCode;
                       }
                     }
                   } catch (error) {
-                    console.error("勘定科目のデフォルト税区分取得エラー:", error);
+                    console.error(
+                      "勘定科目のデフォルト税区分取得エラー:",
+                      error
+                    );
                   }
                 }
-                
+
                 // 税額を再計算
                 const baseAmount = formData.baseAmount || 0;
                 const taxAmount = calculateTax(baseAmount, defaultTaxCode);
                 const totalAmount = baseAmount + taxAmount;
-                
+
                 setFormData((prev) => ({
                   ...prev,
                   accountCode: code,
@@ -401,7 +407,7 @@ export function JournalDetailInput({
                 <SelectValue placeholder="税区分を選択..." />
               </SelectTrigger>
               <SelectContent>
-                {taxRateOptions.map(option => (
+                {taxRateOptions.map((option) => (
                   <SelectItem key={option.taxCode} value={option.taxCode}>
                     {option.taxName} ({option.taxRate}%)
                   </SelectItem>
@@ -436,7 +442,7 @@ export function JournalDetailInput({
                 className="text-right font-mono h-9"
               />
             </div>
-            
+
             {/* 消費税額（表示のみ） */}
             <div className="w-24">
               <div className="text-xs text-gray-600 mb-1">消費税</div>
@@ -444,7 +450,7 @@ export function JournalDetailInput({
                 ¥{(formData.taxAmount || 0).toLocaleString()}
               </div>
             </div>
-            
+
             {/* 合計額（表示のみ） */}
             <div className="w-32">
               <div className="text-xs text-gray-600 mb-1">合計</div>
@@ -479,7 +485,7 @@ export function JournalDetailInput({
 
         {/* ボタンエリア */}
         <div className="flex gap-2">
-          {mode === 'edit' ? (
+          {mode === "edit" ? (
             <>
               <Button
                 onClick={handleCancel}
@@ -523,9 +529,9 @@ export function JournalDetailInput({
               勘定科目と金額（1円以上）の入力が必要です
             </div>
           )}
-        
-        {/* 編集モード時のヒント */}
-        {mode === 'edit' && (
+
+        {/* 編集モード時のヒント（照会画面では非表示） */}
+        {mode === "edit" && !disabled && (
           <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200">
             Enterで更新、Escapeでキャンセルできます
           </div>

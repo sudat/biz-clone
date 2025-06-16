@@ -354,6 +354,7 @@ export function RoleMasterList() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="cursor-pointer"
                           onClick={() => handleEdit(role)}
                         >
                           <Pencil className="h-4 w-4" />
@@ -361,6 +362,7 @@ export function RoleMasterList() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="cursor-pointer"
                           onClick={() => handleDelete(role)}
                         >
                           <Trash2 className="h-4 w-4" />

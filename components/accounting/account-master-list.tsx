@@ -417,6 +417,7 @@ export function AccountMasterList() {
                           <Button
                             variant="outline"
                             size="sm"
+                            className="cursor-pointer"
                             onClick={() => handleEdit(account)}
                           >
                             <Pencil className="h-4 w-4" />
@@ -424,6 +425,7 @@ export function AccountMasterList() {
                           <Button
                             variant="outline"
                             size="sm"
+                            className="cursor-pointer"
                             onClick={() => handleDelete(account)}
                           >
                             <Trash2 className="h-4 w-4" />

@@ -11,7 +11,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
-import { Eye, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -23,9 +23,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { JournalDeleteButton } from "@/components/accounting/journal-delete-button";
 import { AmountDisplay } from "@/components/accounting/amount-display";
 import type { JournalInquiryData } from "@/app/actions/journal-inquiry";
+import { approveJournal } from "@/app/actions/journal-inquiry";
+import { toast } from "sonner";
+import { useUser } from "@/lib/contexts/user-context";
 
 interface JournalListTableProps {
   journals: JournalInquiryData[];
@@ -46,6 +60,8 @@ export function JournalListTable({
   onPageChange,
   onRefresh,
 }: JournalListTableProps) {
+  const { currentUser } = useUser();
+  const [isApproving, setIsApproving] = useState<string | null>(null);
   const totalPages = Math.ceil(totalCount / pageSize);
   const hasNextPage = currentPage < totalPages;
   const hasPrevPage = currentPage > 1;
@@ -96,6 +112,36 @@ export function JournalListTable({
         <div className="text-muted-foreground">{user.userCode}</div>
       </div>
     );
+  };
+
+  const handleApproval = async (journalNumber: string) => {
+    if (!currentUser?.userId) {
+      toast.error("ユーザー情報が取得できません");
+      return;
+    }
+
+    setIsApproving(journalNumber);
+    try {
+      const result = await approveJournal({
+        journalNumber,
+        approvedBy: currentUser.userId,
+      });
+
+      if (result.success) {
+        toast.success("仕訳を承認しました");
+        // データを確実に再読み込みするため、少し遅延を入れる
+        setTimeout(() => {
+          onRefresh();
+        }, 100);
+      } else {
+        toast.error("承認処理に失敗しました: " + result.error);
+      }
+    } catch (error) {
+      console.error("承認処理エラー:", error);
+      toast.error("承認処理でエラーが発生しました");
+    } finally {
+      setIsApproving(null);
+    }
   };
 
   if (isLoading) {
@@ -156,7 +202,7 @@ export function JournalListTable({
                 <TableHead className="w-24">作成者</TableHead>
                 <TableHead className="w-24">承認状況</TableHead>
                 <TableHead className="w-28">作成日</TableHead>
-                <TableHead className="w-32 text-center">操作</TableHead>
+                <TableHead className="w-36 text-center">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -192,14 +238,48 @@ export function JournalListTable({
                     {formatJournalDate(journal.createdAt)}
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center justify-end gap-1">
+                      {journal.approvalStatus === "pending" && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="cursor-pointer text-green-600 hover:text-green-700 hover:bg-green-50"
+                              title="承認"
+                              disabled={isApproving === journal.journalNumber}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>仕訳承認の確認</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                この仕訳を承認しますか？
+                                <br />
+                                仕訳番号: {journal.journalNumber}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>いいえ</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleApproval(journal.journalNumber)}
+                                disabled={isApproving === journal.journalNumber}
+                              >
+                                {isApproving === journal.journalNumber ? "処理中..." : "はい"}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                       <Link href={`/siwake/${journal.journalNumber}`}>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" className="cursor-pointer" title="詳細表示">
                           <Eye className="h-4 w-4" />
                         </Button>
                       </Link>
                       <Link href={`/siwake/update/${journal.journalNumber}`}>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" className="cursor-pointer" title="編集">
                           <Edit className="h-4 w-4" />
                         </Button>
                       </Link>
@@ -259,16 +339,50 @@ export function JournalListTable({
                     作成: {formatJournalDate(journal.createdAt)}
                   </span>
                   <div 
-                    className="flex gap-1"
+                    className="flex gap-1 justify-end"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    {journal.approvalStatus === "pending" && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                            title="承認"
+                            disabled={isApproving === journal.journalNumber}
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>仕訳承認の確認</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              この仕訳を承認しますか？
+                              <br />
+                              仕訳番号: {journal.journalNumber}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>いいえ</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleApproval(journal.journalNumber)}
+                              disabled={isApproving === journal.journalNumber}
+                            >
+                              {isApproving === journal.journalNumber ? "処理中..." : "はい"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                     <Link href={`/siwake/${journal.journalNumber}`}>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" title="詳細表示">
                         <Eye className="h-4 w-4" />
                       </Button>
                     </Link>
                     <Link href={`/siwake/update/${journal.journalNumber}`}>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" title="編集">
                         <Edit className="h-4 w-4" />
                       </Button>
                     </Link>

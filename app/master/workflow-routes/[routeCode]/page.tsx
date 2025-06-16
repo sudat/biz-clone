@@ -183,7 +183,7 @@ export default function WorkflowRouteFlowConfigPage() {
         <CardContent className="p-0">
           <WorkflowRouteFlowEditor
             organizations={organizations}
-            initialFlowConfig={route.flowConfigJson ? route.flowConfigJson : undefined}
+            initialFlowConfig={route.flowConfigJson ? (typeof route.flowConfigJson === 'string' ? JSON.parse(route.flowConfigJson) : route.flowConfigJson) : undefined}
             onSave={handleFlowConfigSave}
             saving={saving}
           />

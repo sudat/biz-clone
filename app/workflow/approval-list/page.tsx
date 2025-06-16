@@ -2,17 +2,21 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, Edit3 } from "lucide-react";
+import { Clock, Edit3, CheckCircle2 } from "lucide-react";
 import { JournalListTable } from "@/components/accounting/journal-list-table";
 import { useUser } from "@/lib/contexts/user-context";
 import {
   getUserCreatedPendingJournals,
+  getApprovableJournals,
+  getApprovedJournalsByUser,
   type JournalInquiryData,
 } from "@/app/actions/journal-inquiry";
 import { toast } from "sonner";
 
 export default function ApprovalListPage() {
   const { currentUser } = useUser();
+
+  // 起票した仕訳のstate
   const [createdJournals, setCreatedJournals] = useState<JournalInquiryData[]>(
     []
   );
@@ -20,10 +24,24 @@ export default function ApprovalListPage() {
   const [createdCurrentPage, setCreatedCurrentPage] = useState(1);
   const [isLoadingCreated, setIsLoadingCreated] = useState(false);
 
-  const pageSize = 20;
+  // 承認対象の仕訳のstate
+  const [approvableJournals, setApprovableJournals] = useState<
+    JournalInquiryData[]
+  >([]);
+  const [approvableTotalCount, setApprovableTotalCount] = useState(0);
+  const [approvableCurrentPage, setApprovableCurrentPage] = useState(1);
+  const [isLoadingApprovable, setIsLoadingApprovable] = useState(false);
 
-  // 起票した仕訳を取得
-  const fetchCreatedJournals = useCallback(
+  // 承認済の仕訳のstate
+  const [approvedJournals, setApprovedJournals] = useState<
+    JournalInquiryData[]
+  >([]);
+  const [approvedTotalCount, setApprovedTotalCount] = useState(0);
+  const [approvedCurrentPage, setApprovedCurrentPage] = useState(1);
+  const [isLoadingApproved, setIsLoadingApproved] = useState(false);
+
+  // 起票した仕訳の読み込み
+  const loadCreatedJournals = useCallback(
     async (page: number = 1) => {
       if (!currentUser?.userId) return;
 
@@ -32,22 +50,19 @@ export default function ApprovalListPage() {
         const result = await getUserCreatedPendingJournals({
           userId: currentUser.userId,
           page,
-          limit: pageSize,
+          limit: 20,
         });
 
-        if (result.success && result.data) {
-          setCreatedJournals(result.data);
+        if (result.success) {
+          setCreatedJournals(result.data || []);
           setCreatedTotalCount(result.totalCount || 0);
+          setCreatedCurrentPage(page);
         } else {
-          toast.error(result.error || "起票した仕訳の取得に失敗しました");
-          setCreatedJournals([]);
-          setCreatedTotalCount(0);
+          toast.error("起票した仕訳の取得に失敗しました: " + result.error);
         }
       } catch (error) {
+        toast.error("起票した仕訳の取得エラー");
         console.error("起票した仕訳取得エラー:", error);
-        toast.error("起票した仕訳の取得に失敗しました");
-        setCreatedJournals([]);
-        setCreatedTotalCount(0);
       } finally {
         setIsLoadingCreated(false);
       }
@@ -55,26 +70,112 @@ export default function ApprovalListPage() {
     [currentUser?.userId]
   );
 
-  // 初回読み込み
-  useEffect(() => {
-    if (currentUser?.userId) {
-      fetchCreatedJournals();
-    }
-  }, [fetchCreatedJournals]);
+  // 承認対象の仕訳の読み込み
+  const loadApprovableJournals = useCallback(
+    async (page: number = 1) => {
+      if (!currentUser?.userId) return;
 
-  // 起票した仕訳のページ変更処理
-  const handleCreatedPageChange = useCallback(
-    (page: number) => {
-      setCreatedCurrentPage(page);
-      fetchCreatedJournals(page);
+      setIsLoadingApprovable(true);
+      try {
+        const result = await getApprovableJournals({
+          userId: currentUser.userId,
+          page,
+          limit: 20,
+        });
+
+        if (result.success) {
+          setApprovableJournals(result.data || []);
+          setApprovableTotalCount(result.totalCount || 0);
+          setApprovableCurrentPage(page);
+        } else {
+          toast.error("承認対象仕訳の取得に失敗しました: " + result.error);
+        }
+      } catch (error) {
+        toast.error("承認対象仕訳の取得エラー");
+        console.error("承認対象仕訳取得エラー:", error);
+      } finally {
+        setIsLoadingApprovable(false);
+      }
     },
-    [fetchCreatedJournals]
+    [currentUser?.userId]
   );
 
-  // 起票した仕訳の更新処理
-  const handleCreatedRefresh = useCallback(() => {
-    fetchCreatedJournals(createdCurrentPage);
-  }, [fetchCreatedJournals, createdCurrentPage]);
+  // 承認済の仕訳の読み込み
+  const loadApprovedJournals = useCallback(
+    async (page: number = 1) => {
+      if (!currentUser?.userId) return;
+
+      setIsLoadingApproved(true);
+      try {
+        const result = await getApprovedJournalsByUser({
+          userId: currentUser.userId,
+          page,
+          limit: 20,
+        });
+
+        if (result.success) {
+          setApprovedJournals(result.data || []);
+          setApprovedTotalCount(result.totalCount || 0);
+          setApprovedCurrentPage(page);
+        } else {
+          toast.error("承認済仕訳の取得に失敗しました: " + result.error);
+        }
+      } catch (error) {
+        toast.error("承認済仕訳の取得エラー");
+        console.error("承認済仕訳取得エラー:", error);
+      } finally {
+        setIsLoadingApproved(false);
+      }
+    },
+    [currentUser?.userId]
+  );
+
+  // 初期読み込み
+  useEffect(() => {
+    if (currentUser?.userId) {
+      loadCreatedJournals();
+      loadApprovableJournals();
+      loadApprovedJournals();
+    }
+  }, [
+    currentUser?.userId,
+    loadCreatedJournals,
+    loadApprovableJournals,
+    loadApprovedJournals,
+  ]);
+
+  // ページネーション処理
+  const handleCreatedPageChange = (page: number) => {
+    loadCreatedJournals(page);
+  };
+
+  const handleApprovablePageChange = (page: number) => {
+    loadApprovableJournals(page);
+  };
+
+  const handleApprovedPageChange = (page: number) => {
+    loadApprovedJournals(page);
+  };
+
+  // 更新処理
+  const handleRefreshCreated = () => {
+    loadCreatedJournals(createdCurrentPage);
+  };
+
+  const handleRefreshApprovable = () => {
+    loadApprovableJournals(approvableCurrentPage);
+  };
+
+  const handleRefreshApproved = () => {
+    loadApprovedJournals(approvedCurrentPage);
+  };
+
+  // 承認処理後の全体更新
+  const handleApprovalRefresh = () => {
+    loadCreatedJournals(createdCurrentPage);
+    loadApprovableJournals(approvableCurrentPage);
+    loadApprovedJournals(approvedCurrentPage);
+  };
 
   return (
     <div className="space-y-4">
@@ -92,7 +193,7 @@ export default function ApprovalListPage() {
 
       {/* タブコンテンツ */}
       <Tabs defaultValue="created" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
+        <TabsList className="grid w-full grid-cols-3 mb-0 items-center justify-center h-12">
           <TabsTrigger
             value="created"
             className="flex items-center gap-2 text-base"
@@ -107,30 +208,49 @@ export default function ApprovalListPage() {
             <Clock className="h-4 w-4" />
             承認対象の仕訳
           </TabsTrigger>
+          <TabsTrigger
+            value="approved"
+            className="flex items-center gap-2 text-base"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            承認済の仕訳
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="created" className="space-y-4">
           <JournalListTable
             journals={createdJournals}
+            isLoading={isLoadingCreated}
             totalCount={createdTotalCount}
             currentPage={createdCurrentPage}
-            pageSize={pageSize}
-            isLoading={isLoadingCreated}
+            pageSize={20}
             onPageChange={handleCreatedPageChange}
-            onRefresh={handleCreatedRefresh}
+            onRefresh={handleRefreshCreated}
           />
         </TabsContent>
 
         <TabsContent value="pending" className="space-y-4">
-          <div className="text-center py-12">
-            <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-              承認対象の仕訳
-            </h3>
-            <p className="text-muted-foreground">
-              あなたの承認が必要な仕訳がここに表示されます
-            </p>
-          </div>
+          <JournalListTable
+            journals={approvableJournals}
+            isLoading={isLoadingApprovable}
+            totalCount={approvableTotalCount}
+            currentPage={approvableCurrentPage}
+            pageSize={20}
+            onPageChange={handleApprovablePageChange}
+            onRefresh={handleRefreshApprovable}
+          />
+        </TabsContent>
+
+        <TabsContent value="approved" className="space-y-4">
+          <JournalListTable
+            journals={approvedJournals}
+            isLoading={isLoadingApproved}
+            totalCount={approvedTotalCount}
+            currentPage={approvedCurrentPage}
+            pageSize={20}
+            onPageChange={handleApprovedPageChange}
+            onRefresh={handleRefreshApproved}
+          />
         </TabsContent>
       </Tabs>
     </div>

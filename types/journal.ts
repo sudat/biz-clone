@@ -39,6 +39,12 @@ export interface JournalHeaderData {
 export interface JournalSaveData {
   header: JournalHeaderData;
   details: JournalDetailData[];
+  attachedFiles?: Array<{
+    name: string;
+    url: string;
+    size: number;
+    type: string;
+  }>;
 }
 
 // 仕訳保存結果

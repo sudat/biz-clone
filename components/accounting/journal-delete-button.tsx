@@ -70,7 +70,7 @@ export function JournalDeleteButton({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant={variant} size={size} disabled={isDeleting}>
+        <Button variant={variant} size={size} className="cursor-pointer" disabled={isDeleting}>
           <Trash2 className="h-4 w-4" />
           {isDeleting ? "削除中..." : "削除"}
         </Button>

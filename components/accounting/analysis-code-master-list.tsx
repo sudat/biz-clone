@@ -327,6 +327,7 @@ export function AnalysisCodeMasterList() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="cursor-pointer"
                           onClick={() => handleEdit(analysisCode)}
                         >
                           <Pencil className="h-4 w-4" />
@@ -334,6 +335,7 @@ export function AnalysisCodeMasterList() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="cursor-pointer"
                           onClick={() => handleDelete(analysisCode)}
                         >
                           <Trash2 className="h-4 w-4" />

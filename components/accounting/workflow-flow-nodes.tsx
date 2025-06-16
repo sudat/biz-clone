@@ -50,7 +50,7 @@ export function EndNode({ data, selected }: NodeProps) {
 export function OrganizationNode({ data, selected }: NodeProps) {
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (data.onDelete) {
+    if (data && 'onDelete' in data && typeof data.onDelete === 'function') {
       data.onDelete(data.id);
     }
   };
@@ -70,16 +70,11 @@ export function OrganizationNode({ data, selected }: NodeProps) {
       
       <div className="text-center">
         <div className="font-semibold text-sm text-blue-800">
-          {data.organizationName}
+          {String(data.organizationName || '')}
         </div>
         <div className="text-xs text-blue-600 mt-1">
-          {data.organizationCode}
+          {String(data.organizationCode || '')}
         </div>
-        {data.stepNumber && (
-          <Badge variant="secondary" className="mt-2 text-xs bg-blue-100 text-blue-700">
-            ステップ {data.stepNumber}
-          </Badge>
-        )}
       </div>
 
       {/* 削除ボタン（削除可能な場合のみ表示） */}

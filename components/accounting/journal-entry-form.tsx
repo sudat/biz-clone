@@ -17,7 +17,10 @@ import { Form } from "@/components/ui/form";
 import { JournalHeaderSection } from "./journal-header-section";
 import { JournalEntrySide } from "./journal-entry-side";
 import { BalanceMonitor } from "./balance-monitor";
+import { FileAttachment, type AttachedFile } from "./file-attachment";
 import { JournalDetailData, JournalSaveData } from "@/types/journal";
+import { useUploadThing } from "@/lib/uploadthing";
+import { saveJournalAttachment } from "@/app/actions/journal-attachments";
 
 // 今日の日付をYYYYMMDD形式で取得
 const getTodayString = (): string => {
@@ -73,6 +76,15 @@ interface JournalEntryFormProps {
     userName: string;
     userKana: string | null;
   } | null;
+  approvedUser?: {
+    userId: string;
+    userCode: string;
+    userName: string;
+    userKana: string | null;
+  } | null;
+  initialFiles?: AttachedFile[];
+  onFilesChange?: (files: File[]) => void;
+  onFileDelete?: (fileId: string) => void;
 }
 
 export function JournalEntryForm({
@@ -82,14 +94,33 @@ export function JournalEntryForm({
   journalNumber,
   disabled = false,
   className,
-  createdUser
+  createdUser,
+  approvedUser,
+  initialFiles = [],
+  onFilesChange,
+  onFileDelete
 }: JournalEntryFormProps) {
   const [details, setDetails] = useState<JournalDetailData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>(initialFiles);
+  const [isUploading, setIsUploading] = useState(false);
   
   // 明細クリック反映機能用の状態
   const [selectedDetail, setSelectedDetail] = useState<JournalDetailData | null>(null);
   const [displayMode, setDisplayMode] = useState<'input' | 'edit'>('input');
+
+  // UploadThing フック
+  const { startUpload, isUploading: uploadingState } = useUploadThing("journalAttachment", {
+    onClientUploadComplete: (res) => {
+      console.log("アップロード完了:", res);
+      setIsUploading(false);
+    },
+    onUploadError: (error: Error) => {
+      console.error("アップロードエラー:", error);
+      alert(`アップロードエラー: ${error.message}`);
+      setIsUploading(false);
+    },
+  });
 
   // 初期明細データの設定
   useEffect(() => {
@@ -173,6 +204,67 @@ export function JournalEntryForm({
     }
   };
 
+  // ファイル変更処理
+  const handleFilesChange = async (newFiles: File[]) => {
+    if (newFiles.length === 0) return;
+
+    setIsUploading(true);
+    
+    try {
+      // UploadThingを使ってファイルをアップロード
+      const uploadResults = await startUpload(newFiles);
+      
+      if (!uploadResults) {
+        throw new Error("ファイルのアップロードに失敗しました");
+      }
+
+      // アップロード成功したファイル情報をAttachedFile形式に変換
+      const newAttachedFiles: AttachedFile[] = [];
+      
+      for (const result of uploadResults) {
+        // 新しい添付ファイル情報を作成
+        const newAttachedFile: AttachedFile = {
+          id: `uploaded-${Date.now()}-${Math.random()}`,
+          name: result.name,
+          size: result.size,
+          type: result.type || 'application/octet-stream',
+          url: result.url,
+          uploadedAt: new Date()
+        };
+        
+        newAttachedFiles.push(newAttachedFile);
+
+        // UploadThingにアップロード済み、仕訳保存時にデータベースに保存する
+      }
+      
+      // 状態を更新
+      setAttachedFiles(prev => [...prev, ...newAttachedFiles]);
+      
+      // 親コンポーネントに通知
+      if (onFilesChange) {
+        onFilesChange(newFiles);
+      }
+
+      console.log("ファイルアップロード完了:", newAttachedFiles);
+      
+    } catch (error) {
+      console.error("ファイルアップロードエラー:", error);
+      alert(`ファイルのアップロードに失敗しました: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // ファイル削除処理
+  const handleFileDelete = (fileId: string) => {
+    setAttachedFiles(prev => prev.filter(file => file.id !== fileId));
+    
+    // 親コンポーネントに通知
+    if (onFileDelete) {
+      onFileDelete(fileId);
+    }
+  };
+
   // フォーム送信
   const handleSubmit = async (formData: JournalEntryForm) => {
     if (!canSave || !onSubmit) return;
@@ -218,7 +310,13 @@ export function JournalEntryForm({
           journalDate: parsedDate,
           description: formData.header.description
         },
-        details
+        details,
+        attachedFiles: attachedFiles.map(file => ({
+          name: file.name,
+          url: file.url || '',
+          size: file.size,
+          type: file.type
+        }))
       };
       
       await onSubmit(journalSaveData);
@@ -239,6 +337,8 @@ export function JournalEntryForm({
     setDetails([]);
     setSelectedDetail(null);
     setDisplayMode('input');
+    setAttachedFiles([]);
+    setIsUploading(false);
   };
 
   return (
@@ -250,6 +350,7 @@ export function JournalEntryForm({
             control={form.control} 
             journalNumber={journalNumber}
             createdUser={createdUser}
+            approvedUser={approvedUser}
           />
 
           {/* バランス監視バー */}
@@ -300,6 +401,27 @@ export function JournalEntryForm({
                 disabled={disabled || isSubmitting}
               />
             </div>
+          </div>
+
+          {/* ファイル添付エリア */}
+          <div className="border-t pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium">添付ファイル</h3>
+              {isUploading && (
+                <div className="flex items-center gap-2 text-sm text-blue-600">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  アップロード中...
+                </div>
+              )}
+            </div>
+            <FileAttachment
+              files={attachedFiles}
+              onFilesChange={handleFilesChange}
+              onFileDelete={handleFileDelete}
+              disabled={disabled || isSubmitting || isUploading}
+              mode="upload"
+              className="w-full"
+            />
           </div>
 
         </form>

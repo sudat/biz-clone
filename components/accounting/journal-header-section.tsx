@@ -9,7 +9,7 @@
 
 import React from "react";
 import { Control } from "react-hook-form";
-import { Hash, User } from "lucide-react";
+import { Hash, User, CheckCircle } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -38,6 +38,12 @@ interface JournalHeaderSectionProps {
     userName: string;
     userKana: string | null;
   } | null;
+  approvedUser?: {
+    userId: string;
+    userCode: string;
+    userName: string;
+    userKana: string | null;
+  } | null;
 }
 
 export function JournalHeaderSection({
@@ -46,6 +52,7 @@ export function JournalHeaderSection({
   formData,
   readOnly = false,
   createdUser,
+  approvedUser,
 }: JournalHeaderSectionProps) {
   const renderCreatedUserInfo = () => {
     if (!createdUser) return null;
@@ -59,6 +66,23 @@ export function JournalHeaderSection({
         <div className="flex flex-col leading-tight">
           <div className="font-medium">{createdUser.userName}</div>
           <div className="text-muted-foreground">{createdUser.userCode}</div>
+        </div>
+      </Badge>
+    );
+  };
+
+  const renderApprovedUserInfo = () => {
+    if (!approvedUser) return null;
+    
+    return (
+      <Badge
+        variant="default"
+        className="flex items-center gap-1 text-xs px-2 py-1 bg-green-100 text-green-800 border-green-200"
+      >
+        <CheckCircle className="h-3 w-3" />
+        <div className="flex flex-col leading-tight">
+          <div className="font-medium">{approvedUser.userName}</div>
+          <div className="text-muted-foreground">{approvedUser.userCode}</div>
         </div>
       </Badge>
     );
@@ -149,7 +173,7 @@ export function JournalHeaderSection({
               ) : null}
             </div>
 
-            {/* 仕訳番号と作成者 - 右端に表示 */}
+            {/* 仕訳番号と作成者・承認者 - 右端に表示 */}
             <div className="flex items-center gap-2">
               {journalNumber && (
                 <Badge
@@ -161,6 +185,7 @@ export function JournalHeaderSection({
                 </Badge>
               )}
               {renderCreatedUserInfo()}
+              {renderApprovedUserInfo()}
             </div>
           </div>
         </div>

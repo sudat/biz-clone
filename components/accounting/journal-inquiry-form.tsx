@@ -1,22 +1,23 @@
 /**
  * 仕訳照会フォームコンポーネント
  * ============================================================================
- * 仕訳作成フォームと同じ構造で照会専用のフォーム
+ * 仕訳の詳細情報を表示する読み取り専用フォーム
+ * 作成・更新画面と統一されたレイアウト構造
  * ============================================================================
  */
 
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React from "react";
 import { cn } from "@/lib/utils";
-
+import { Badge } from "@/components/ui/badge";
+import { FileAttachment, type AttachedFile } from "./file-attachment";
 import { JournalHeaderSection } from "./journal-header-section";
-import { JournalInquirySide } from "./journal-inquiry-side";
 import { BalanceMonitor } from "./balance-monitor";
-import type {
-  JournalInquiryData,
-  JournalDetailInquiryData,
-} from "@/app/actions/journal-inquiry";
+import { JournalDetailList } from "./journal-detail-list";
+import { JournalEntrySide } from "./journal-entry-side";
+import type { JournalInquiryData } from "@/app/actions/journal-inquiry";
+import type { JournalDetailData } from "@/types/journal";
 
 interface JournalInquiryFormProps {
   journalData: JournalInquiryData;
@@ -31,107 +32,180 @@ export function JournalInquiryForm({
   onDelete,
   className,
 }: JournalInquiryFormProps) {
-  const [selectedDetail, setSelectedDetail] =
-    useState<JournalDetailInquiryData | null>(null);
+  // 添付ファイルをAttachedFile形式に変換
+  const attachedFiles: AttachedFile[] =
+    journalData.attachments?.map((attachment) => ({
+      id: attachment.attachmentId,
+      name: attachment.originalFileName,
+      size: attachment.fileSize,
+      type: attachment.mimeType,
+      url: attachment.fileUrl,
+      uploadedAt: attachment.uploadedAt,
+    })) || [];
 
-  // 日付を8桁のYYYYMMDD形式に変換
-  const formatDateToYYYYMMDD = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}${month}${day}`;
-  };
-
-  // 借方・貸方の明細と合計を計算
-  const debitDetails = useMemo(
-    () => journalData.details.filter((detail) => detail.debitCredit === "D"),
-    [journalData.details]
+  // 借方・貸方の集計および明細データ変換（update 画面と同形式に合わせる）
+  const convertedDetails: JournalDetailData[] = journalData.details.map(
+    (d) => ({
+      debitCredit: d.debitCredit === "D" ? "debit" : "credit",
+      accountCode: d.accountCode,
+      accountName: d.accountName || undefined,
+      subAccountCode: d.subAccountCode || undefined,
+      subAccountName: d.subAccountName || undefined,
+      partnerCode: d.partnerCode || undefined,
+      partnerName: d.partnerName || undefined,
+      analysisCode: d.analysisCode || undefined,
+      analysisCodeName: d.analysisCodeName || undefined,
+      baseAmount: d.baseAmount,
+      taxAmount: d.taxAmount,
+      totalAmount: d.totalAmount,
+      taxCode: d.taxCode || undefined,
+      description: d.lineDescription || undefined,
+    })
   );
 
-  const creditDetails = useMemo(
-    () => journalData.details.filter((detail) => detail.debitCredit === "C"),
-    [journalData.details]
-  );
+  const debitTotal = convertedDetails
+    .filter((detail) => detail.debitCredit === "debit")
+    .reduce((sum, detail) => sum + detail.totalAmount, 0);
 
-  const debitTotal = useMemo(
-    () => debitDetails.reduce((sum, detail) => sum + detail.totalAmount, 0),
-    [debitDetails]
-  );
+  const creditTotal = convertedDetails
+    .filter((detail) => detail.debitCredit === "credit")
+    .reduce((sum, detail) => sum + detail.totalAmount, 0);
 
-  const creditTotal = useMemo(
-    () => creditDetails.reduce((sum, detail) => sum + detail.totalAmount, 0),
-    [creditDetails]
-  );
+  // 日付をゼロ埋めでYYYYMMDD形式に整形
+  const d = journalData.journalDate;
+  const journalDateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}${String(d.getDate()).padStart(2, "0")}`;
 
-  // 初期表示用の明細を取得（各サイドの1行目）
-  const initialDebitDetail = debitDetails[0] || null;
-  const initialCreditDetail = creditDetails[0] || null;
-
-  // 明細クリック時の処理
-  const handleDetailClick = (detail: JournalDetailInquiryData) => {
-    setSelectedDetail(detail);
-  };
-
-  // 表示する明細を決定（選択されたものがあればそれ、なければ初期表示）
-  const displayedDebitDetail =
-    selectedDetail?.debitCredit === "D" ? selectedDetail : initialDebitDetail;
-  const displayedCreditDetail =
-    selectedDetail?.debitCredit === "C" ? selectedDetail : initialCreditDetail;
-
-  // フォームデータを作成（JournalHeaderSectionで使用）
-  const formData = {
+  const headerFormData = {
     header: {
-      journalDate: formatDateToYYYYMMDD(journalData.journalDate),
+      journalDate: journalDateStr,
       description: journalData.description || "",
     },
   };
 
   return (
     <div className={cn("space-y-6", className)}>
-      {/* ヘッダーセクション */}
+      {/* ヘッダーセクション（読み取り専用） */}
       <JournalHeaderSection
         journalNumber={journalData.journalNumber}
-        formData={formData}
+        formData={headerFormData}
         readOnly={true}
         createdUser={journalData.createdUser}
+        approvedUser={journalData.approvedUser}
       />
 
-      {/* バランス監視バー */}
+      {/* バランス監視バー（更新/削除ボタン付き） */}
       <BalanceMonitor
         debitTotal={debitTotal}
         creditTotal={creditTotal}
+        mode="inquiry"
         onUpdate={onUpdate}
         onDelete={onDelete}
-        mode="inquiry"
-        hasDetails={journalData.details.length > 0}
-        detailsCount={journalData.details.length}
+        hasDetails={convertedDetails.length > 0}
+        detailsCount={convertedDetails.length}
       />
 
-      {/* メイン表示エリア */}
+      {/* メイン表示エリア（2カラムグリッド） */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 借方サイド */}
         <div className="space-y-4">
-          <JournalInquirySide
+          <JournalEntrySide
             type="debit"
-            details={journalData.details}
-            displayedDetail={displayedDebitDetail}
-            selectedDetail={selectedDetail}
-            onDetailClick={handleDetailClick}
+            details={convertedDetails}
+            onAddDetail={() => {}}
+            onRemoveDetail={() => {}}
+            onDetailClick={() => {}}
             total={debitTotal}
+            disabled={true}
+            selectedDetail={convertedDetails.find(
+              (d) => d.debitCredit === "debit"
+            )}
+            displayMode="edit"
           />
         </div>
 
         {/* 貸方サイド */}
         <div className="space-y-4">
-          <JournalInquirySide
+          <JournalEntrySide
             type="credit"
-            details={journalData.details}
-            displayedDetail={displayedCreditDetail}
-            selectedDetail={selectedDetail}
-            onDetailClick={handleDetailClick}
+            details={convertedDetails}
+            onAddDetail={() => {}}
+            onRemoveDetail={() => {}}
+            onDetailClick={() => {}}
             total={creditTotal}
+            disabled={true}
+            selectedDetail={convertedDetails.find(
+              (d) => d.debitCredit === "credit"
+            )}
+            displayMode="edit"
           />
         </div>
+      </div>
+
+      {/* ファイル添付エリア */}
+      {attachedFiles.length > 0 && (
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-medium mb-4">添付ファイル</h3>
+          <FileAttachment
+            files={attachedFiles}
+            mode="display"
+            className="w-full"
+          />
+        </div>
+      )}
+
+      {/* 承認状況 */}
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-medium mb-4">承認状況</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700">
+              承認ステータス
+            </label>
+            <div className="mt-1">
+              <Badge
+                className={cn(
+                  "px-3 py-1 text-sm font-medium",
+                  journalData.approvalStatus === "approved"
+                    ? "bg-green-100 text-green-800"
+                    : journalData.approvalStatus === "rejected"
+                    ? "bg-red-100 text-red-800"
+                    : "bg-yellow-100 text-yellow-800"
+                )}
+              >
+                {journalData.approvalStatus === "approved"
+                  ? "承認済み"
+                  : journalData.approvalStatus === "rejected"
+                  ? "却下"
+                  : "承認待ち"}
+              </Badge>
+            </div>
+          </div>
+
+          {journalData.approvedAt && (
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                承認日時
+              </label>
+              <p className="text-sm text-gray-900 mt-1">
+                {journalData.approvedAt.toLocaleString("ja-JP")}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {journalData.rejectedReason && (
+          <div className="mt-4">
+            <label className="text-sm font-medium text-gray-700">
+              却下理由
+            </label>
+            <p className="text-sm text-red-600 mt-1">
+              {journalData.rejectedReason}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

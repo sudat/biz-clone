@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { JournalEntryForm } from "@/components/accounting/journal-entry-form";
+import type { AttachedFile } from "@/components/accounting/file-attachment";
 import { getJournalByNumber } from "@/app/actions/journal-inquiry";
 import { updateJournal } from "@/app/actions/journal-save";
 import { JournalSaveData, JournalDetailData } from "@/types/journal";
@@ -38,6 +39,8 @@ export default function JournalUpdatePage({ params }: UpdatePageProps) {
       description: string;
     };
   } | null>(null);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -91,6 +94,26 @@ export default function JournalUpdatePage({ params }: UpdatePageProps) {
         };
 
         setInitialFormData(formData);
+
+        // TODO: 実際のファイル取得APIを実装後に置き換え
+        // モックの添付ファイルデータ
+        const mockFiles: AttachedFile[] = [
+          {
+            id: "mock-1",
+            name: "領収書_20250116.pdf",
+            size: 245760,
+            type: "application/pdf",
+            uploadedAt: new Date("2025-01-16T10:30:00"),
+          },
+          {
+            id: "mock-2", 
+            name: "請求書明細.xlsx",
+            size: 51200,
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            uploadedAt: new Date("2025-01-16T10:32:00"),
+          }
+        ];
+        setAttachedFiles(mockFiles);
       } catch (err) {
         console.error("データ取得エラー:", err);
         setError("仕訳データの取得中にエラーが発生しました");
@@ -101,6 +124,31 @@ export default function JournalUpdatePage({ params }: UpdatePageProps) {
 
     loadData();
   }, [params]);
+
+  // ファイル変更処理
+  const handleFilesChange = (files: File[]) => {
+    setNewFiles(prev => [...prev, ...files]);
+  };
+
+  // ファイル削除処理
+  const handleFileDelete = (fileId: string) => {
+    // 既存ファイルの削除
+    setAttachedFiles(prev => prev.filter(file => file.id !== fileId));
+    // 新しいファイルの削除（IDが"new-"で始まる場合）
+    if (fileId.startsWith("new-")) {
+      setNewFiles(prev => {
+        const index = parseInt(fileId.split("-")[2]);
+        return prev.filter((_, i) => i !== index);
+      });
+    }
+  };
+
+  // ファイルダウンロード処理
+  const handleFileDownload = (file: AttachedFile) => {
+    // TODO: 実際のダウンロード処理を実装
+    console.log("Download file:", file.name);
+    alert(`${file.name} のダウンロード機能は実装予定です`);
+  };
 
   // 更新処理
   const handleUpdate = async (data: JournalSaveData) => {
@@ -180,6 +228,11 @@ export default function JournalUpdatePage({ params }: UpdatePageProps) {
         // 初期明細を設定
         initialDetails={journalData.details.map(convertToJournalDetailData)}
         createdUser={journalData.createdUser}
+        approvedUser={journalData.approvedUser}
+        // ファイル関連
+        initialFiles={attachedFiles}
+        onFilesChange={handleFilesChange}
+        onFileDelete={handleFileDelete}
       />
     </div>
   );

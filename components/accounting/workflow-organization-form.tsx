@@ -42,11 +42,12 @@ const organizationFormSchema = z.object({
     .max(1000, "説明は1000文字以内で入力してください")
     .optional(),
   sortOrder: z
-    .union([
-      z.string().length(0), // 空文字を許容
-      z.string().regex(/^\d+$/, "表示順は数値で入力してください").transform(Number),
-    ])
-    .optional(),
+    .string()
+    .optional()
+    .refine((val) => {
+      if (!val || val === '') return true;
+      return /^\d+$/.test(val);
+    }, "表示順は数値で入力してください"),
   isActive: z.boolean(),
 });
 

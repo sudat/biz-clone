@@ -16,6 +16,7 @@ import type {
   TaxRate,
   JournalHeader,
   JournalDetail,
+  JournalAttachment,
   Role,
   User,
   WorkflowOrganization,
@@ -33,6 +34,7 @@ export type {
   TaxRate,
   JournalHeader,
   JournalDetail,
+  JournalAttachment,
   Role,
   User,
   WorkflowOrganization,
@@ -53,6 +55,7 @@ export interface AccountWithDetails extends Account {
 
 export interface JournalEntryWithDetails extends JournalHeader {
   journalDetails: JournalDetail[];
+  journalAttachments?: JournalAttachment[];
 }
 
 // Server Action共通レスポンス型

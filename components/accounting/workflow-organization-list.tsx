@@ -425,6 +425,7 @@ export function WorkflowOrganizationList() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="cursor-pointer"
                           onClick={() => handleUserAssignment(organization)}
                           title="ユーザ割り当て"
                         >
@@ -433,6 +434,7 @@ export function WorkflowOrganizationList() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="cursor-pointer"
                           onClick={() => handleEdit(organization)}
                         >
                           <Pencil className="h-4 w-4" />
@@ -440,6 +442,7 @@ export function WorkflowOrganizationList() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="cursor-pointer"
                           onClick={() => handleDelete(organization)}
                         >
                           <Trash2 className="h-4 w-4" />

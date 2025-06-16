@@ -383,6 +383,7 @@ export function WorkflowRouteList({
                       <Button
                         variant="outline"
                         size="sm"
+                        className="cursor-pointer"
                         onClick={() => onEdit(route)}
                       >
                         <Pencil className="h-4 w-4" />
@@ -390,6 +391,7 @@ export function WorkflowRouteList({
                       <Button
                         variant="outline"
                         size="sm"
+                        className="cursor-pointer"
                         onClick={() => handleDelete(route)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -397,6 +399,7 @@ export function WorkflowRouteList({
                       <Button
                         variant="outline"
                         size="sm"
+                        className="cursor-pointer"
                         onClick={() => openFlowConfig(route)}
                       >
                         <Network className="h-4 w-4" />

@@ -280,11 +280,32 @@ model JournalHeader {
   rejectedReason   String?  @db.Text
 
   // 関係
-  journalDetails JournalDetail[]
-  createdUser    User?    @relation("JournalCreatedBy", fields: [createdBy], references: [userId])
-  approvedUser   User?    @relation("JournalApprovedBy", fields: [approvedBy], references: [userId])
+  journalDetails   JournalDetail[]
+  journalAttachments JournalAttachment[]
+  createdUser      User?    @relation("JournalCreatedBy", fields: [createdBy], references: [userId])
+  approvedUser     User?    @relation("JournalApprovedBy", fields: [approvedBy], references: [userId])
 
   @@map("journal_headers")
+}
+
+// 仕訳添付ファイルテーブル
+model JournalAttachment {
+  attachmentId     String   @id @db.Uuid @default(dbgenerated("gen_random_uuid()"))
+  journalNumber    String   @db.VarChar(15)
+  fileName         String   @db.VarChar(255)
+  originalFileName String   @db.VarChar(255)
+  fileUrl          String   @db.VarChar(500)
+  fileSize         BigInt                                              // ファイルサイズ（バイト）
+  fileExtension    String   @db.VarChar(10)
+  mimeType         String   @db.VarChar(100)
+  uploadedAt       DateTime @default(now()) @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // 関係
+  journalHeader JournalHeader @relation(fields: [journalNumber], references: [journalNumber], onDelete: Cascade)
+
+  @@map("journal_attachments")
 }
 
 // 仕訳明細テーブル（消費税対応完全リデザイン）

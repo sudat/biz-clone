@@ -329,6 +329,7 @@ export function PartnerMasterList() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="cursor-pointer"
                           onClick={() => handleEdit(partner)}
                         >
                           <Pencil className="h-4 w-4" />
@@ -336,6 +337,7 @@ export function PartnerMasterList() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="cursor-pointer"
                           onClick={() => handleDelete(partner)}
                         >
                           <Trash2 className="h-4 w-4" />

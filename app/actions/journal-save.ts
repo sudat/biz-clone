@@ -90,9 +90,28 @@ export async function saveJournal(
         }),
       );
 
+      // 添付ファイル保存
+      const journalAttachments = data.attachedFiles ? await Promise.all(
+        data.attachedFiles.map(async (file) => {
+          const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+          return tx.journalAttachment.create({
+            data: {
+              journalNumber,
+              fileName: file.name,
+              originalFileName: file.name,
+              fileUrl: file.url,
+              fileSize: BigInt(file.size),
+              fileExtension,
+              mimeType: file.type,
+            },
+          });
+        })
+      ) : [];
+
       return {
         journalHeader,
         journalDetails,
+        journalAttachments,
       };
     });
 
