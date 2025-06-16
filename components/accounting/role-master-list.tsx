@@ -1,23 +1,27 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
 import {
+  deleteRole,
   getRoles,
   searchRoles,
-  deleteRole,
   type RoleForClient,
 } from "@/app/actions/roles";
 import {
-  searchAndSort,
-  getSearchStats,
-  highlightSearchTerm,
-} from "@/lib/utils/search-filter";
-import {
   MasterDataSearch,
   SearchFilter,
-  SortOption,
   SearchState,
+  SortOption,
 } from "@/components/accounting/master-data-search";
+import { RoleMasterForm } from "@/components/accounting/role-master-form";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -26,23 +30,31 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, RefreshCw } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { RoleMasterForm } from "@/components/accounting/role-master-form";
-import { Badge } from "@/components/ui/badge";
+  getSearchStats,
+  highlightSearchTerm,
+  searchAndSort,
+} from "@/lib/utils/search-filter";
+import { ROLE_TYPE_LIST } from "@/types/master-types";
+import { Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-const searchFilters: SearchFilter[] = [];
+const searchFilters: SearchFilter[] = [
+  {
+    field: "roleType",
+    label: "ロール種別",
+    type: "select",
+    options: ROLE_TYPE_LIST.map((type) => ({
+      value: type,
+      label: type,
+    })),
+  },
+];
 
 const sortOptions: SortOption[] = [
   { field: "roleCode", label: "コード順" },
   { field: "roleName", label: "名称順" },
+  { field: "sortOrder", label: "並び順" },
   { field: "createdAt", label: "作成日順" },
 ];
 
@@ -101,27 +113,24 @@ export function RoleMasterList() {
   };
 
   // サーバーサイド検索（新しいServer Actions使用）
-  const performServerSearch = useCallback(
-    async (searchState: SearchState) => {
-      setLoading(true);
-      try {
-        const result = await searchRoles(searchState.searchTerm, {
-          isActive: searchState.activeOnly ? true : undefined,
-        });
+  const performServerSearch = useCallback(async (searchState: SearchState) => {
+    setLoading(true);
+    try {
+      const result = await searchRoles(searchState.searchTerm, {
+        isActive: searchState.activeOnly ? true : undefined,
+      });
 
-        if (result.success) {
-          setRoles(result.data || []);
-        } else {
-          console.error("検索エラー:", result.error);
-        }
-      } catch (error) {
-        console.error("検索エラー:", error);
-      } finally {
-        setLoading(false);
+      if (result.success) {
+        setRoles(result.data || []);
+      } else {
+        console.error("検索エラー:", result.error);
       }
-    },
-    []
-  );
+    } catch (error) {
+      console.error("検索エラー:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // クライアントサイド検索・フィルタリング
   const filteredRoles = useMemo(() => {
@@ -130,11 +139,28 @@ export function RoleMasterList() {
     if (useServerSearch) {
       processedRoles = roles; // サーバーサイド検索済みのデータをそのまま使用
     } else {
+      // まず基本的な検索とソートを適用
       processedRoles = searchAndSort(roles, searchState, [
         "roleCode",
         "roleName",
         "description",
       ]);
+
+      // ロール種別フィルタを手動で適用
+      if (searchState.filters.roleType) {
+        const filterType = searchState.filters.roleType;
+        processedRoles = processedRoles.filter((role) => {
+          // ロール名や説明に基づいてロール種別を判定
+          const roleName = role.roleName.toLowerCase();
+          const description = (role.description || "").toLowerCase();
+          const filterTypeLower = filterType.toLowerCase();
+
+          return (
+            roleName.includes(filterTypeLower) ||
+            description.includes(filterTypeLower)
+          );
+        });
+      }
     }
 
     return processedRoles;
@@ -310,16 +336,16 @@ export function RoleMasterList() {
                       {role.description ? (
                         renderHighlightedText(role.description)
                       ) : (
-                        <span className="text-muted-foreground text-sm">未設定</span>
+                        <span className="text-muted-foreground text-sm">
+                          未設定
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>
                       {role.sortOrder !== null ? role.sortOrder : "-"}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={role.isActive ? "default" : "outline"}
-                      >
+                      <Badge variant={role.isActive ? "default" : "outline"}>
                         {role.isActive ? "有効" : "無効"}
                       </Badge>
                     </TableCell>

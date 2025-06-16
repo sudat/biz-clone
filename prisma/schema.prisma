@@ -178,8 +178,79 @@ model User {
 
   // 関係
   role Role @relation(fields: [roleCode], references: [roleCode])
+  workflowOrganizationUsers WorkflowOrganizationUser[]
 
   @@map("users")
+}
+
+// ワークフロー組織マスタ
+model WorkflowOrganization {
+  organizationCode String   @id @db.VarChar(20)
+  organizationName String   @db.VarChar(100)
+  description      String?  @db.Text
+  isActive         Boolean  @default(true)
+  sortOrder        Int?
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // 関係
+  workflowOrganizationUsers WorkflowOrganizationUser[]
+  workflowRouteSteps        WorkflowRouteStep[]
+
+  @@map("workflow_organizations")
+}
+
+// ワークフロー組織・ユーザ中間テーブル（多対多関係）
+model WorkflowOrganizationUser {
+  organizationCode String   @db.VarChar(20)
+  userId           String   @db.Uuid
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // 関係
+  workflowOrganization WorkflowOrganization @relation(fields: [organizationCode], references: [organizationCode])
+  user                 User                 @relation(fields: [userId], references: [userId])
+
+  // 複合主キー
+  @@id([organizationCode, userId])
+  @@map("workflow_organization_users")
+}
+
+// ワークフロールートマスタ
+model WorkflowRoute {
+  routeCode      String   @id @db.VarChar(20)
+  routeName      String   @db.VarChar(100)
+  description    String?  @db.Text
+  flowConfigJson Json     // ReactFlowの設定データ（JSON形式）
+  isActive       Boolean  @default(true)
+  sortOrder      Int?
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // 関係
+  workflowRouteSteps WorkflowRouteStep[]
+
+  @@map("workflow_routes")
+}
+
+// ワークフロールート・ステップ中間テーブル（組織の順序関係）
+model WorkflowRouteStep {
+  routeCode        String   @db.VarChar(20)
+  stepNumber       Int      // ステップの順序番号
+  organizationCode String   @db.VarChar(20)
+  stepName         String?  @db.VarChar(100)
+  isRequired       Boolean  @default(true)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // 関係
+  workflowRoute        WorkflowRoute        @relation(fields: [routeCode], references: [routeCode])
+  workflowOrganization WorkflowOrganization @relation(fields: [organizationCode], references: [organizationCode])
+
+  // 複合主キー
+  @@id([routeCode, stepNumber])
+  @@map("workflow_route_steps")
 }
 
 // ============================================================================

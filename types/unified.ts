@@ -12,10 +12,16 @@ import type {
   SubAccount,
   Partner,
   AnalysisCode,
+  AnalysisType,
+  TaxRate,
   JournalHeader,
   JournalDetail,
   Role,
-  User
+  User,
+  WorkflowOrganization,
+  WorkflowOrganizationUser,
+  WorkflowRoute,
+  WorkflowRouteStep
 } from "@/lib/database/prisma";
 
 export type {
@@ -23,10 +29,16 @@ export type {
   SubAccount,
   Partner,
   AnalysisCode,
+  AnalysisType,
+  TaxRate,
   JournalHeader,
   JournalDetail,
   Role,
-  User
+  User,
+  WorkflowOrganization,
+  WorkflowOrganizationUser,
+  WorkflowRoute,
+  WorkflowRouteStep
 };
 
 // フロントエンド用のユーザー型（パスワードハッシュなしのセキュア版）
@@ -88,4 +100,26 @@ export interface UserProfile {
   roleCode: string;
   roleName: string;
   isActive: boolean;
+}
+
+// ワークフロー関連の複合型
+export interface WorkflowOrganizationWithUsers extends WorkflowOrganization {
+  workflowOrganizationUsers: (WorkflowOrganizationUser & {
+    user: User;
+  })[];
+}
+
+export interface WorkflowRouteWithSteps extends WorkflowRoute {
+  workflowRouteSteps: (WorkflowRouteStep & {
+    workflowOrganization: WorkflowOrganization;
+  })[];
+}
+
+// ワークフロー関連フィルター型
+export interface WorkflowOrganizationFilter {
+  isActive?: boolean;
+}
+
+export interface WorkflowRouteFilter {
+  isActive?: boolean;
 }

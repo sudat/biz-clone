@@ -1,23 +1,27 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
 import {
+  deleteUser,
   getUsers,
   searchUsers,
-  deleteUser,
   type UserForClient,
 } from "@/app/actions/users";
 import {
-  searchAndSort,
-  getSearchStats,
-  highlightSearchTerm,
-} from "@/lib/utils/search-filter";
-import {
   MasterDataSearch,
   SearchFilter,
-  SortOption,
   SearchState,
+  SortOption,
 } from "@/components/accounting/master-data-search";
+import { UserMasterForm } from "@/components/accounting/user-master-form";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -26,21 +30,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, RefreshCw, Key } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { UserMasterForm } from "@/components/accounting/user-master-form";
-import { Badge } from "@/components/ui/badge";
+  getSearchStats,
+  highlightSearchTerm,
+  searchAndSort,
+} from "@/lib/utils/search-filter";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
+import { Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-const searchFilters: SearchFilter[] = [];
+const searchFilters: SearchFilter[] = [
+  {
+    field: "roleCode",
+    label: "ロール",
+    type: "select",
+    options: [], // 動的に設定
+  },
+];
 
 const sortOptions: SortOption[] = [
   { field: "userCode", label: "コード順" },
@@ -65,6 +72,34 @@ export function UserMasterList() {
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [useServerSearch, setUseServerSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // ロールフィルタオプションを動的に生成
+  const roleFilterOptions = useMemo(() => {
+    const uniqueRoles = Array.from(
+      new Map(
+        users
+          .filter((user) => user.role)
+          .map((user) => [
+            user.roleCode,
+            {
+              value: user.roleCode,
+              label: `${user.role?.roleName} (${user.roleCode})`,
+            },
+          ])
+      ).values()
+    );
+    return uniqueRoles.sort((a, b) => a.label.localeCompare(b.label));
+  }, [users]);
+
+  // フィルタオプションを更新
+  const updatedSearchFilters = useMemo(() => {
+    return searchFilters.map((filter) => {
+      if (filter.field === "roleCode") {
+        return { ...filter, options: roleFilterOptions };
+      }
+      return filter;
+    });
+  }, [roleFilterOptions]);
 
   // Manual refresh function using new Server Actions
   const refreshData = useCallback(async () => {
@@ -106,27 +141,25 @@ export function UserMasterList() {
   };
 
   // サーバーサイド検索（新しいServer Actions使用）
-  const performServerSearch = useCallback(
-    async (searchState: SearchState) => {
-      setLoading(true);
-      try {
-        const result = await searchUsers(searchState.searchTerm, {
-          isActive: searchState.activeOnly ? true : undefined,
-        });
+  const performServerSearch = useCallback(async (searchState: SearchState) => {
+    setLoading(true);
+    try {
+      const result = await searchUsers(searchState.searchTerm, {
+        isActive: searchState.activeOnly ? true : undefined,
+        roleCode: searchState.filters.roleCode,
+      });
 
-        if (result.success) {
-          setUsers(result.data || []);
-        } else {
-          console.error("検索エラー:", result.error);
-        }
-      } catch (error) {
-        console.error("検索エラー:", error);
-      } finally {
-        setLoading(false);
+      if (result.success) {
+        setUsers(result.data || []);
+      } else {
+        console.error("検索エラー:", result.error);
       }
-    },
-    []
-  );
+    } catch (error) {
+      console.error("検索エラー:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // クライアントサイド検索・フィルタリング
   const filteredUsers = useMemo(() => {
@@ -236,7 +269,7 @@ export function UserMasterList() {
         {/* 検索・フィルタコンポーネント */}
         <MasterDataSearch
           placeholder="ユーザーコード・名前・メールアドレスで検索..."
-          searchFilters={searchFilters}
+          searchFilters={updatedSearchFilters}
           sortOptions={sortOptions}
           defaultSortField="userCode"
           onSearchChange={handleSearchChange}
@@ -326,16 +359,16 @@ export function UserMasterList() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      {renderHighlightedText(user.email)}
-                    </TableCell>
+                    <TableCell>{renderHighlightedText(user.email)}</TableCell>
                     <TableCell>
                       {user.role ? (
                         <Badge variant="secondary">
                           {renderHighlightedText(user.role.roleName)}
                         </Badge>
                       ) : (
-                        <span className="text-muted-foreground text-sm">未設定</span>
+                        <span className="text-muted-foreground text-sm">
+                          未設定
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -344,9 +377,7 @@ export function UserMasterList() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={user.isActive ? "default" : "outline"}
-                      >
+                      <Badge variant={user.isActive ? "default" : "outline"}>
                         {user.isActive ? "有効" : "無効"}
                       </Badge>
                     </TableCell>
@@ -383,10 +414,9 @@ export function UserMasterList() {
               {editingUser ? "ユーザ編集" : "新規ユーザ作成"}
             </DialogTitle>
             <DialogDescription>
-              {editingUser 
+              {editingUser
                 ? "ユーザの情報を編集してください。パスワード変更は別途設定画面で行えます。"
-                : "ユーザの情報を入力してください。"
-              }
+                : "ユーザの情報を入力してください。"}
             </DialogDescription>
           </DialogHeader>
           <UserMasterForm

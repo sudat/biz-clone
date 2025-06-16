@@ -106,6 +106,16 @@ export function Header() {
                         ユーザ
                       </Link>
                     </MenubarItem>
+                    <MenubarItem asChild>
+                      <Link href="/master/workflow-organizations" className="px-4 py-3 text-base">
+                        ワークフロー組織
+                      </Link>
+                    </MenubarItem>
+                    <MenubarItem asChild>
+                      <Link href="/master/workflow-routes" className="px-4 py-3 text-base">
+                        ワークフロールート
+                      </Link>
+                    </MenubarItem>
                   </MenubarSubContent>
                 </MenubarPortal>
               </MenubarSub>

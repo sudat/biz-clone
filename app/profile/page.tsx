@@ -1,29 +1,39 @@
-import { Metadata } from "next";
+'use client';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { User as UserIcon, Mail, Calendar, Shield } from "lucide-react";
-
-export const metadata: Metadata = {
-  title: "ユーザ情報 | Biz Clone",
-  description: "ユーザ情報の確認と編集",
-};
+import { useUser } from "@/lib/contexts/user-context";
 
 export default function ProfilePage() {
-  // 暫定的なユーザー情報（後で実際の認証システムと連携予定）
-  const user = {
-    userId: "default-user",
-    userCode: "ADMIN",
-    userName: "管理者",
-    userKana: "カンリシャ",
-    email: "admin@example.com",
-    roleCode: "ADMIN",
-    roleName: "管理者",
-    isActive: true,
-    lastLoginAt: null,
-    createdAt: new Date("2024-01-01"),
-    updatedAt: new Date(),
-  };
+  const { currentUser: user, isLoading } = useUser();
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8 px-6 max-w-4xl">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">読み込み中...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="container mx-auto py-8 px-6 max-w-4xl">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <UserIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">ユーザー情報が見つかりません</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const getUserInitials = (userName: string) => {
     return userName
@@ -31,6 +41,16 @@ export default function ProfilePage() {
       .slice(0, 2)
       .join("")
       .toUpperCase();
+  };
+
+  const getRoleName = (roleCode: string) => {
+    const roleNames: Record<string, string> = {
+      'ADMIN': '管理者',
+      'MANAGER': 'マネージャー',
+      'USER': '一般ユーザー',
+      'VIEWER': '閲覧者'
+    };
+    return roleNames[roleCode] || roleCode;
   };
 
   const formatDate = (date: Date | null) => {
@@ -78,7 +98,7 @@ export default function ProfilePage() {
               <div className="space-y-1">
                 <h3 className="text-xl font-semibold">{user.userName}</h3>
                 <p className="text-sm text-muted-foreground">
-                  {user.userKana}
+                  {user.userKana || ''}
                 </p>
                 <Badge variant={user.isActive ? "default" : "secondary"}>
                   {user.isActive ? "アクティブ" : "非アクティブ"}
@@ -110,7 +130,7 @@ export default function ProfilePage() {
                   ロール
                 </div>
                 <div className="text-sm">
-                  {user.roleName}
+                  {getRoleName(user.roleCode)}
                   <span className="ml-2 text-xs text-muted-foreground">
                     ({user.roleCode})
                   </span>

@@ -25,4 +25,8 @@ export type {
   SubAccount,
   TaxRate,
   User,
+  WorkflowOrganization,
+  WorkflowOrganizationUser,
+  WorkflowRoute,
+  WorkflowRouteStep,
 } from "../generated/prisma";
