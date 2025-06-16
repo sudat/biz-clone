@@ -20,6 +20,28 @@ export interface JournalInquiryData {
   totalAmount: number;
   createdAt: Date;
   updatedAt: Date;
+
+  // ユーザ関連
+  createdBy: string | null;
+  createdUser: {
+    userId: string;
+    userCode: string;
+    userName: string;
+    userKana: string | null;
+  } | null;
+
+  // 承認フロー関連
+  approvalStatus: string;
+  approvedBy: string | null;
+  approvedAt: Date | null;
+  approvedUser: {
+    userId: string;
+    userCode: string;
+    userName: string;
+    userKana: string | null;
+  } | null;
+  rejectedReason: string | null;
+
   details: JournalDetailInquiryData[];
 }
 
@@ -45,12 +67,28 @@ export interface JournalDetailInquiryData {
  * 仕訳番号で単一仕訳を取得（関連データ含む）
  */
 export async function getJournalByNumber(
-  journalNumber: string
+  journalNumber: string,
 ): Promise<{ success: boolean; data?: JournalInquiryData; error?: string }> {
   try {
     const journal = await prisma.journalHeader.findUnique({
       where: { journalNumber },
       include: {
+        createdUser: {
+          select: {
+            userId: true,
+            userCode: true,
+            userName: true,
+            userKana: true,
+          },
+        },
+        approvedUser: {
+          select: {
+            userId: true,
+            userCode: true,
+            userName: true,
+            userKana: true,
+          },
+        },
         journalDetails: {
           include: {
             account: true,
@@ -58,7 +96,7 @@ export async function getJournalByNumber(
             partner: true,
             analysisCodeRel: true,
           },
-          orderBy: { lineNumber: 'asc' },
+          orderBy: { lineNumber: "asc" },
         },
       },
     });
@@ -78,6 +116,18 @@ export async function getJournalByNumber(
       totalAmount: journal.totalAmount.toNumber(),
       createdAt: toJST(journal.createdAt),
       updatedAt: toJST(journal.updatedAt),
+
+      // ユーザ関連
+      createdBy: journal.createdBy,
+      createdUser: journal.createdUser,
+
+      // 承認フロー関連
+      approvalStatus: journal.approvalStatus,
+      approvedBy: journal.approvedBy,
+      approvedAt: journal.approvedAt ? toJST(journal.approvedAt) : null,
+      approvedUser: journal.approvedUser,
+      rejectedReason: journal.rejectedReason,
+
       details: journal.journalDetails.map((detail) => ({
         lineNumber: detail.lineNumber,
         debitCredit: detail.debitCredit,
@@ -134,14 +184,16 @@ export async function getJournals(params: {
 
     if (searchTerm) {
       where.OR = [
-        { journalNumber: { contains: searchTerm, mode: 'insensitive' } },
-        { description: { contains: searchTerm, mode: 'insensitive' } },
+        { journalNumber: { contains: searchTerm, mode: "insensitive" } },
+        { description: { contains: searchTerm, mode: "insensitive" } },
       ];
     }
 
     if (dateFrom || dateTo) {
       where.journalDate = {};
-      if (dateFrom) (where.journalDate as Record<string, unknown>).gte = dateFrom;
+      if (dateFrom) {
+        (where.journalDate as Record<string, unknown>).gte = dateFrom;
+      }
       if (dateTo) (where.journalDate as Record<string, unknown>).lte = dateTo;
     }
 
@@ -150,6 +202,22 @@ export async function getJournals(params: {
       prisma.journalHeader.findMany({
         where,
         include: {
+          createdUser: {
+            select: {
+              userId: true,
+              userCode: true,
+              userName: true,
+              userKana: true,
+            },
+          },
+          approvedUser: {
+            select: {
+              userId: true,
+              userCode: true,
+              userName: true,
+              userKana: true,
+            },
+          },
           journalDetails: {
             include: {
               account: true,
@@ -157,10 +225,10 @@ export async function getJournals(params: {
               partner: true,
               analysisCodeRel: true,
             },
-            orderBy: { lineNumber: 'asc' },
+            orderBy: { lineNumber: "asc" },
           },
         },
-        orderBy: { journalDate: 'desc' },
+        orderBy: { journalDate: "desc" },
         skip,
         take: limit,
       }),
@@ -175,6 +243,18 @@ export async function getJournals(params: {
       totalAmount: journal.totalAmount.toNumber(),
       createdAt: toJST(journal.createdAt),
       updatedAt: toJST(journal.updatedAt),
+
+      // ユーザ関連
+      createdBy: journal.createdBy,
+      createdUser: journal.createdUser,
+
+      // 承認フロー関連
+      approvalStatus: journal.approvalStatus,
+      approvedBy: journal.approvedBy,
+      approvedAt: journal.approvedAt ? toJST(journal.approvedAt) : null,
+      approvedUser: journal.approvedUser,
+      rejectedReason: journal.rejectedReason,
+
       details: journal.journalDetails.map((detail) => ({
         lineNumber: detail.lineNumber,
         debitCredit: detail.debitCredit,
@@ -212,7 +292,7 @@ export async function getJournals(params: {
  * 仕訳削除処理（照会画面から）
  */
 export async function deleteJournalFromInquiry(
-  journalNumber: string
+  journalNumber: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     await prisma.$transaction(async (tx) => {
@@ -244,7 +324,9 @@ export async function deleteJournalFromInquiry(
     console.error("仕訳削除エラー:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "仕訳の削除に失敗しました",
+      error: error instanceof Error
+        ? error.message
+        : "仕訳の削除に失敗しました",
     };
   }
 }
@@ -271,7 +353,9 @@ export async function getJournalLedgerData(params: {
     // 期間指定
     if (dateFrom || dateTo) {
       where.journalDate = {};
-      if (dateFrom) (where.journalDate as Record<string, unknown>).gte = dateFrom;
+      if (dateFrom) {
+        (where.journalDate as Record<string, unknown>).gte = dateFrom;
+      }
       if (dateTo) (where.journalDate as Record<string, unknown>).lte = dateTo;
     }
 
@@ -290,10 +374,10 @@ export async function getJournalLedgerData(params: {
       const filteredDetails = await prisma.journalDetail.findMany({
         where: detailsWhere,
         select: { journalNumber: true },
-        distinct: ['journalNumber'],
+        distinct: ["journalNumber"],
       });
-      journalNumbers = filteredDetails.map(d => d.journalNumber);
-      
+      journalNumbers = filteredDetails.map((d) => d.journalNumber);
+
       if (journalNumbers.length === 0) {
         // 条件に合う明細がない場合は空の結果を返す
         return {
@@ -301,7 +385,7 @@ export async function getJournalLedgerData(params: {
           data: [],
         };
       }
-      
+
       where.journalNumber = { in: journalNumbers };
     }
 
@@ -309,6 +393,22 @@ export async function getJournalLedgerData(params: {
     const journals = await prisma.journalHeader.findMany({
       where,
       include: {
+        createdUser: {
+          select: {
+            userId: true,
+            userCode: true,
+            userName: true,
+            userKana: true,
+          },
+        },
+        approvedUser: {
+          select: {
+            userId: true,
+            userCode: true,
+            userName: true,
+            userKana: true,
+          },
+        },
         journalDetails: {
           include: {
             account: true,
@@ -316,15 +416,15 @@ export async function getJournalLedgerData(params: {
             partner: true,
             analysisCodeRel: true,
           },
-          orderBy: { lineNumber: 'asc' },
+          orderBy: { lineNumber: "asc" },
         },
       },
       orderBy: [
-        { journalDate: 'asc' },
-        { journalNumber: 'asc' },
+        { journalDate: "asc" },
+        { journalNumber: "asc" },
       ],
     });
-    
+
     // データ変換（日時を日本時間に変換）
     const journalData: JournalInquiryData[] = journals.map((journal) => ({
       journalNumber: journal.journalNumber,
@@ -333,6 +433,18 @@ export async function getJournalLedgerData(params: {
       totalAmount: journal.totalAmount?.toNumber() || 0,
       createdAt: toJST(journal.createdAt),
       updatedAt: toJST(journal.updatedAt),
+
+      // ユーザ関連
+      createdBy: journal.createdBy,
+      createdUser: journal.createdUser,
+
+      // 承認フロー関連
+      approvalStatus: journal.approvalStatus,
+      approvedBy: journal.approvedBy,
+      approvedAt: journal.approvedAt ? toJST(journal.approvedAt) : null,
+      approvedUser: journal.approvedUser,
+      rejectedReason: journal.rejectedReason,
+
       details: journal.journalDetails.map((detail) => ({
         lineNumber: detail.lineNumber,
         debitCredit: detail.debitCredit,
@@ -361,6 +473,120 @@ export async function getJournalLedgerData(params: {
     return {
       success: false,
       error: "仕訳帳データの取得に失敗しました",
+    };
+  }
+}
+
+/**
+ * 特定ユーザが作成した承認中の仕訳一覧を取得
+ */
+export async function getUserCreatedPendingJournals(params: {
+  userId: string;
+  page?: number;
+  limit?: number;
+}): Promise<{
+  success: boolean;
+  data?: JournalInquiryData[];
+  totalCount?: number;
+  error?: string;
+}> {
+  try {
+    const { userId, page = 1, limit = 20 } = params;
+    const skip = (page - 1) * limit;
+
+    // 検索条件：作成者が指定ユーザで承認状況が承認中
+    const where = {
+      createdBy: userId,
+      approvalStatus: "pending",
+    };
+
+    // データ取得
+    const [journals, totalCount] = await Promise.all([
+      prisma.journalHeader.findMany({
+        where,
+        include: {
+          createdUser: {
+            select: {
+              userId: true,
+              userCode: true,
+              userName: true,
+              userKana: true,
+            },
+          },
+          approvedUser: {
+            select: {
+              userId: true,
+              userCode: true,
+              userName: true,
+              userKana: true,
+            },
+          },
+          journalDetails: {
+            include: {
+              account: true,
+              subAccount: true,
+              partner: true,
+              analysisCodeRel: true,
+            },
+            orderBy: { lineNumber: "asc" },
+          },
+        },
+        orderBy: { createdAt: "desc" }, // 作成日の新しい順
+        skip,
+        take: limit,
+      }),
+      prisma.journalHeader.count({ where }),
+    ]);
+
+    // データ変換（日時を日本時間に変換）
+    const journalData: JournalInquiryData[] = journals.map((journal) => ({
+      journalNumber: journal.journalNumber,
+      journalDate: journal.journalDate,
+      description: journal.description,
+      totalAmount: journal.totalAmount.toNumber(),
+      createdAt: toJST(journal.createdAt),
+      updatedAt: toJST(journal.updatedAt),
+
+      // ユーザ関連
+      createdBy: journal.createdBy,
+      createdUser: journal.createdUser,
+
+      // 承認フロー関連
+      approvalStatus: journal.approvalStatus,
+      approvedBy: journal.approvedBy,
+      approvedAt: journal.approvedAt ? toJST(journal.approvedAt) : null,
+      approvedUser: journal.approvedUser,
+      rejectedReason: journal.rejectedReason,
+
+      details: journal.journalDetails.map((detail) => ({
+        lineNumber: detail.lineNumber,
+        debitCredit: detail.debitCredit,
+        accountCode: detail.accountCode,
+        accountName: detail.account.accountName,
+        subAccountCode: detail.subAccountCode,
+        subAccountName: detail.subAccount?.subAccountName || null,
+        partnerCode: detail.partnerCode,
+        partnerName: detail.partner?.partnerName || null,
+        analysisCode: detail.analysisCode,
+        analysisCodeName: detail.analysisCodeRel?.analysisName || null,
+        baseAmount: detail.baseAmount.toNumber(),
+        taxAmount: detail.taxAmount.toNumber(),
+        totalAmount: detail.totalAmount.toNumber(),
+        taxCode: detail.taxCode || null,
+        lineDescription: detail.lineDescription,
+      })),
+    }));
+
+    return {
+      success: true,
+      data: journalData,
+      totalCount,
+    };
+  } catch (error) {
+    console.error("承認中仕訳一覧取得エラー:", error);
+    return {
+      success: false,
+      error: "承認中仕訳一覧の取得に失敗しました",
     };
   }
 }

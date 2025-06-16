@@ -28,23 +28,27 @@ export function UserContextProvider({ children }: UserContextProviderProps) {
       if (storedUser) {
         const user = JSON.parse(storedUser) as UserForClient;
         setCurrentUserState(user);
+        // Cookieにも保存してServer Actionからアクセス可能にする
+        document.cookie = `current-user-id=${user.userId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
       } else {
         // デフォルトユーザーを設定（システム管理者）
         const defaultUser: UserForClient = {
-          userId: 'default-admin',
+          userId: 'c7508587-9b6e-433d-9a6a-e6ba6af831c6', // 実際のADMIN001のUUID
           userName: 'システム管理者',
-          userCode: 'ADMIN',
-          email: 'admin@system.local',
+          userCode: 'ADMIN001',
+          email: 'admin@example.com',
           roleCode: 'ADMIN',
           isActive: true,
           lastLoginAt: null,
           passwordHash: '',
-          userKana: null,
+          userKana: 'システムカンリシャ',
           createdAt: new Date(),
           updatedAt: new Date(),
         };
         setCurrentUserState(defaultUser);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultUser));
+        // Cookieにも保存
+        document.cookie = `current-user-id=${defaultUser.userId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
       }
     } catch (error) {
       console.error('ユーザー情報の復元に失敗しました:', error);
@@ -57,8 +61,11 @@ export function UserContextProvider({ children }: UserContextProviderProps) {
     setCurrentUserState(user);
     if (user) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+      // Cookieにも保存してServer Actionからアクセス可能にする
+      document.cookie = `current-user-id=${user.userId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
     } else {
       localStorage.removeItem(STORAGE_KEY);
+      document.cookie = 'current-user-id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     }
   };
 

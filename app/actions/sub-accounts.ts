@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/database/prisma";
 import { createSubAccountSchema, updateSubAccountSchema } from "@/lib/schemas/master";
 import type { SubAccount } from "@/lib/database/prisma";
+import { handleServerActionError } from "@/lib/utils/error-handler";
+import type { ActionResult } from "@/lib/types/errors";
+import { ErrorType } from "@/lib/types/errors";
 
 /**
  * 補助科目コードの重複チェック
@@ -152,23 +155,45 @@ export async function updateSubAccount(accountCode: string, subAccountCode: stri
 /**
  * 補助科目の削除
  */
-export async function deleteSubAccount(accountCode: string, subAccountCode: string) {
+export async function deleteSubAccount(accountCode: string, subAccountCode: string): Promise<ActionResult> {
   try {
-    await prisma.subAccount.update({
+    // 削除前に関連データの存在チェック
+    const relatedJournalDetails = await prisma.journalDetail.findFirst({
+      where: { 
+        accountCode,
+        subAccountCode 
+      },
+      select: { journalNumber: true, lineNumber: true }
+    });
+
+    // 関連データが存在する場合は削除を拒否
+    if (relatedJournalDetails) {
+      return {
+        success: false,
+        error: {
+          type: ErrorType.BUSINESS,
+          message: "この補助科目は使用中のため削除できません",
+          details: {
+            retryable: false,
+          },
+        },
+      };
+    }
+
+    // 物理削除を実行
+    await prisma.subAccount.delete({
       where: { 
         accountCode_subAccountCode: {
           accountCode,
           subAccountCode
         }
-      },
-      data: { isActive: false }
+      }
     });
 
     revalidatePath('/master/sub-accounts');
     return { success: true };
   } catch (error) {
-    console.error('補助科目削除エラー:', error);
-    return { success: false, error: '補助科目の削除に失敗しました' };
+    return handleServerActionError(error, "補助科目の削除", "補助科目");
   }
 }
 

@@ -72,6 +72,32 @@ export function JournalListTable({
     return format(date, "yyyy/MM/dd", { locale: ja });
   };
 
+  const getApprovalStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200">承認中</Badge>;
+      case "approved":
+        return <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">承認済</Badge>;
+      case "rejected":
+        return <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200">却下</Badge>;
+      default:
+        return <Badge variant="outline">未設定</Badge>;
+    }
+  };
+
+  const renderUserInfo = (user: JournalInquiryData['createdUser']) => {
+    if (!user) {
+      return <span className="text-muted-foreground text-xs">-</span>;
+    }
+    
+    return (
+      <div className="text-xs">
+        <div className="font-medium text-foreground">{user.userName}</div>
+        <div className="text-muted-foreground">{user.userCode}</div>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <Card className="shadow-lg border-0 bg-card/50 backdrop-blur-sm">
@@ -127,6 +153,8 @@ export function JournalListTable({
                 <TableHead className="w-28">仕訳日</TableHead>
                 <TableHead>摘要</TableHead>
                 <TableHead className="w-32 text-right">金額</TableHead>
+                <TableHead className="w-24">作成者</TableHead>
+                <TableHead className="w-24">承認状況</TableHead>
                 <TableHead className="w-28">作成日</TableHead>
                 <TableHead className="w-32 text-center">操作</TableHead>
               </TableRow>
@@ -153,6 +181,12 @@ export function JournalListTable({
                     <span className="font-mono">
                       ¥{journal.totalAmount.toLocaleString('ja-JP')}
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    {renderUserInfo(journal.createdUser)}
+                  </TableCell>
+                  <TableCell>
+                    {getApprovalStatusBadge(journal.approvalStatus)}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatJournalDate(journal.createdAt)}
@@ -207,6 +241,18 @@ export function JournalListTable({
                 <p className="text-sm mb-3 truncate">
                   {journal.description || "摘要未入力"}
                 </p>
+
+                {/* 作成者と承認状況 */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex flex-col gap-1">
+                    <div className="text-xs text-muted-foreground">作成者</div>
+                    {renderUserInfo(journal.createdUser)}
+                  </div>
+                  <div className="flex flex-col gap-1 items-end">
+                    <div className="text-xs text-muted-foreground">承認状況</div>
+                    {getApprovalStatusBadge(journal.approvalStatus)}
+                  </div>
+                </div>
                 
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">

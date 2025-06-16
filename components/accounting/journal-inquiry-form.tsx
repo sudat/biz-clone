@@ -93,6 +93,7 @@ export function JournalInquiryForm({
         journalNumber={journalData.journalNumber}
         formData={formData}
         readOnly={true}
+        createdUser={journalData.createdUser}
       />
 
       {/* バランス監視バー */}

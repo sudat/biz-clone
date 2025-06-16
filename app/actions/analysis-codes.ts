@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/database/prisma";
 import { createAnalysisCodeSchema, updateAnalysisCodeSchema } from "@/lib/schemas/master";
-import type { AnalysisCode } from "@/lib/database/prisma";
+import { handleServerActionError } from "@/lib/utils/error-handler";
+import type { ActionResult } from "@/lib/types/errors";
+import { ErrorType } from "@/lib/types/errors";
 import { toJST } from "@/lib/utils/date-utils";
 
 /**
@@ -178,18 +180,37 @@ export async function updateAnalysisCode(analysisCode: string, formData: FormDat
 /**
  * 分析コードの削除
  */
-export async function deleteAnalysisCode(analysisCode: string) {
+export async function deleteAnalysisCode(analysisCode: string): Promise<ActionResult> {
   try {
-    await prisma.analysisCode.update({
+    // 削除前に関連データの存在チェック
+    const relatedJournalDetails = await prisma.journalDetail.findFirst({
       where: { analysisCode },
-      data: { isActive: false }
+      select: { journalNumber: true, lineNumber: true }
+    });
+
+    // 関連データが存在する場合は削除を拒否
+    if (relatedJournalDetails) {
+      return {
+        success: false,
+        error: {
+          type: ErrorType.BUSINESS,
+          message: "この分析コードは使用中のため削除できません",
+          details: {
+            retryable: false,
+          },
+        },
+      };
+    }
+
+    // 物理削除を実行
+    await prisma.analysisCode.delete({
+      where: { analysisCode },
     });
 
     revalidatePath('/master/analysis-codes');
     return { success: true };
   } catch (error) {
-    console.error('分析コード削除エラー:', error);
-    return { success: false, error: '分析コードの削除に失敗しました' };
+    return handleServerActionError(error, "分析コードの削除", "分析コード");
   }
 }
 

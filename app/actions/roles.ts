@@ -205,7 +205,7 @@ export async function updateRole(
 }
 
 /**
- * ロールの削除
+ * ロールの削除（物理削除）
  */
 export async function deleteRole(
   roleCode: string,
@@ -229,10 +229,9 @@ export async function deleteRole(
       };
     }
 
-    // 論理削除
-    await prisma.role.update({
+    // 物理削除
+    await prisma.role.delete({
       where: { roleCode },
-      data: { isActive: false },
     });
 
     revalidatePath("/master/roles");

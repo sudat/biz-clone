@@ -16,7 +16,15 @@ import {
   MenubarSubTrigger,
   MenubarTrigger,
 } from "@/components/ui/menubar";
-import { Menu, X, Calculator, Edit3, Database, BarChart3 } from "lucide-react";
+import {
+  Menu,
+  X,
+  Calculator,
+  Edit3,
+  Database,
+  BarChart3,
+  GitBranch,
+} from "lucide-react";
 import { UserAvatarMenu } from "./user-avatar-menu";
 
 export function Header() {
@@ -71,7 +79,10 @@ export function Header() {
                 <MenubarPortal>
                   <MenubarSubContent className="shadow-xl border-0 bg-card/95 backdrop-blur-md">
                     <MenubarItem asChild>
-                      <Link href="/master/accounts" className="px-4 py-3 text-base">
+                      <Link
+                        href="/master/accounts"
+                        className="px-4 py-3 text-base"
+                      >
                         勘定科目
                       </Link>
                     </MenubarItem>
@@ -84,7 +95,10 @@ export function Header() {
                       </Link>
                     </MenubarItem>
                     <MenubarItem asChild>
-                      <Link href="/master/partners" className="px-4 py-3 text-base">
+                      <Link
+                        href="/master/partners"
+                        className="px-4 py-3 text-base"
+                      >
                         取引先
                       </Link>
                     </MenubarItem>
@@ -97,22 +111,34 @@ export function Header() {
                       </Link>
                     </MenubarItem>
                     <MenubarItem asChild>
-                      <Link href="/master/roles" className="px-4 py-3 text-base">
+                      <Link
+                        href="/master/roles"
+                        className="px-4 py-3 text-base"
+                      >
                         ロール
                       </Link>
                     </MenubarItem>
                     <MenubarItem asChild>
-                      <Link href="/master/users" className="px-4 py-3 text-base">
+                      <Link
+                        href="/master/users"
+                        className="px-4 py-3 text-base"
+                      >
                         ユーザ
                       </Link>
                     </MenubarItem>
                     <MenubarItem asChild>
-                      <Link href="/master/workflow-organizations" className="px-4 py-3 text-base">
+                      <Link
+                        href="/master/workflow-organizations"
+                        className="px-4 py-3 text-base"
+                      >
                         ワークフロー組織
                       </Link>
                     </MenubarItem>
                     <MenubarItem asChild>
-                      <Link href="/master/workflow-routes" className="px-4 py-3 text-base">
+                      <Link
+                        href="/master/workflow-routes"
+                        className="px-4 py-3 text-base"
+                      >
                         ワークフロールート
                       </Link>
                     </MenubarItem>
@@ -136,18 +162,42 @@ export function Header() {
                       </Link>
                     </MenubarItem>
                     <MenubarItem asChild>
-                      <Link href="/reports/journal" className="px-4 py-3 text-base">
+                      <Link
+                        href="/reports/journal"
+                        className="px-4 py-3 text-base"
+                      >
                         仕訳帳
                       </Link>
                     </MenubarItem>
                     <MenubarItem asChild>
-                      <Link href="/reports/ledger" className="px-4 py-3 text-base">
+                      <Link
+                        href="/reports/ledger"
+                        className="px-4 py-3 text-base"
+                      >
                         総勘定元帳
                       </Link>
                     </MenubarItem>
                   </MenubarSubContent>
                 </MenubarPortal>
               </MenubarSub>
+            </MenubarContent>
+          </MenubarMenu>
+
+          {/* ワークフローメニュー */}
+          <MenubarMenu>
+            <MenubarTrigger className="px-4 py-2 text-base font-medium hover:bg-accent/50 data-[state=open]:bg-accent/50 transition-colors flex items-center gap-2">
+              <GitBranch className="h-4 w-4" />
+              ワークフロー
+            </MenubarTrigger>
+            <MenubarContent className="shadow-xl border-0 bg-card/95 backdrop-blur-md">
+              <MenubarItem asChild>
+                <Link
+                  href="/workflow/approval-list"
+                  className="px-4 py-3 text-base"
+                >
+                  承認対象一覧
+                </Link>
+              </MenubarItem>
             </MenubarContent>
           </MenubarMenu>
         </Menubar>
@@ -157,9 +207,9 @@ export function Header() {
           {!isLoading && (
             <div className="flex items-center space-x-2">
               <span className="text-sm text-muted-foreground hidden sm:inline">
-                {currentUser?.userName || 'ユーザー未選択'}
+                {currentUser?.userName || "ユーザー未選択"}
               </span>
-              <UserAvatarMenu 
+              <UserAvatarMenu
                 currentUser={currentUser}
                 onUserChange={setCurrentUser}
               />
@@ -192,7 +242,7 @@ export function Header() {
                 <Calculator className="h-5 w-5" />
                 一般会計
               </p>
-              
+
               <div className="space-y-4 ml-4">
                 <div className="space-y-3">
                   <p className="text-base font-semibold text-foreground px-3 flex items-center gap-2">
@@ -291,6 +341,24 @@ export function Header() {
                     総勘定元帳
                   </Link>
                 </div>
+              </div>
+            </div>
+
+            {/* ワークフローセクション */}
+            <div className="space-y-3">
+              <p className="text-lg font-bold text-foreground px-3 flex items-center gap-2">
+                <GitBranch className="h-5 w-5" />
+                ワークフロー
+              </p>
+
+              <div className="space-y-4 ml-4">
+                <Link
+                  href="/workflow/approval-list"
+                  className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  承認対象一覧
+                </Link>
               </div>
             </div>
           </div>

@@ -14,6 +14,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/database/prisma";
 import { generateJournalNumber } from "@/lib/database/journal-number";
 import { convertToJapaneseDate } from "@/lib/utils/date-utils";
+import { getCurrentUserIdFromCookie } from "@/lib/utils/auth-utils";
 import { 
   JournalDetailData, 
   JournalSaveData, 
@@ -21,6 +22,7 @@ import {
 } from "@/types/journal";
 import { handleServerActionError, createValidationError } from "@/lib/utils/error-handler";
 import type { ActionResult } from "@/lib/types/errors";
+
 
 /**
  * 仕訳保存処理
@@ -38,6 +40,9 @@ export async function saveJournal(
       };
     }
 
+    // 現在のユーザIDを取得（Cookieから）
+    const currentUserId = await getCurrentUserIdFromCookie();
+
     // 仕訳番号生成（計上日ベース）
     const journalNumber = await generateJournalNumber(data.header.journalDate);
 
@@ -51,13 +56,15 @@ export async function saveJournal(
       // 日付を日本時間で保存するための変換
       const journalDateJST = convertToJapaneseDate(data.header.journalDate);
 
-      // 仕訳ヘッダー作成（totalAmountを含む）
+      // 仕訳ヘッダー作成（ユーザ情報と承認ステータスを含む）
       const journalHeader = await tx.journalHeader.create({
         data: {
           journalNumber,
           journalDate: journalDateJST,
           description: data.header.description || "",
           totalAmount: totalAmount,
+          createdBy: currentUserId,
+          approvalStatus: "pending", // 承認中ステータス
         },
       });
 
@@ -197,6 +204,9 @@ export async function updateJournal(
       };
     }
 
+    // 現在のユーザIDを取得（Cookieから）
+    const currentUserId = await getCurrentUserIdFromCookie();
+
     // 明細の合計金額を計算（借方合計を使用）
     const totalAmount = data.details
       .filter((d) => d.debitCredit === "debit")
@@ -222,13 +232,18 @@ export async function updateJournal(
       // 日付を日本時間で保存するための変換
       const journalDateJST = convertToJapaneseDate(data.header.journalDate);
 
-      // 仕訳ヘッダー更新（totalAmountを含む）
+      // 仕訳ヘッダー更新（作成者と承認ステータスを上書き）
       const journalHeader = await tx.journalHeader.update({
         where: { journalNumber },
         data: {
           journalDate: journalDateJST,
           description: data.header.description || "",
           totalAmount: totalAmount,
+          createdBy: currentUserId,           // 更新者を新しい作成者として設定
+          approvalStatus: "pending",         // 承認ステータスを承認中にリセット
+          approvedBy: null,                  // 承認者をクリア
+          approvedAt: null,                  // 承認日時をクリア
+          rejectedReason: null,              // 却下理由をクリア
         },
       });
 

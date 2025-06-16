@@ -179,6 +179,7 @@ export default function JournalUpdatePage({ params }: UpdatePageProps) {
         disabled={isSaving}
         // 初期明細を設定
         initialDetails={journalData.details.map(convertToJournalDetailData)}
+        createdUser={journalData.createdUser}
       />
     </div>
   );

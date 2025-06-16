@@ -227,10 +227,35 @@ export async function deleteAccount(
   accountCode: string,
 ): Promise<ActionResult> {
   try {
-    // 論理削除
-    await prisma.account.update({
+    // 削除前に関連データの存在チェック
+    const [subAccountCount, journalDetailCount] = await Promise.all([
+      // 補助科目の存在チェック
+      prisma.subAccount.count({
+        where: { accountCode },
+      }),
+      // 仕訳明細の存在チェック
+      prisma.journalDetail.count({
+        where: { accountCode },
+      }),
+    ]);
+
+    // 関連データが存在する場合は削除を拒否
+    if (subAccountCount > 0 || journalDetailCount > 0) {
+      return {
+        success: false,
+        error: {
+          type: ErrorType.BUSINESS,
+          message: "この勘定科目は使用中のため削除できません",
+          details: {
+            retryable: false,
+          },
+        },
+      };
+    }
+
+    // 物理削除を実行
+    await prisma.account.delete({
       where: { accountCode },
-      data: { isActive: false },
     });
 
     revalidatePath("/master/accounts");

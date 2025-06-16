@@ -9,9 +9,8 @@
 
 import React from "react";
 import { Control } from "react-hook-form";
-import { Hash } from "lucide-react";
+import { Hash, User } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   FormControl,
@@ -21,7 +20,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 
 interface JournalHeaderSectionProps {
@@ -34,6 +32,12 @@ interface JournalHeaderSectionProps {
     };
   };
   readOnly?: boolean;
+  createdUser?: {
+    userId: string;
+    userCode: string;
+    userName: string;
+    userKana: string | null;
+  } | null;
 }
 
 export function JournalHeaderSection({
@@ -41,7 +45,25 @@ export function JournalHeaderSection({
   journalNumber,
   formData,
   readOnly = false,
+  createdUser,
 }: JournalHeaderSectionProps) {
+  const renderCreatedUserInfo = () => {
+    if (!createdUser) return null;
+    
+    return (
+      <Badge
+        variant="secondary"
+        className="flex items-center gap-1 text-xs px-2 py-1"
+      >
+        <User className="h-3 w-3" />
+        <div className="flex flex-col leading-tight">
+          <div className="font-medium">{createdUser.userName}</div>
+          <div className="text-muted-foreground">{createdUser.userCode}</div>
+        </div>
+      </Badge>
+    );
+  };
+
   return (
     <Card className="border-2 border-slate-200">
       <CardContent className="py-2">
@@ -127,16 +149,19 @@ export function JournalHeaderSection({
               ) : null}
             </div>
 
-            {/* 仕訳番号 - 右端に表示 */}
-            {journalNumber && (
-              <Badge
-                variant="outline"
-                className="flex items-center gap-1 text-sm px-2 py-1"
-              >
-                <Hash className="h-3 w-3" />
-                {journalNumber}
-              </Badge>
-            )}
+            {/* 仕訳番号と作成者 - 右端に表示 */}
+            <div className="flex items-center gap-2">
+              {journalNumber && (
+                <Badge
+                  variant="outline"
+                  className="flex items-center gap-1 text-sm px-2 py-1"
+                >
+                  <Hash className="h-3 w-3" />
+                  {journalNumber}
+                </Badge>
+              )}
+              {renderCreatedUserInfo()}
+            </div>
           </div>
         </div>
       </CardContent>

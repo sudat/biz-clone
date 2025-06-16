@@ -578,7 +578,7 @@ export async function changePassword(
 }
 
 /**
- * ユーザの削除（論理削除）
+ * ユーザの削除（物理削除）
  */
 export async function deleteUser(
   userId: string,
@@ -601,10 +601,27 @@ export async function deleteUser(
       };
     }
 
-    // 論理削除
-    await prisma.user.update({
+    // ワークフロー組織ユーザへの関連データ存在チェック
+    const workflowOrganizationUserCount = await prisma.workflowOrganizationUser.count({
       where: { userId },
-      data: { isActive: false },
+    });
+
+    if (workflowOrganizationUserCount > 0) {
+      return {
+        success: false,
+        error: {
+          type: ErrorType.BUSINESS,
+          message: "このユーザは使用中のため削除できません",
+          details: {
+            retryable: false,
+          },
+        },
+      };
+    }
+
+    // 物理削除
+    await prisma.user.delete({
+      where: { userId },
     });
 
     revalidatePath("/master/users");

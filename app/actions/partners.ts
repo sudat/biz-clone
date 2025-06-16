@@ -148,9 +148,28 @@ export async function updatePartner(partnerCode: string, formData: FormData): Pr
  */
 export async function deletePartner(partnerCode: string): Promise<ActionResult> {
   try {
-    await prisma.partner.update({
+    // 関連する仕訳明細の存在チェック
+    const relatedJournalDetails = await prisma.journalDetail.findFirst({
       where: { partnerCode },
-      data: { isActive: false }
+      select: { journalNumber: true, lineNumber: true }
+    });
+
+    if (relatedJournalDetails) {
+      return {
+        success: false,
+        error: {
+          type: ErrorType.BUSINESS,
+          message: "この取引先は使用中のため削除できません",
+          details: {
+            retryable: false
+          }
+        }
+      };
+    }
+
+    // 物理削除を実行
+    await prisma.partner.delete({
+      where: { partnerCode }
     });
 
     revalidatePath('/master/partners');

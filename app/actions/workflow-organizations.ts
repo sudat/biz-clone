@@ -320,7 +320,7 @@ export async function updateWorkflowOrganization(
 }
 
 /**
- * ワークフロー組織の削除（論理削除）
+ * ワークフロー組織の削除（物理削除）
  */
 export async function deleteWorkflowOrganization(
   organizationCode: string,
@@ -336,7 +336,7 @@ export async function deleteWorkflowOrganization(
         success: false,
         error: {
           type: ErrorType.BUSINESS,
-          message: "この組織はワークフロールートで使用中のため削除できません",
+          message: "このワークフロー組織は使用中のため削除できません",
           details: {
             retryable: false,
           },
@@ -344,16 +344,17 @@ export async function deleteWorkflowOrganization(
       };
     }
 
-    // 組織に所属するユーザの関連付けを無効化
-    await prisma.workflowOrganizationUser.updateMany({
-      where: { organizationCode },
-      data: { isActive: false },
-    });
+    // トランザクションで関連データと組織を物理削除
+    await prisma.$transaction(async (tx) => {
+      // 関連する組織ユーザ関連付けを物理削除
+      await tx.workflowOrganizationUser.deleteMany({
+        where: { organizationCode },
+      });
 
-    // 組織の論理削除
-    await prisma.workflowOrganization.update({
-      where: { organizationCode },
-      data: { isActive: false },
+      // 組織を物理削除
+      await tx.workflowOrganization.delete({
+        where: { organizationCode },
+      });
     });
 
     revalidatePath("/master/workflow-organizations");

@@ -171,7 +171,7 @@ export async function createWorkflowRoute(
       routeCode: formData.get("routeCode") as string,
       routeName: formData.get("routeName") as string,
       description: formData.get("description") as string || undefined,
-      flowConfigJson: JSON.parse(formData.get("flowConfigJson") as string || "{}"),
+      flowConfigJson: JSON.parse(formData.get("flowConfigJson") as string || '{"nodes":[],"edges":[]}'),
       sortOrder: formData.get("sortOrder") ? parseInt(formData.get("sortOrder") as string) : undefined,
     };
 
@@ -221,7 +221,7 @@ export async function updateWorkflowRoute(
     const data = {
       routeName: formData.get("routeName") as string,
       description: formData.get("description") as string || undefined,
-      flowConfigJson: JSON.parse(formData.get("flowConfigJson") as string || "{}"),
+      flowConfigJson: JSON.parse(formData.get("flowConfigJson") as string || '{"nodes":[],"edges":[]}'),
       isActive: formData.get("isActive") === "true",
       sortOrder: formData.get("sortOrder") ? parseInt(formData.get("sortOrder") as string) : undefined,
     };
@@ -333,16 +333,41 @@ export async function updateWorkflowRouteFlowConfig(
 }
 
 /**
- * ワークフロールートの削除
+ * ワークフロールートの削除（物理削除）
  */
 export async function deleteWorkflowRoute(
   routeCode: string,
 ): Promise<ActionResult> {
   try {
-    // 論理削除
-    await prisma.workflowRoute.update({
+    // 使用中のルートかチェック（ワークフロールートステップに関連データがあるか）
+    const routeStepCount = await prisma.workflowRouteStep.count({
       where: { routeCode },
-      data: { isActive: false },
+    });
+
+    if (routeStepCount > 0) {
+      return {
+        success: false,
+        error: {
+          type: ErrorType.BUSINESS,
+          message: "このワークフロールートは使用中のため削除できません",
+          details: {
+            retryable: false,
+          },
+        },
+      };
+    }
+
+    // トランザクションで関連データとルートを物理削除
+    await prisma.$transaction(async (tx) => {
+      // 関連するワークフロールートステップを物理削除（念のため）
+      await tx.workflowRouteStep.deleteMany({
+        where: { routeCode },
+      });
+
+      // ワークフロールートを物理削除
+      await tx.workflowRoute.delete({
+        where: { routeCode },
+      });
     });
 
     revalidatePath("/master/workflow-routes");

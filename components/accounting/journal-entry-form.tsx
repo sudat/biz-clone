@@ -67,6 +67,12 @@ interface JournalEntryFormProps {
   journalNumber?: string;
   disabled?: boolean;
   className?: string;
+  createdUser?: {
+    userId: string;
+    userCode: string;
+    userName: string;
+    userKana: string | null;
+  } | null;
 }
 
 export function JournalEntryForm({
@@ -75,7 +81,8 @@ export function JournalEntryForm({
   initialDetails,
   journalNumber,
   disabled = false,
-  className
+  className,
+  createdUser
 }: JournalEntryFormProps) {
   const [details, setDetails] = useState<JournalDetailData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -242,6 +249,7 @@ export function JournalEntryForm({
           <JournalHeaderSection 
             control={form.control} 
             journalNumber={journalNumber}
+            createdUser={createdUser}
           />
 
           {/* バランス監視バー */}

@@ -179,6 +179,10 @@ model User {
   // 関係
   role Role @relation(fields: [roleCode], references: [roleCode])
   workflowOrganizationUsers WorkflowOrganizationUser[]
+  
+  // 仕訳関連
+  createdJournals  JournalHeader[] @relation("JournalCreatedBy")
+  approvedJournals JournalHeader[] @relation("JournalApprovedBy")
 
   @@map("users")
 }
@@ -259,16 +263,26 @@ model WorkflowRouteStep {
 
 // 仕訳ヘッダテーブル
 model JournalHeader {
-  journalNumber String   @id @db.VarChar(15)
-  journalDate   DateTime @db.Date
-  description   String?  @db.Text
-  totalAmount   Decimal  @default(0) @db.Decimal(15, 2)
-  createdAt     DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt     DateTime @default(now()) @updatedAt @db.Timestamptz(6)
-  createdBy     String?  @db.Uuid
+  journalNumber    String   @id @db.VarChar(15)
+  journalDate      DateTime @db.Date
+  description      String?  @db.Text
+  totalAmount      Decimal  @default(0) @db.Decimal(15, 2)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  
+  // ユーザ関連
+  createdBy        String?  @db.Uuid
+  
+  // 承認フロー関連
+  approvalStatus   String   @default("pending") @db.VarChar(20)  // pending, approved, rejected
+  approvedBy       String?  @db.Uuid
+  approvedAt       DateTime? @db.Timestamptz(6)
+  rejectedReason   String?  @db.Text
 
   // 関係
   journalDetails JournalDetail[]
+  createdUser    User?    @relation("JournalCreatedBy", fields: [createdBy], references: [userId])
+  approvedUser   User?    @relation("JournalApprovedBy", fields: [approvedBy], references: [userId])
 
   @@map("journal_headers")
 }
