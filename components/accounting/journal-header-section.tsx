@@ -9,7 +9,7 @@
 
 import React from "react";
 import { Control } from "react-hook-form";
-import { Hash, User, CheckCircle } from "lucide-react";
+import { Hash, User, CheckCircle, Clock } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -44,6 +44,7 @@ interface JournalHeaderSectionProps {
     userName: string;
     userKana: string | null;
   } | null;
+  approvalStatus?: string;
 }
 
 export function JournalHeaderSection({
@@ -53,6 +54,7 @@ export function JournalHeaderSection({
   readOnly = false,
   createdUser,
   approvedUser,
+  approvalStatus,
 }: JournalHeaderSectionProps) {
   const renderCreatedUserInfo = () => {
     if (!createdUser) return null;
@@ -71,21 +73,37 @@ export function JournalHeaderSection({
     );
   };
 
-  const renderApprovedUserInfo = () => {
-    if (!approvedUser) return null;
+  const renderApprovalStatusInfo = () => {
+    // 承認済みの場合は承認者情報を表示
+    if (approvalStatus === "approved" && approvedUser) {
+      return (
+        <Badge
+          variant="default"
+          className="flex items-center gap-1 text-xs px-2 py-1 bg-green-100 text-green-800 border-green-200"
+        >
+          <CheckCircle className="h-3 w-3" />
+          <div className="flex flex-col leading-tight">
+            <div className="font-medium">{approvedUser.userName}</div>
+            <div className="text-muted-foreground">{approvedUser.userCode}</div>
+          </div>
+        </Badge>
+      );
+    }
     
-    return (
-      <Badge
-        variant="default"
-        className="flex items-center gap-1 text-xs px-2 py-1 bg-green-100 text-green-800 border-green-200"
-      >
-        <CheckCircle className="h-3 w-3" />
-        <div className="flex flex-col leading-tight">
-          <div className="font-medium">{approvedUser.userName}</div>
-          <div className="text-muted-foreground">{approvedUser.userCode}</div>
-        </div>
-      </Badge>
-    );
+    // 承認中の場合は承認中表示
+    if (approvalStatus === "pending") {
+      return (
+        <Badge
+          variant="secondary"
+          className="flex items-center gap-1 text-xs px-2 py-1 bg-yellow-100 text-yellow-800 border-yellow-200"
+        >
+          <Clock className="h-3 w-3" />
+          <span className="font-medium">承認中</span>
+        </Badge>
+      );
+    }
+    
+    return null;
   };
 
   return (
@@ -185,7 +203,7 @@ export function JournalHeaderSection({
                 </Badge>
               )}
               {renderCreatedUserInfo()}
-              {renderApprovedUserInfo()}
+              {renderApprovalStatusInfo()}
             </div>
           </div>
         </div>

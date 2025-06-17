@@ -94,6 +94,7 @@ export function JournalInquiryForm({
         readOnly={true}
         createdUser={journalData.createdUser}
         approvedUser={journalData.approvedUser}
+        approvalStatus={journalData.approvalStatus}
       />
 
       {/* バランス監視バー（更新/削除ボタン付き） */}
@@ -156,57 +157,6 @@ export function JournalInquiryForm({
         </div>
       )}
 
-      {/* 承認状況 */}
-      <div className="border-t pt-6">
-        <h3 className="text-lg font-medium mb-4">承認状況</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium text-gray-700">
-              承認ステータス
-            </label>
-            <div className="mt-1">
-              <Badge
-                className={cn(
-                  "px-3 py-1 text-sm font-medium",
-                  journalData.approvalStatus === "approved"
-                    ? "bg-green-100 text-green-800"
-                    : journalData.approvalStatus === "rejected"
-                    ? "bg-red-100 text-red-800"
-                    : "bg-yellow-100 text-yellow-800"
-                )}
-              >
-                {journalData.approvalStatus === "approved"
-                  ? "承認済み"
-                  : journalData.approvalStatus === "rejected"
-                  ? "却下"
-                  : "承認待ち"}
-              </Badge>
-            </div>
-          </div>
-
-          {journalData.approvedAt && (
-            <div>
-              <label className="text-sm font-medium text-gray-700">
-                承認日時
-              </label>
-              <p className="text-sm text-gray-900 mt-1">
-                {journalData.approvedAt.toLocaleString("ja-JP")}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {journalData.rejectedReason && (
-          <div className="mt-4">
-            <label className="text-sm font-medium text-gray-700">
-              却下理由
-            </label>
-            <p className="text-sm text-red-600 mt-1">
-              {journalData.rejectedReason}
-            </p>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
