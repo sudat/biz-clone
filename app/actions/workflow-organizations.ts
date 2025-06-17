@@ -8,10 +8,7 @@ import {
   removeUsersFromOrganizationSchema,
   updateWorkflowOrganizationSchema,
 } from "@/lib/schemas/master/workflow-organizations";
-import type {
-  WorkflowOrganization,
-  WorkflowOrganizationUser,
-} from "@/lib/database/prisma";
+import type { WorkflowOrganization } from "@/lib/database/prisma";
 import { handleServerActionError } from "@/lib/utils/error-handler";
 import type { ActionResult } from "@/lib/types/errors";
 import { ErrorType } from "@/lib/types/errors";

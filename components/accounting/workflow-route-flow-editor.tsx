@@ -21,7 +21,13 @@ import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Save, RotateCcw, AlignHorizontalJustifyStart } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Save,
+  RotateCcw,
+  AlignHorizontalJustifyStart,
+} from "lucide-react";
 import { WorkflowOrganizationForClient } from "@/app/actions/workflow-organizations";
 
 // 始点ノードコンポーネント
@@ -36,11 +42,7 @@ function StartNode({ selected }: NodeProps) {
         <div className="font-bold text-sm text-gray-800">開始</div>
         <div className="text-xs text-gray-600">START</div>
       </div>
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="w-4 h-4"
-      />
+      <Handle type="source" position={Position.Right} className="w-4 h-4" />
     </div>
   );
 }
@@ -53,11 +55,7 @@ function EndNode({ selected }: NodeProps) {
         selected ? "border-blue-500" : "border-gray-300"
       }`}
     >
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="w-4 h-4"
-      />
+      <Handle type="target" position={Position.Left} className="w-4 h-4" />
       <div className="text-center">
         <div className="font-bold text-sm text-gray-800">終了</div>
         <div className="text-xs text-gray-600">END</div>
@@ -163,13 +161,10 @@ export function WorkflowRouteFlowEditor({
     if (initialFlowConfig?.nodes.length) {
       setNodes(initialFlowConfig.nodes);
       // 既存のエッジに矢印スタイルを適用
-      const edgesWithArrows = (initialFlowConfig.edges || []).map(edge => ({
+      const edgesWithArrows = (initialFlowConfig.edges || []).map((edge) => ({
         ...edge,
-        markerEnd: {
-          type: 'arrowclosed',
-          color: '#6366f1',
-        },
-        style: { strokeWidth: 2, stroke: '#6366f1' },
+        markerEnd: "arrowclosed",
+        style: { strokeWidth: 2, stroke: "#6366f1" },
       }));
       setEdges(edgesWithArrows);
     } else {
@@ -183,14 +178,16 @@ export function WorkflowRouteFlowEditor({
   // エッジ接続時のハンドラー
   const onConnect = useCallback(
     (params: Connection) => {
-      setEdges((eds) => addEdge({
-        ...params,
-        markerEnd: {
-          type: 'arrowclosed',
-          color: '#6366f1',
-        },
-        style: { strokeWidth: 2, stroke: '#6366f1' },
-      }, eds));
+      setEdges((eds) =>
+        addEdge(
+          {
+            ...params,
+            markerEnd: "arrowclosed",
+            style: { strokeWidth: 2, stroke: "#6366f1" },
+          },
+          eds
+        )
+      );
     },
     [setEdges]
   );
@@ -260,64 +257,66 @@ export function WorkflowRouteFlowEditor({
 
   // ノード整列処理
   const alignNodes = useCallback(() => {
-    const startNode = nodes.find(node => node.id === 'start');
-    const endNode = nodes.find(node => node.id === 'end');
-    const orgNodes = nodes.filter(node => 
-      node.type === 'workflowOrganization'
-    ).sort((a, b) => {
-      // ステップ番号でソート
-      const stepA = a.data.stepNumber || 0;
-      const stepB = b.data.stepNumber || 0;
-      return stepA - stepB;
-    });
+    const startNode = nodes.find((node) => node.id === "start");
+    const endNode = nodes.find((node) => node.id === "end");
+    const orgNodes = nodes
+      .filter((node) => node.type === "workflowOrganization")
+      .sort((a, b) => {
+        // ステップ番号でソート
+        const stepA =
+          (a.data as unknown as WorkflowOrganizationNodeData).stepNumber || 0;
+        const stepB =
+          (b.data as unknown as WorkflowOrganizationNodeData).stepNumber || 0;
+        return stepA - stepB;
+      });
 
     if (!startNode || !endNode) return;
 
     // ノードの高さ定義（中央揃えのため）
     const nodeHeights = {
-      start: 48,           // px-6 py-4 の高さ
-      end: 48,             // px-6 py-4 の高さ
-      workflowOrganization: 54  // px-4 py-3 + Badge の高さ
+      start: 48, // px-6 py-4 の高さ
+      end: 48, // px-6 py-4 の高さ
+      workflowOrganization: 54, // px-4 py-3 + Badge の高さ
     };
 
     // ノードの幅定義（gap計算のため）
     const nodeWidths = {
-      start: 120,          // min-w-[120px]
-      end: 120,            // min-w-[120px]
-      workflowOrganization: 180  // min-w-[180px]
+      start: 120, // min-w-[120px]
+      end: 120, // min-w-[120px]
+      workflowOrganization: 180, // min-w-[180px]
     };
 
     // 中央揃えの基準Y座標
     const centerY = 200;
-    
+
     // X座標の配置計算（等間隔gap）
     const gap = 50; // ノード間の隙間
     const startX = 50; // 開始X座標
-    
+
     // 全ノードを順序通りに配列
     const orderedNodes = [startNode, ...orgNodes, endNode];
 
-    const updatedNodes = nodes.map(node => {
+    const updatedNodes = nodes.map((node) => {
       let nodeY = centerY;
       let nodeX = startX;
-      
+
       // ノードタイプに応じて中央揃えのY座標を計算
-      if (node.id === 'start' || node.id === 'end') {
+      if (node.id === "start" || node.id === "end") {
         nodeY = centerY - nodeHeights.start / 2;
-      } else if (node.type === 'workflowOrganization') {
+      } else if (node.type === "workflowOrganization") {
         nodeY = centerY - nodeHeights.workflowOrganization / 2;
       }
 
       // X座標の計算（等間隔gap）
-      const nodeIndex = orderedNodes.findIndex(n => n.id === node.id);
+      const nodeIndex = orderedNodes.findIndex((n) => n.id === node.id);
       if (nodeIndex >= 0) {
         // 前のノードまでの累積幅とgapを計算
         let accumulatedWidth = startX;
         for (let i = 0; i < nodeIndex; i++) {
           const prevNode = orderedNodes[i];
-          if (prevNode.id === 'start' || prevNode.id === 'end') {
+          if (prevNode.id === "start" || prevNode.id === "end") {
             accumulatedWidth += nodeWidths.start + gap;
-          } else if (prevNode.type === 'workflowOrganization') {
+          } else if (prevNode.type === "workflowOrganization") {
             accumulatedWidth += nodeWidths.workflowOrganization + gap;
           }
         }
@@ -416,7 +415,8 @@ export function WorkflowRouteFlowEditor({
         <div className="text-sm text-gray-600 space-y-1">
           <p>• 組織ノードをドラッグして位置を調整できます</p>
           <p>
-            • ノードの左右のハンドルをドラッグして承認フローを作成できます（左から右へのフロー）
+            •
+            ノードの左右のハンドルをドラッグして承認フローを作成できます（左から右へのフロー）
           </p>
           <p>• 組織ノードをクリックして選択後、削除ボタンで削除できます</p>
           <p>• 整列ボタンで全ノードを横一列に等間隔で配置できます</p>

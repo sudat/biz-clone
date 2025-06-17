@@ -170,13 +170,6 @@ export default function ApprovalListPage() {
     loadApprovedJournals(approvedCurrentPage);
   };
 
-  // 承認処理後の全体更新
-  const handleApprovalRefresh = () => {
-    loadCreatedJournals(createdCurrentPage);
-    loadApprovableJournals(approvableCurrentPage);
-    loadApprovedJournals(approvedCurrentPage);
-  };
-
   return (
     <div className="space-y-4">
       {/* ページヘッダー */}

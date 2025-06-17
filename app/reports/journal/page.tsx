@@ -28,9 +28,6 @@ import {
 } from "@/app/actions/journal-inquiry";
 import { getTaxRates, type TaxRateForClient } from "@/app/actions/tax-rates";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-
 
 export default function JournalReportPage() {
   // 現在の日本時間の年を取得
@@ -43,8 +40,7 @@ export default function JournalReportPage() {
     new Date(`${currentYear}-12-31`)
   );
   const [isLoading, setIsLoading] = useState(false);
-  const [journalData, setJournalData] =
-    useState<JournalInquiryData[]>([]);
+  const [journalData, setJournalData] = useState<JournalInquiryData[]>([]);
   const [taxRates, setTaxRates] = useState<TaxRateForClient[]>([]);
 
   // 税区分マスタを取得
@@ -86,7 +82,7 @@ export default function JournalReportPage() {
     };
 
     initialSearch();
-  }, []);
+  }, [dateFrom, dateTo]);
 
   const handleDateRangeChange = (
     from: Date | undefined,
@@ -145,7 +141,7 @@ export default function JournalReportPage() {
   // 税区分名を取得するヘルパー関数
   const getTaxRateName = (taxCode: string | null) => {
     if (!taxCode) return "未設定";
-    const taxRate = taxRates.find(rate => rate.taxCode === taxCode);
+    const taxRate = taxRates.find((rate) => rate.taxCode === taxCode);
     return taxRate ? `${taxRate.taxName}(${taxRate.taxRate}%)` : taxCode;
   };
 
@@ -270,7 +266,6 @@ export default function JournalReportPage() {
               to={dateTo}
               onRangeChange={handleDateRangeChange}
             />
-
           </div>
 
           <div className="flex justify-between items-center">
@@ -301,7 +296,9 @@ export default function JournalReportPage() {
           <div className="print:break-avoid">
             {/* 印刷用ヘッダー */}
             <div className="hidden print:block mb-4 text-center print:break-avoid">
-              <h1 className="text-xl font-bold mb-1 print:text-lg">仕 訳 検 索</h1>
+              <h1 className="text-xl font-bold mb-1 print:text-lg">
+                仕 訳 検 索
+              </h1>
               <p className="text-xs print:text-xs">
                 期間:{" "}
                 {dateFrom

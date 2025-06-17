@@ -16,10 +16,13 @@ export async function POST(request: Request) {
   try {
     await generateSampleJournals(num);
     return NextResponse.json({ success: true, count: num });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("generateSampleJournals API error", e);
-    return new NextResponse(e?.message ?? "Internal Server Error", {
-      status: 500,
-    });
+    return new NextResponse(
+      e instanceof Error ? e.message : "Internal Server Error",
+      {
+        status: 500,
+      },
+    );
   }
 }

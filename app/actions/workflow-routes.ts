@@ -5,13 +5,15 @@ import { prisma } from "@/lib/database/prisma";
 import { z } from "zod";
 import {
   createWorkflowRouteSchema,
-  updateWorkflowRouteSchema,
-  updateRouteStepsSchema,
-  type CreateWorkflowRouteInput,
-  type UpdateWorkflowRouteInput,
   type UpdateRouteStepsInput,
+  updateRouteStepsSchema,
+  updateWorkflowRouteSchema,
 } from "@/lib/schemas/master/workflow-routes";
-import type { WorkflowRoute, WorkflowRouteStep, WorkflowOrganization } from "@/lib/database/prisma";
+import type {
+  WorkflowOrganization,
+  WorkflowRoute,
+  WorkflowRouteStep,
+} from "@/lib/database/prisma";
 import { handleServerActionError } from "@/lib/utils/error-handler";
 import type { ActionResult } from "@/lib/types/errors";
 import { ErrorType } from "@/lib/types/errors";
@@ -63,7 +65,9 @@ export async function getWorkflowRoutes(): Promise<
  */
 export async function getWorkflowRouteById(
   routeCode: string,
-): Promise<{ success: boolean; data?: WorkflowRouteForClient; error?: string }> {
+): Promise<
+  { success: boolean; data?: WorkflowRouteForClient; error?: string }
+> {
   try {
     const route = await prisma.workflowRoute.findUnique({
       where: { routeCode },
@@ -92,7 +96,9 @@ export async function getWorkflowRouteById(
  */
 export async function getRouteWithStepsAndOrganizations(
   routeCode: string,
-): Promise<{ success: boolean; data?: WorkflowRouteWithSteps; error?: string }> {
+): Promise<
+  { success: boolean; data?: WorkflowRouteWithSteps; error?: string }
+> {
   try {
     const route = await prisma.workflowRoute.findUnique({
       where: { routeCode },
@@ -171,8 +177,12 @@ export async function createWorkflowRoute(
       routeCode: formData.get("routeCode") as string,
       routeName: formData.get("routeName") as string,
       description: formData.get("description") as string || undefined,
-      flowConfigJson: JSON.parse(formData.get("flowConfigJson") as string || '{"nodes":[],"edges":[]}'),
-      sortOrder: formData.get("sortOrder") ? parseInt(formData.get("sortOrder") as string) : undefined,
+      flowConfigJson: JSON.parse(
+        formData.get("flowConfigJson") as string || '{"nodes":[],"edges":[]}',
+      ),
+      sortOrder: formData.get("sortOrder")
+        ? parseInt(formData.get("sortOrder") as string)
+        : undefined,
     };
 
     // バリデーション
@@ -206,7 +216,11 @@ export async function createWorkflowRoute(
     revalidatePath("/master/workflow-routes");
     return { success: true, data: route };
   } catch (error) {
-    return handleServerActionError(error, "ワークフロールートの作成", "ワークフロールート");
+    return handleServerActionError(
+      error,
+      "ワークフロールートの作成",
+      "ワークフロールート",
+    );
   }
 }
 
@@ -221,9 +235,13 @@ export async function updateWorkflowRoute(
     const data = {
       routeName: formData.get("routeName") as string,
       description: formData.get("description") as string || undefined,
-      flowConfigJson: JSON.parse(formData.get("flowConfigJson") as string || '{"nodes":[],"edges":[]}'),
+      flowConfigJson: JSON.parse(
+        formData.get("flowConfigJson") as string || '{"nodes":[],"edges":[]}',
+      ),
       isActive: formData.get("isActive") === "true",
-      sortOrder: formData.get("sortOrder") ? parseInt(formData.get("sortOrder") as string) : undefined,
+      sortOrder: formData.get("sortOrder")
+        ? parseInt(formData.get("sortOrder") as string)
+        : undefined,
     };
 
     // バリデーション（updateSchemaに必要なフィールドのみ）
@@ -271,7 +289,11 @@ export async function updateWorkflowRoute(
     revalidatePath("/master/workflow-routes");
     return { success: true, data: routeForClient };
   } catch (error) {
-    return handleServerActionError(error, "ワークフロールートの更新", "ワークフロールート");
+    return handleServerActionError(
+      error,
+      "ワークフロールートの更新",
+      "ワークフロールート",
+    );
   }
 }
 
@@ -328,7 +350,11 @@ export async function updateWorkflowRouteFlowConfig(
     revalidatePath(`/master/workflow-routes/${routeCode}`);
     return { success: true, data: routeForClient };
   } catch (error) {
-    return handleServerActionError(error, "フロー設定の更新", "ワークフロールート");
+    return handleServerActionError(
+      error,
+      "フロー設定の更新",
+      "ワークフロールート",
+    );
   }
 }
 
@@ -373,7 +399,11 @@ export async function deleteWorkflowRoute(
     revalidatePath("/master/workflow-routes");
     return { success: true };
   } catch (error) {
-    return handleServerActionError(error, "ワークフロールートの削除", "ワークフロールート");
+    return handleServerActionError(
+      error,
+      "ワークフロールートの削除",
+      "ワークフロールート",
+    );
   }
 }
 
@@ -442,7 +472,11 @@ export async function updateRouteSteps(
     revalidatePath("/master/workflow-routes");
     return { success: true };
   } catch (error) {
-    return handleServerActionError(error, "ルートステップの更新", "ルートステップ");
+    return handleServerActionError(
+      error,
+      "ルートステップの更新",
+      "ルートステップ",
+    );
   }
 }
 
@@ -452,7 +486,9 @@ export async function updateRouteSteps(
 export async function searchWorkflowRoutes(
   searchTerm: string,
   filters: { isActive?: boolean } = {},
-): Promise<{ success: boolean; data?: WorkflowRouteForClient[]; error?: string }> {
+): Promise<
+  { success: boolean; data?: WorkflowRouteForClient[]; error?: string }
+> {
   try {
     const routes = await prisma.workflowRoute.findMany({
       where: {

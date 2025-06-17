@@ -97,17 +97,21 @@ export default function JournalUpdatePage({ params }: UpdatePageProps) {
         setInitialFormData(formData);
 
         // 実際の添付ファイルデータを取得
-        const attachmentsResult = await getJournalAttachments(resolvedParams.journalNumber);
+        const attachmentsResult = await getJournalAttachments(
+          resolvedParams.journalNumber
+        );
         if (attachmentsResult.success && attachmentsResult.data) {
           // JournalAttachmentDataをAttachedFileに変換
-          const attachedFiles: AttachedFile[] = attachmentsResult.data.map(attachment => ({
-            id: attachment.attachmentId,
-            name: attachment.originalFileName,
-            size: attachment.fileSize,
-            type: attachment.mimeType,
-            url: attachment.fileUrl,
-            uploadedAt: attachment.uploadedAt,
-          }));
+          const attachedFiles: AttachedFile[] = attachmentsResult.data.map(
+            (attachment) => ({
+              id: attachment.attachmentId,
+              name: attachment.originalFileName,
+              size: attachment.fileSize,
+              type: attachment.mimeType,
+              url: attachment.fileUrl,
+              uploadedAt: attachment.uploadedAt,
+            })
+          );
           setAttachedFiles(attachedFiles);
         } else {
           console.error("添付ファイル取得エラー:", attachmentsResult.error);
@@ -122,13 +126,13 @@ export default function JournalUpdatePage({ params }: UpdatePageProps) {
     };
 
     loadData();
-  }, []); // paramsのPromiseは変更されないため空の依存配列
+  }, [params]); // paramsが変更されたときに再実行
 
   // ファイル変更処理
   const handleFilesChange = (files: AttachedFile[]) => {
     // JournalEntryFormから新しいAttachedFileが渡されるため、
     // attachedFilesステートに直接追加する
-    setAttachedFiles(prev => [...prev, ...files]);
+    setAttachedFiles((prev) => [...prev, ...files]);
   };
 
   // ファイル削除処理
@@ -136,26 +140,11 @@ export default function JournalUpdatePage({ params }: UpdatePageProps) {
     // 新しくアップロードしたファイル（uploaded-で始まる）以外は
     // データベースから削除する必要があるため削除リストに追加
     if (!fileId.startsWith("uploaded-")) {
-      setDeletedFileIds(prev => [...prev, fileId]);
+      setDeletedFileIds((prev) => [...prev, fileId]);
     }
-    
-    // ファイル一覧から削除
-    setAttachedFiles(prev => prev.filter(file => file.id !== fileId));
-  };
 
-  // ファイルダウンロード処理
-  const handleFileDownload = (file: AttachedFile) => {
-    if (file.url) {
-      // ファイルURLがある場合はダウンロード実行
-      const link = document.createElement('a');
-      link.href = file.url;
-      link.download = file.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      alert(`${file.name} のダウンロードURLが見つかりません`);
-    }
+    // ファイル一覧から削除
+    setAttachedFiles((prev) => prev.filter((file) => file.id !== fileId));
   };
 
   // 更新処理
@@ -165,8 +154,8 @@ export default function JournalUpdatePage({ params }: UpdatePageProps) {
     setIsSaving(true);
     try {
       // 新しくアップロードされたファイル（uploaded-で始まるID）を抽出
-      const newFiles = attachedFiles.filter(file => 
-        file.id.startsWith("uploaded-") && file.url
+      const newFiles = attachedFiles.filter(
+        (file) => file.id.startsWith("uploaded-") && file.url
       );
 
       // ファイル変更情報を作成
@@ -176,9 +165,11 @@ export default function JournalUpdatePage({ params }: UpdatePageProps) {
       };
 
       const result = await updateJournal(
-        journalNumber, 
-        data, 
-        (fileChanges.deletedFileIds || fileChanges.newFiles) ? fileChanges : undefined
+        journalNumber,
+        data,
+        fileChanges.deletedFileIds || fileChanges.newFiles
+          ? fileChanges
+          : undefined
       );
 
       if (result.success) {

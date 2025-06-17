@@ -17,12 +17,10 @@ import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import {
   getTrialBalanceData,
-  getTrialBalanceSummary,
   TrialBalanceData,
   TrialBalanceParams,
 } from "@/app/actions/trial-balance";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TrialBalanceTable } from "@/components/accounting/trial-balance-table";
@@ -75,7 +73,7 @@ export default function TrialBalanceReportPage() {
     };
 
     initialSearch();
-  }, []);
+  }, [dateFrom, dateTo, includeZeroBalance, includeSubAccounts]);
 
   const handleDateRangeChange = (
     from: Date | undefined,

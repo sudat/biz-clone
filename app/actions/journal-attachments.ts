@@ -41,10 +41,18 @@ export async function saveJournalAttachment(params: {
   error?: string;
 }> {
   try {
-    const { journalNumber, fileName, originalFileName, fileUrl, fileSize, mimeType } = params;
+    const {
+      journalNumber,
+      fileName,
+      originalFileName,
+      fileUrl,
+      fileSize,
+      mimeType,
+    } = params;
 
     // ファイル拡張子を取得
-    const fileExtension = originalFileName.split('.').pop()?.toLowerCase() || '';
+    const fileExtension = originalFileName.split(".").pop()?.toLowerCase() ||
+      "";
 
     // 仕訳存在確認
     const journal = await prisma.journalHeader.findUnique({
@@ -120,7 +128,9 @@ export async function getJournalAttachments(
     });
 
     // BigIntをnumberに変換
-    const attachmentData: JournalAttachmentData[] = attachments.map((attachment) => ({
+    const attachmentData: JournalAttachmentData[] = attachments.map((
+      attachment,
+    ) => ({
       attachmentId: attachment.attachmentId,
       journalNumber: attachment.journalNumber,
       fileName: attachment.fileName,
@@ -171,7 +181,7 @@ export async function deleteJournalAttachment(
     }
 
     // データベースから削除
-    await prisma.journalAttachment.delete({  
+    await prisma.journalAttachment.delete({
       where: { attachmentId },
     });
 
@@ -230,7 +240,8 @@ export async function saveMultipleJournalAttachments(params: {
     // 各ファイルを順次保存
     for (const file of files) {
       try {
-        const fileExtension = file.originalFileName.split('.').pop()?.toLowerCase() || '';
+        const fileExtension =
+          file.originalFileName.split(".").pop()?.toLowerCase() || "";
 
         const attachment = await prisma.journalAttachment.create({
           data: {
@@ -328,63 +339,6 @@ export async function deleteAllJournalAttachments(
 }
 
 /**
- * ファイルサイズや拡張子の制限チェック
- */
-function validateFileUpload(
-  file: File,
-  options: {
-    maxSizeBytes?: number;
-    allowedExtensions?: string[];
-    allowedMimeTypes?: string[];
-  } = {},
-): { isValid: boolean; error?: string } {
-  const {
-    maxSizeBytes = 10 * 1024 * 1024, // デフォルト10MB
-    allowedExtensions = [
-      'pdf', 'jpg', 'jpeg', 'png', 'gif', 'xlsx', 'xls', 'docx', 'doc', 'txt'
-    ],
-    allowedMimeTypes = [
-      'application/pdf',
-      'image/jpeg',
-      'image/png', 
-      'image/gif',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/msword',
-      'text/plain'
-    ],
-  } = options;
-
-  // ファイルサイズチェック
-  if (file.size > maxSizeBytes) {
-    return {
-      isValid: false,
-      error: `ファイルサイズが制限を超えています（最大${Math.floor(maxSizeBytes / 1024 / 1024)}MB）`,
-    };
-  }
-
-  // 拡張子チェック
-  const fileExtension = file.name.split('.').pop()?.toLowerCase();
-  if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
-    return {
-      isValid: false,
-      error: `対応していないファイル形式です（対応形式: ${allowedExtensions.join(', ')}）`,
-    };
-  }
-
-  // MIMEタイプチェック
-  if (!allowedMimeTypes.includes(file.type)) {
-    return {
-      isValid: false,
-      error: "対応していないファイル形式です",
-    };
-  }
-
-  return { isValid: true };
-}
-
-/**
  * ファイルアップロード時の詳細なエラーハンドリング
  */
 export async function handleFileUploadError(
@@ -393,7 +347,7 @@ export async function handleFileUploadError(
     journalNumber?: string;
     fileName?: string;
     operation: "upload" | "delete" | "download";
-  }
+  },
 ): Promise<{ error: string; code?: string }> {
   console.error(`ファイル${context.operation}エラー:`, {
     error,
@@ -475,10 +429,14 @@ export async function verifyFileIntegrity(params: {
     const actualFiles = attachments.map((a) => a.fileName);
 
     // 不足ファイル検出
-    const missingFiles = expectedFiles.filter((file) => !actualFiles.includes(file));
+    const missingFiles = expectedFiles.filter((file) =>
+      !actualFiles.includes(file)
+    );
 
     // 孤立ファイル検出（期待されていないファイル）
-    const orphanedFiles = actualFiles.filter((file) => !expectedFiles.includes(file));
+    const orphanedFiles = actualFiles.filter((file) =>
+      !expectedFiles.includes(file)
+    );
 
     return {
       success: missingFiles.length === 0 && orphanedFiles.length === 0,

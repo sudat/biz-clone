@@ -8,22 +8,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/database/prisma";
 import { generateJournalNumber } from "@/lib/database/journal-number";
 import { convertToJapaneseDate } from "@/lib/utils/date-utils";
 import { getCurrentUserIdFromCookie } from "@/lib/utils/auth-utils";
-import { 
-  JournalDetailData, 
-  JournalSaveData, 
-  JournalSaveResult 
-} from "@/types/journal";
+import { JournalSaveData, JournalSaveResult } from "@/types/journal";
 import type { AttachedFile } from "@/components/accounting/file-attachment";
-import { handleServerActionError, createValidationError } from "@/lib/utils/error-handler";
-import type { ActionResult } from "@/lib/types/errors";
-
 
 /**
  * 仕訳保存処理
@@ -92,22 +83,25 @@ export async function saveJournal(
       );
 
       // 添付ファイル保存
-      const journalAttachments = data.attachedFiles ? await Promise.all(
-        data.attachedFiles.map(async (file) => {
-          const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
-          return tx.journalAttachment.create({
-            data: {
-              journalNumber,
-              fileName: file.name,
-              originalFileName: file.name,
-              fileUrl: file.url,
-              fileSize: BigInt(file.size),
-              fileExtension,
-              mimeType: file.type,
-            },
-          });
-        })
-      ) : [];
+      const journalAttachments = data.attachedFiles
+        ? await Promise.all(
+          data.attachedFiles.map(async (file) => {
+            const fileExtension = file.name.split(".").pop()?.toLowerCase() ||
+              "";
+            return tx.journalAttachment.create({
+              data: {
+                journalNumber,
+                fileName: file.name,
+                originalFileName: file.name,
+                fileUrl: file.url,
+                fileSize: BigInt(file.size),
+                fileExtension,
+                mimeType: file.type,
+              },
+            });
+          }),
+        )
+        : [];
 
       return {
         journalHeader,
@@ -128,7 +122,9 @@ export async function saveJournal(
     console.error("仕訳保存エラー:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "仕訳の保存に失敗しました",
+      error: error instanceof Error
+        ? error.message
+        : "仕訳の保存に失敗しました",
     };
   }
 }
@@ -216,7 +212,7 @@ export async function updateJournal(
   fileChanges?: {
     deletedFileIds?: string[];
     newFiles?: AttachedFile[];
-  }
+  },
 ): Promise<JournalSaveResult> {
   try {
     // バリデーション
@@ -263,11 +259,11 @@ export async function updateJournal(
           journalDate: journalDateJST,
           description: data.header.description || "",
           totalAmount: totalAmount,
-          createdBy: currentUserId,           // 更新者を新しい作成者として設定
-          approvalStatus: "pending",         // 承認ステータスを承認中にリセット
-          approvedBy: null,                  // 承認者をクリア
-          approvedAt: null,                  // 承認日時をクリア
-          rejectedReason: null,              // 却下理由をクリア
+          createdBy: currentUserId, // 更新者を新しい作成者として設定
+          approvalStatus: "pending", // 承認ステータスを承認中にリセット
+          approvedBy: null, // 承認者をクリア
+          approvedAt: null, // 承認日時をクリア
+          rejectedReason: null, // 却下理由をクリア
         },
       });
 
@@ -296,7 +292,9 @@ export async function updateJournal(
       // ファイル変更処理
       if (fileChanges) {
         // 削除されたファイルをデータベースから削除
-        if (fileChanges.deletedFileIds && fileChanges.deletedFileIds.length > 0) {
+        if (
+          fileChanges.deletedFileIds && fileChanges.deletedFileIds.length > 0
+        ) {
           await tx.journalAttachment.deleteMany({
             where: {
               attachmentId: { in: fileChanges.deletedFileIds },
@@ -308,15 +306,15 @@ export async function updateJournal(
         // 新しいファイルをデータベースに保存
         if (fileChanges.newFiles && fileChanges.newFiles.length > 0) {
           const attachmentData = fileChanges.newFiles
-            .filter(file => file.url) // URLがあるファイルのみ保存
-            .map(file => ({
+            .filter((file) => file.url) // URLがあるファイルのみ保存
+            .map((file) => ({
               attachmentId: crypto.randomUUID(),
               journalNumber: journalNumber,
               fileName: file.name,
               originalFileName: file.name,
               fileUrl: file.url!,
               fileSize: BigInt(file.size),
-              fileExtension: file.name.split('.').pop() || '',
+              fileExtension: file.name.split(".").pop() || "",
               mimeType: file.type,
               uploadedAt: file.uploadedAt || new Date(),
             }));
