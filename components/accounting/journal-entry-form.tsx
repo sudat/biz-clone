@@ -104,6 +104,7 @@ export function JournalEntryForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>(initialFiles);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   
   // 明細クリック反映機能用の状態
   const [selectedDetail, setSelectedDetail] = useState<JournalDetailData | null>(null);
@@ -114,10 +115,15 @@ export function JournalEntryForm({
     onClientUploadComplete: (res) => {
       console.log("アップロード完了:", res);
       setIsUploading(false);
+      setUploadError(null); // エラーをクリア
     },
     onUploadError: (error: Error) => {
       console.error("アップロードエラー:", error);
-      alert(`アップロードエラー: ${error.message}`);
+      // ユーザーフレンドリーなメッセージに変更
+      const message = error.message.includes('file type') || error.message.includes('extension') || error.message.includes('format')
+        ? "このファイル形式はアップロードできません。対応形式：PDF、JPG、PNG、Excel、Word"
+        : `ファイルのアップロードができませんでした：${error.message}`;
+      setUploadError(message);
       setIsUploading(false);
     },
   });
@@ -209,13 +215,19 @@ export function JournalEntryForm({
     if (newFiles.length === 0) return;
 
     setIsUploading(true);
+    setUploadError(null); // 新しいアップロード開始時にエラーをクリア
     
     try {
       // UploadThingを使ってファイルをアップロード
       const uploadResults = await startUpload(newFiles);
       
       if (!uploadResults) {
-        throw new Error("ファイルのアップロードに失敗しました");
+        console.error("UploadThingからnullが返されました:", { 
+          fileCount: newFiles.length, 
+          fileTypes: newFiles.map(f => f.type),
+          fileNames: newFiles.map(f => f.name)
+        });
+        throw new Error("ファイルのアップロードに失敗しました。ファイル形式またはサイズを確認してください。");
       }
 
       // アップロード成功したファイル情報をAttachedFile形式に変換
@@ -249,7 +261,12 @@ export function JournalEntryForm({
       
     } catch (error) {
       console.error("ファイルアップロードエラー:", error);
-      alert(`ファイルのアップロードに失敗しました: ${error instanceof Error ? error.message : String(error)}`);
+      // ユーザーフレンドリーなメッセージに変更
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const message = errorMessage.includes('file type') || errorMessage.includes('extension') || errorMessage.includes('format')
+        ? "このファイル形式はアップロードできません。対応形式：PDF、JPG、PNG、Excel、Word"
+        : `ファイルのアップロードができませんでした：${errorMessage}`;
+      setUploadError(message);
     } finally {
       setIsUploading(false);
     }
@@ -422,6 +439,13 @@ export function JournalEntryForm({
               mode="upload"
               className="w-full"
             />
+
+            {/* ファイルアップロードエラー表示 */}
+            {uploadError && (
+              <div className="mt-2 p-3 bg-orange-50 border border-orange-200 rounded text-sm text-orange-700">
+                {uploadError}
+              </div>
+            )}
           </div>
 
         </form>

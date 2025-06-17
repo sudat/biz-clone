@@ -10,6 +10,7 @@ export const ourFileRouter = {
     image: { maxFileSize: "4MB", maxFileCount: 5 },
     pdf: { maxFileSize: "8MB", maxFileCount: 5 },
     text: { maxFileSize: "2MB", maxFileCount: 5 },
+    blob: { maxFileSize: "8MB", maxFileCount: 5 }, // XLSXやDOCXなどのOfficeファイル用
   })
     .middleware(async ({ req }) => {
       // TODO: 認証が実装された場合、ここでユーザー認証をチェック

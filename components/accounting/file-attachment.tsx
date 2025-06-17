@@ -103,7 +103,7 @@ export function FileAttachment({
       // ファイルタイプチェック
       const fileExt = '.' + file.name.toLowerCase().split('.').pop();
       if (!acceptedFileTypes.includes(fileExt)) {
-        errors.push(`${file.name}: 対応していないファイル形式です`);
+        errors.push(`${file.name}: この形式のファイルはアップロードできません（対応形式：PDF、JPG、PNG、Excel、Word）`);
         return;
       }
 
@@ -220,7 +220,7 @@ export function FileAttachment({
 
       {/* エラー表示 */}
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-600">
+        <div className="p-3 bg-orange-50 border border-orange-200 rounded text-sm text-orange-700">
           {error.split('\n').map((line, index) => (
             <div key={index}>{line}</div>
           ))}
