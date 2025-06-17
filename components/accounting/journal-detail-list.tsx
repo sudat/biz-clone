@@ -83,14 +83,14 @@ export function JournalDetailList({
               "w-3 h-3 rounded-full",
               type === 'debit' ? 'bg-slate-500' : 'bg-slate-600'
             )} />
-            <span className="text-lg font-semibold text-slate-700">
+            <span className="text-lg font-semibold text-black">
               {config.title}
             </span>
           </div>
           {total > 0 && (
             <Badge 
               variant="secondary" 
-              className="text-base font-mono px-3 py-1 bg-slate-100 text-slate-800"
+              className="text-base font-mono px-3 py-1 bg-slate-100 text-black"
             >
               {formatCurrency(total)}
             </Badge>
@@ -129,17 +129,17 @@ export function JournalDetailList({
                     {/* メイン行：勘定科目 + 金額 */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-medium text-slate-800 text-sm">
+                        <span className="font-medium text-black text-sm">
                           {detail.accountCode}
                         </span>
                         {detail.accountName && (
-                          <span className="text-xs text-slate-600 truncate">
+                          <span className="text-xs text-black truncate">
                             {detail.accountName}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-1 ml-2">
-                        <span className="text-sm font-mono font-semibold text-slate-800">
+                        <span className="text-sm font-mono font-semibold text-black">
                           {formatCurrency(detail.totalAmount)}
                         </span>
                         <Button
@@ -160,7 +160,7 @@ export function JournalDetailList({
                     
                     {/* サブ情報行 */}
                     {(detail.subAccountCode || detail.partnerCode || detail.analysisCode) && (
-                      <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
+                      <div className="flex items-center gap-3 mt-0.5 text-xs text-black">
                         {detail.subAccountCode && (
                           <span>補助: {detail.subAccountCode}</span>
                         )}
@@ -175,7 +175,7 @@ export function JournalDetailList({
                     
                     {/* 摘要 */}
                     {detail.description && (
-                      <div className="text-xs text-slate-600 mt-0.5 bg-slate-50 px-1 py-0.5 rounded truncate">
+                      <div className="text-xs text-black mt-0.5 bg-slate-50 px-1 py-0.5 rounded truncate">
                         {detail.description}
                       </div>
                     )}
@@ -190,7 +190,7 @@ export function JournalDetailList({
         {/* 明細数表示 */}
         {filteredDetails.length > 0 && (
           <div className="mt-3 pt-3 border-t border-slate-200">
-            <div className="text-xs text-slate-500 text-center">
+            <div className="text-xs text-black text-center">
               {filteredDetails.length}件の明細
             </div>
           </div>

@@ -254,7 +254,7 @@ export function JournalDetailInput({
     >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold text-slate-700">
+          <CardTitle className="text-base font-semibold text-black">
             {mode === "edit"
               ? `${config.title}明細を編集`
               : `${config.title}明細を追加`}
@@ -315,6 +315,7 @@ export function JournalDetailInput({
                 }));
               }}
               disabled={disabled}
+              readOnly={disabled && mode === "edit"}
               placeholder="勘定科目を選択..."
             />
           </div>
@@ -338,6 +339,7 @@ export function JournalDetailInput({
               }
               parentCode={formData.accountCode}
               disabled={disabled || !formData.accountCode}
+              readOnly={disabled && mode === "edit"}
               placeholder={
                 formData.accountCode
                   ? "補助科目を選択..."
@@ -364,6 +366,7 @@ export function JournalDetailInput({
                 }))
               }
               disabled={disabled}
+              readOnly={disabled && mode === "edit"}
               placeholder="取引先を選択..."
             />
           </div>
@@ -386,6 +389,7 @@ export function JournalDetailInput({
                 }))
               }
               disabled={disabled}
+              readOnly={disabled && mode === "edit"}
               placeholder="分析コードを選択..."
             />
           </div>
@@ -424,7 +428,7 @@ export function JournalDetailInput({
           <div className="flex-1 flex gap-2">
             {/* 本体額 */}
             <div className="flex-1">
-              <div className="text-xs text-gray-600 mb-1">本体額</div>
+              <div className="text-xs text-black mb-1">本体額</div>
               <Input
                 type="number"
                 min="0"
@@ -436,24 +440,25 @@ export function JournalDetailInput({
                   handleBaseAmountChange(baseAmount);
                 }}
                 onKeyPress={handleKeyPress}
-                disabled={disabled}
+                disabled={(disabled && !mode) || mode === "input"}
+                readOnly={disabled && mode === "edit"}
                 placeholder="本体額を入力..."
-                className="text-right font-mono h-9"
+                className="text-right font-mono h-9 text-black disabled:opacity-80 read-only:opacity-80 read-only:cursor-default"
               />
             </div>
 
             {/* 消費税額（表示のみ） */}
             <div className="w-24">
-              <div className="text-xs text-gray-600 mb-1">消費税</div>
-              <div className="h-9 px-3 border border-input bg-gray-50 text-right font-mono text-sm rounded-md flex items-center justify-end">
+              <div className="text-xs text-black mb-1">消費税</div>
+              <div className="h-9 px-3 border border-input bg-slate-100 text-right font-mono text-sm text-black rounded-md flex items-center justify-end opacity-80">
                 ¥{(formData.taxAmount || 0).toLocaleString()}
               </div>
             </div>
 
             {/* 合計額（表示のみ） */}
             <div className="w-32">
-              <div className="text-xs text-gray-600 mb-1">合計</div>
-              <div className="h-9 px-3 border-2 border-blue-200 bg-blue-50 text-right font-mono text-sm font-semibold rounded-md flex items-center justify-end">
+              <div className="text-xs text-black mb-1">合計</div>
+              <div className="h-9 px-3 border-2 border-blue-200 bg-blue-50 text-right font-mono text-sm font-semibold text-black rounded-md flex items-center justify-end opacity-80">
                 ¥{(formData.totalAmount || 0).toLocaleString()}
               </div>
             </div>
@@ -475,9 +480,10 @@ export function JournalDetailInput({
                 }))
               }
               onKeyPress={handleKeyPress}
-              disabled={disabled}
+              disabled={(disabled && !mode) || mode === "input"}
+              readOnly={disabled && mode === "edit"}
               placeholder="摘要を入力（任意）..."
-              className="h-9"
+              className="h-9 text-black disabled:opacity-80 read-only:opacity-80 read-only:cursor-default"
             />
           </div>
         </div>

@@ -265,9 +265,6 @@ export function FileAttachment({
       {/* ファイル一覧 */}
       {files.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-700">
-            添付ファイル ({files.length}件)
-          </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {files.map((file) => (
               <div

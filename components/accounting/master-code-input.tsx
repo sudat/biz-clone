@@ -17,20 +17,21 @@ import { getMasterName } from "@/app/actions/master-search";
 import { MasterSearchDialog } from "./master-search-dialog";
 
 interface MasterCodeInputProps {
-  type: 'account' | 'subAccount' | 'partner' | 'analysisCode';
+  type: "account" | "subAccount" | "partner" | "analysisCode";
   value: string;
   onChange: (code: string, name?: string) => void;
   parentCode?: string;
   placeholder?: string;
   disabled?: boolean;
+  readOnly?: boolean;
   className?: string;
 }
 
 const TYPE_LABELS = {
-  account: '勘定科目',
-  subAccount: '補助科目',
-  partner: '取引先',
-  analysisCode: '分析コード'
+  account: "勘定科目",
+  subAccount: "補助科目",
+  partner: "取引先",
+  analysisCode: "分析コード",
 } as const;
 
 export function MasterCodeInput({
@@ -40,7 +41,8 @@ export function MasterCodeInput({
   parentCode,
   placeholder,
   disabled = false,
-  className
+  readOnly = false,
+  className,
 }: MasterCodeInputProps) {
   const [inputValue, setInputValue] = useState(value);
   const [masterName, setMasterName] = useState<string>("");
@@ -49,7 +51,9 @@ export function MasterCodeInput({
   const [hasError, setHasError] = useState(false);
 
   // マスタ名称取得（戻り値で結果を返す）
-  const fetchMasterName = async (code: string): Promise<{ name: string | null; hasError: boolean }> => {
+  const fetchMasterName = async (
+    code: string
+  ): Promise<{ name: string | null; hasError: boolean }> => {
     if (!code) {
       setMasterName("");
       setHasError(false);
@@ -69,7 +73,7 @@ export function MasterCodeInput({
         return { name: null, hasError: true };
       }
     } catch (error) {
-      console.error('マスタ名称取得エラー:', error);
+      console.error("マスタ名称取得エラー:", error);
       setMasterName("");
       setHasError(true);
       return { name: null, hasError: true };
@@ -90,7 +94,7 @@ export function MasterCodeInput({
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setInputValue(newValue);
-    
+
     // 空の場合のみ即座に親に通知（マスタ名称をクリアするため）
     if (!newValue) {
       onChange(newValue);
@@ -121,9 +125,9 @@ export function MasterCodeInput({
 
   // エンターキー処理
   const handleKeyPress = async (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
-      
+
       const result = await fetchMasterName(inputValue);
       // 名称取得後に親に通知
       if (result.name && !result.hasError) {
@@ -136,11 +140,11 @@ export function MasterCodeInput({
 
   // バリデーション状態
   const getValidationState = () => {
-    if (!inputValue) return 'empty';
-    if (isLoading) return 'loading';
-    if (hasError) return 'error';
-    if (masterName) return 'valid';
-    return 'empty';
+    if (!inputValue) return "empty";
+    if (isLoading) return "loading";
+    if (hasError) return "error";
+    if (masterName) return "valid";
+    return "empty";
   };
 
   const validationState = getValidationState();
@@ -158,11 +162,14 @@ export function MasterCodeInput({
             onBlur={handleBlur}
             onKeyDown={handleKeyPress}
             placeholder={placeholder || "コード"}
-            disabled={disabled}
+            disabled={disabled && !readOnly}
+            readOnly={readOnly}
             className={cn(
-              "font-mono text-center",
-              validationState === 'error' && "border-red-300 focus:border-red-500",
-              validationState === 'valid' && "border-green-300 focus:border-green-500"
+              "font-mono text-center text-black disabled:opacity-80 read-only:opacity-80 read-only:cursor-default",
+              validationState === "error" &&
+                "border-red-300 focus:border-red-500",
+              validationState === "valid" &&
+                "border-green-300 focus:border-green-500"
             )}
           />
         </div>
@@ -173,7 +180,9 @@ export function MasterCodeInput({
           variant="outline"
           size="icon"
           onClick={() => setIsDialogOpen(true)}
-          disabled={disabled || (type === 'subAccount' && !parentCode)}
+          disabled={
+            disabled || readOnly || (type === "subAccount" && !parentCode)
+          }
           className="flex-shrink-0 h-10 w-10"
           title={`${TYPE_LABELS[type]}を検索`}
         >
@@ -185,12 +194,12 @@ export function MasterCodeInput({
           <Input
             type="text"
             value={isLoading ? "検索中..." : masterName}
-            readOnly
-            disabled={disabled}
+            readOnly={true}
+            disabled={false}
             className={cn(
-              "bg-slate-50 cursor-default",
-              validationState === 'error' && "text-red-600",
-              validationState === 'valid' && "text-green-700"
+              "bg-slate-100 cursor-default text-black read-only:opacity-80",
+              validationState === "error" && "text-red-600",
+              validationState === "valid" && "text-black"
             )}
             placeholder={inputValue ? "マスタ名称" : `${TYPE_LABELS[type]}名称`}
           />
@@ -198,16 +207,15 @@ export function MasterCodeInput({
       </div>
 
       {/* バリデーションメッセージ */}
-      {validationState === 'error' && inputValue && (
+      {validationState === "error" && inputValue && (
         <div className="flex items-center gap-1 text-xs text-red-600">
           <AlertTriangle className="h-3 w-3" />
           <span>
-            {type === 'subAccount' && !parentCode 
+            {type === "subAccount" && !parentCode
               ? "親勘定科目を先に選択してください"
-              : type === 'account' 
-                ? "明細科目のみ選択可能です（集計科目は使用できません）"
-                : "マスタに登録されていないコードです"
-            }
+              : type === "account"
+              ? "明細科目のみ選択可能です（集計科目は使用できません）"
+              : "マスタに登録されていないコードです"}
           </span>
         </div>
       )}
