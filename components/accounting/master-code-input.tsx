@@ -86,11 +86,18 @@ export function MasterCodeInput({
     }
   }, [value, type, parentCode]);
 
-  // コード入力変更（検索はしない）
+  // コード入力変更（親への通知は行わない）
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setInputValue(newValue);
-    onChange(newValue); // 即座に親に通知（検索はしない）
+    
+    // 空の場合のみ即座に親に通知（マスタ名称をクリアするため）
+    if (!newValue) {
+      onChange(newValue);
+      setMasterName("");
+      setHasError(false);
+    }
+    // 入力中は親への通知は行わない
   };
 
   // フォーカスが外れた時に検索
@@ -116,6 +123,7 @@ export function MasterCodeInput({
   const handleKeyPress = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
+      
       const result = await fetchMasterName(inputValue);
       // 名称取得後に親に通知
       if (result.name && !result.hasError) {
@@ -148,7 +156,7 @@ export function MasterCodeInput({
             value={inputValue}
             onChange={handleCodeChange}
             onBlur={handleBlur}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyPress}
             placeholder={placeholder || "コード"}
             disabled={disabled}
             className={cn(

@@ -248,7 +248,7 @@ export async function getJournals(params: {
             orderBy: { lineNumber: "asc" },
           },
         },
-        orderBy: { journalDate: "desc" },
+        orderBy: { journalNumber: "desc" },
         skip,
         take: limit,
       }),
@@ -566,7 +566,7 @@ export async function getUserCreatedPendingJournals(params: {
             orderBy: { lineNumber: "asc" },
           },
         },
-        orderBy: { createdAt: "desc" }, // 作成日の新しい順
+        orderBy: { journalNumber: "desc" }, // 仕訳番号の降順
         skip,
         take: limit,
       }),
@@ -829,10 +829,7 @@ export async function getApprovableJournals(params: {
             ],
           },
         },
-        orderBy: [
-          { journalDate: "desc" },
-          { journalNumber: "desc" },
-        ],
+        orderBy: { journalNumber: "desc" },
         skip,
         take: limit,
       }),
@@ -942,7 +939,7 @@ export async function getApprovedJournalsByUser(params: {
             orderBy: { lineNumber: "asc" },
           },
         },
-        orderBy: { approvedAt: "desc" }, // 承認日の新しい順
+        orderBy: { journalNumber: "desc" }, // 仕訳番号の降順
         skip,
         take: limit,
       }),
