@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { createRole, updateRole, checkRoleCodeExists, type RoleForClient } from "@/app/actions/roles";
+import {
+  createRole,
+  updateRole,
+  checkRoleCodeExists,
+  type RoleForClient,
+} from "@/app/actions/roles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,10 +23,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
-import { 
-  showErrorToast, 
-  showSuccessToast
-} from "@/components/ui/error-toast";
+import { showErrorToast, showSuccessToast } from "@/components/ui/error-toast";
 import { createSystemError } from "@/lib/types/errors";
 
 // 統一スキーマを使用（新規・更新共通）
@@ -66,7 +68,7 @@ export function RoleMasterForm({
   // ロールコードの重複チェック
   const checkRoleCode = async (code: string) => {
     if (!code || isEditing) return; // 編集時はチェックしない
-    
+
     setCodeCheckLoading(true);
     setCodeCheckMessage("");
     setCodeCheckError(false);
@@ -95,7 +97,9 @@ export function RoleMasterForm({
   const handleSubmit = async (data: RoleFormData) => {
     // 新規作成時に重複エラーがある場合は送信しない
     if (!isEditing && codeCheckError) {
-      showErrorToast(createSystemError("ロールコードが重複しています", "登録処理"));
+      showErrorToast(
+        createSystemError("ロールコードが重複しています", "登録処理")
+      );
       return;
     }
 
@@ -105,21 +109,21 @@ export function RoleMasterForm({
       if (isEditing && role) {
         // 更新
         const formData = new FormData();
-        formData.append('roleName', data.roleName);
-        if (data.description) formData.append('description', data.description);
-        formData.append('isActive', data.isActive.toString());
+        formData.append("roleName", data.roleName);
+        if (data.description) formData.append("description", data.description);
+        formData.append("isActive", data.isActive.toString());
         if (data.sortOrder !== null && data.sortOrder !== undefined) {
-          formData.append('sortOrder', data.sortOrder.toString());
+          formData.append("sortOrder", data.sortOrder.toString());
         }
         result = await updateRole(role.roleCode, formData);
       } else {
         // 新規作成
         const formData = new FormData();
-        formData.append('roleCode', data.roleCode);
-        formData.append('roleName', data.roleName);
-        if (data.description) formData.append('description', data.description);
+        formData.append("roleCode", data.roleCode);
+        formData.append("roleName", data.roleName);
+        if (data.description) formData.append("description", data.description);
         if (data.sortOrder !== null && data.sortOrder !== undefined) {
-          formData.append('sortOrder', data.sortOrder.toString());
+          formData.append("sortOrder", data.sortOrder.toString());
         }
         result = await createRole(formData);
       }
@@ -130,7 +134,12 @@ export function RoleMasterForm({
         );
         onSubmit();
       } else {
-        showErrorToast(createSystemError(String(result.error) || "エラーが発生しました", "バリデーションエラー"));
+        showErrorToast(
+          createSystemError(
+            String(result.error) || "エラーが発生しました",
+            "バリデーションエラー"
+          )
+        );
       }
     } catch (error) {
       console.error("ロールの保存エラー:", error);
@@ -168,23 +177,25 @@ export function RoleMasterForm({
                 {isEditing
                   ? "コードは編集できません"
                   : codeCheckMessage && !codeCheckError
-                    ? "" // チェック成功時は説明文を非表示
-                    : "ロールを識別するコードを入力してください"}
+                  ? "" // チェック成功時は説明文を非表示
+                  : "ロールを識別するコードを入力してください"}
               </FormDescription>
-              
+
               {/* 重複チェック結果の表示 */}
               {!isEditing && (codeCheckLoading || codeCheckMessage) && (
-                <div className={`text-sm mt-1 ${
-                  codeCheckLoading 
-                    ? "text-gray-500" 
-                    : codeCheckError 
-                      ? "text-red-600" 
+                <div
+                  className={`text-sm mt-1 ${
+                    codeCheckLoading
+                      ? "text-gray-500"
+                      : codeCheckError
+                      ? "text-red-600"
                       : "text-green-600"
-                }`}>
+                  }`}
+                >
                   {codeCheckLoading ? "チェック中..." : codeCheckMessage}
                 </div>
               )}
-              
+
               <FormMessage />
             </FormItem>
           )}
@@ -283,7 +294,10 @@ export function RoleMasterForm({
           >
             キャンセル
           </Button>
-          <Button type="submit" disabled={loading || (!isEditing && codeCheckError)}>
+          <Button
+            type="submit"
+            disabled={loading || (!isEditing && codeCheckError)}
+          >
             {loading ? "保存中..." : isEditing ? "更新" : "作成"}
           </Button>
         </div>

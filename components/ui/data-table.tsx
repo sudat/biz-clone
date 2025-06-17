@@ -205,8 +205,10 @@ export function SortableHeader({
   column,
   children,
 }: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  column: any;
+  column: {
+    toggleSorting: (desc?: boolean) => void;
+    getIsSorted: () => false | "asc" | "desc";
+  };
   children: React.ReactNode;
 }) {
   return (

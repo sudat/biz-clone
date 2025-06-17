@@ -94,7 +94,7 @@ export function RoleMasterList() {
     if (roles.length === 0) {
       loadRoles();
     }
-  }, []);
+  }, [roles.length]);
 
   const loadRoles = async () => {
     setLoading(true);

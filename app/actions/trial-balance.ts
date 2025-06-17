@@ -169,21 +169,6 @@ async function calculateAccountBalance(
     ...(subAccountCode ? { subAccountCode } : {}),
   };
 
-  // 期首残高計算（開始日より前の仕訳から借方-貸方を集計）
-  const openingBalanceResult = await prisma.journalDetail.aggregate({
-    where: {
-      ...baseWhere,
-      journalHeader: {
-        journalDate: {
-          lt: dateFrom,
-        },
-      },
-    },
-    _sum: {
-      totalAmount: true,
-    },
-  });
-
   // 期中の借方・貸方計上額を別々に集計
   const [debitResult, creditResult] = await Promise.all([
     // 借方計上額

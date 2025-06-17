@@ -88,7 +88,7 @@ export function MasterDataSearch({
     onSearchChange,
   ]);
 
-  const handleFilterChange = (field: string, value: any) => {
+  const handleFilterChange = (field: string, value: unknown) => {
     setFilters((prev) => ({
       ...prev,
       [field]: value,

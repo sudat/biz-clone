@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { getAnalysisCodes, searchAnalysisCodes, deleteAnalysisCode } from "@/app/actions/analysis-codes";
+import {
+  getAnalysisCodes,
+  searchAnalysisCodes,
+  deleteAnalysisCode,
+} from "@/app/actions/analysis-codes";
 import type { AnalysisCode } from "@/lib/database/prisma";
 import {
   searchAndSort,
@@ -66,7 +70,8 @@ export function AnalysisCodeMasterList() {
     sortDirection: "asc",
     activeOnly: false,
   });
-  const [editingAnalysisCode, setEditingAnalysisCode] = useState<AnalysisCode | null>(null);
+  const [editingAnalysisCode, setEditingAnalysisCode] =
+    useState<AnalysisCode | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [useServerSearch, setUseServerSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -92,7 +97,7 @@ export function AnalysisCodeMasterList() {
     if (analysisCodes.length === 0) {
       loadAnalysisCodes();
     }
-  }, []);
+  }, [analysisCodes.length]);
 
   const loadAnalysisCodes = async () => {
     setLoading(true);
@@ -114,13 +119,10 @@ export function AnalysisCodeMasterList() {
   const performServerSearch = useCallback(async (searchState: SearchState) => {
     setLoading(true);
     try {
-      const result = await searchAnalysisCodes(
-        searchState.searchTerm,
-        {
-          analysis_type: searchState.filters.analysisType,
-          is_active: searchState.activeOnly ? true : undefined,
-        }
-      );
+      const result = await searchAnalysisCodes(searchState.searchTerm, {
+        analysisType: searchState.filters.analysisType,
+        isActive: searchState.activeOnly ? true : undefined,
+      });
 
       if (result.success) {
         setAnalysisCodes(result.data || []);
@@ -317,7 +319,9 @@ export function AnalysisCodeMasterList() {
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={analysisCode.isActive ? "default" : "secondary"}
+                        variant={
+                          analysisCode.isActive ? "default" : "secondary"
+                        }
                       >
                         {analysisCode.isActive ? "有効" : "無効"}
                       </Badge>

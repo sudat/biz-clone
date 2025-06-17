@@ -17,6 +17,14 @@ import { JournalSaveData, JournalSaveResult } from "@/types/journal";
 import type { AttachedFile } from "@/components/accounting/file-attachment";
 
 /**
+ * UUID形式の検証
+ */
+function isValidUUID(uuid: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+}
+
+/**
  * 仕訳保存処理
  */
 export async function saveJournal(
@@ -34,6 +42,16 @@ export async function saveJournal(
 
     // 現在のユーザIDを取得（Cookieから）
     const currentUserId = await getCurrentUserIdFromCookie();
+    
+    // UUIDのバリデーション
+    console.log("取得されたユーザーID:", currentUserId);
+    if (currentUserId && !isValidUUID(currentUserId)) {
+      console.error("無効なUUID形式:", currentUserId);
+      return {
+        success: false,
+        error: "ユーザー認証に問題があります。再ログインしてください。",
+      };
+    }
 
     // 仕訳番号生成（計上日ベース）
     const journalNumber = await generateJournalNumber(data.header.journalDate);
@@ -55,7 +73,7 @@ export async function saveJournal(
           journalDate: journalDateJST,
           description: data.header.description || "",
           totalAmount: totalAmount,
-          createdBy: currentUserId,
+          createdBy: currentUserId || null, // nullまたは有効なUUID
           approvalStatus: "pending", // 承認中ステータス
         },
       });
@@ -83,24 +101,18 @@ export async function saveJournal(
       );
 
       // 添付ファイル保存
-      const journalAttachments = data.attachedFiles
-        ? await Promise.all(
-          data.attachedFiles.map(async (file) => {
-            const fileExtension = file.name.split(".").pop()?.toLowerCase() ||
-              "";
-            return tx.journalAttachment.create({
-              data: {
-                journalNumber,
-                fileName: file.name,
-                originalFileName: file.name,
-                fileUrl: file.url,
-                fileSize: BigInt(file.size),
-                fileExtension,
-                mimeType: file.type,
-              },
-            });
-          }),
-        )
+      const journalAttachments = data.attachedFiles && data.attachedFiles.length > 0
+        ? await tx.journalAttachment.createMany({
+          data: data.attachedFiles.map((file) => ({
+            journalNumber,
+            fileName: file.name,
+            originalFileName: file.name,
+            fileUrl: file.url,
+            fileSize: BigInt(file.size),
+            fileExtension: file.name.split(".").pop()?.toLowerCase() || "",
+            mimeType: file.type,
+          })),
+        })
         : [];
 
       return {
@@ -226,6 +238,15 @@ export async function updateJournal(
 
     // 現在のユーザIDを取得（Cookieから）
     const currentUserId = await getCurrentUserIdFromCookie();
+    
+    // UUIDのバリデーション
+    if (currentUserId && !isValidUUID(currentUserId)) {
+      console.error("無効なUUID形式:", currentUserId);
+      return {
+        success: false,
+        error: "ユーザー認証に問題があります。再ログインしてください。",
+      };
+    }
 
     // 明細の合計金額を計算（借方合計を使用）
     const totalAmount = data.details
@@ -259,7 +280,7 @@ export async function updateJournal(
           journalDate: journalDateJST,
           description: data.header.description || "",
           totalAmount: totalAmount,
-          createdBy: currentUserId, // 更新者を新しい作成者として設定
+          createdBy: currentUserId || null, // 更新者を新しい作成者として設定
           approvalStatus: "pending", // 承認ステータスを承認中にリセット
           approvedBy: null, // 承認者をクリア
           approvedAt: null, // 承認日時をクリア
@@ -308,7 +329,6 @@ export async function updateJournal(
           const attachmentData = fileChanges.newFiles
             .filter((file) => file.url) // URLがあるファイルのみ保存
             .map((file) => ({
-              attachmentId: crypto.randomUUID(),
               journalNumber: journalNumber,
               fileName: file.name,
               originalFileName: file.name,

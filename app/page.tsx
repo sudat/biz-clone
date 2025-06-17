@@ -12,7 +12,7 @@ export default function HomePage() {
             Biz Clone 会計システム
           </h1>
           <p className="mx-auto max-w-[700px] text-xl text-muted-foreground leading-relaxed">
-            現代的でモダンな会計システム
+            シンプルな会計システム
           </p>
         </div>
 

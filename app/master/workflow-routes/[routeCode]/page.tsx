@@ -3,8 +3,15 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { WorkflowRouteFlowEditor } from "@/components/accounting/workflow-route-flow-editor";
-import { getWorkflowRouteById, updateWorkflowRouteFlowConfig, type WorkflowRouteForClient } from "@/app/actions/workflow-routes";
-import { getWorkflowOrganizations, type WorkflowOrganizationForClient } from "@/app/actions/workflow-organizations";
+import {
+  getWorkflowRouteById,
+  updateWorkflowRouteFlowConfig,
+  type WorkflowRouteForClient,
+} from "@/app/actions/workflow-routes";
+import {
+  getWorkflowOrganizations,
+  type WorkflowOrganizationForClient,
+} from "@/app/actions/workflow-organizations";
 import { showErrorToast, showSuccessToast } from "@/components/ui/error-toast";
 import { createSystemError } from "@/lib/types/errors";
 import { Button } from "@/components/ui/button";
@@ -18,7 +25,9 @@ export default function WorkflowRouteFlowConfigPage() {
   const routeCode = params.routeCode as string;
 
   const [route, setRoute] = useState<WorkflowRouteForClient | null>(null);
-  const [organizations, setOrganizations] = useState<WorkflowOrganizationForClient[]>([]);
+  const [organizations, setOrganizations] = useState<
+    WorkflowOrganizationForClient[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -27,11 +36,11 @@ export default function WorkflowRouteFlowConfigPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
+
         // 並行してルート情報と組織情報を取得
         const [routeResult, orgResult] = await Promise.all([
           getWorkflowRouteById(routeCode),
-          getWorkflowOrganizations()
+          getWorkflowOrganizations(),
         ]);
 
         if (routeResult.success && routeResult.data) {
@@ -77,14 +86,17 @@ export default function WorkflowRouteFlowConfigPage() {
   }, [routeCode, router]);
 
   // フロー設定保存処理
-  const handleFlowConfigSave = async (flowConfig: any) => {
+  const handleFlowConfigSave = async (flowConfig: unknown) => {
     if (!route) return;
 
     try {
       setSaving(true);
-      
-      const result = await updateWorkflowRouteFlowConfig(route.routeCode, flowConfig);
-      
+
+      const result = await updateWorkflowRouteFlowConfig(
+        route.routeCode,
+        flowConfig
+      );
+
       if (result.success) {
         showSuccessToast("フロー設定を保存しました");
         // ルート情報を再取得して最新状態にする
@@ -183,7 +195,13 @@ export default function WorkflowRouteFlowConfigPage() {
         <CardContent className="p-0">
           <WorkflowRouteFlowEditor
             organizations={organizations}
-            initialFlowConfig={route.flowConfigJson ? (typeof route.flowConfigJson === 'string' ? JSON.parse(route.flowConfigJson) : route.flowConfigJson) : undefined}
+            initialFlowConfig={
+              route.flowConfigJson
+                ? typeof route.flowConfigJson === "string"
+                  ? JSON.parse(route.flowConfigJson)
+                  : route.flowConfigJson
+                : undefined
+            }
             onSave={handleFlowConfigSave}
             saving={saving}
           />

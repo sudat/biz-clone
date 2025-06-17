@@ -38,7 +38,12 @@ export function JournalDetailInquiryList({
   if (details.length === 0) {
     return (
       <Card
-        className={cn("h-full flex flex-col border-2", borderColor, bgColor, className)}
+        className={cn(
+          "h-full flex flex-col border-2",
+          borderColor,
+          bgColor,
+          className
+        )}
       >
         <CardHeader className="pb-3 flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -59,7 +64,12 @@ export function JournalDetailInquiryList({
 
   return (
     <Card
-      className={cn("h-full flex flex-col border-2", borderColor, bgColor, className)}
+      className={cn(
+        "h-full flex flex-col border-2",
+        borderColor,
+        bgColor,
+        className
+      )}
     >
       <CardHeader className="pb-3 flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -79,8 +89,8 @@ export function JournalDetailInquiryList({
               onClick={() => onDetailClick(detail)}
               className={cn(
                 "p-1.5 rounded border transition-all duration-200 cursor-pointer",
-                isSelected 
-                  ? "bg-blue-100 border-blue-300 shadow-sm" 
+                isSelected
+                  ? "bg-blue-100 border-blue-300 shadow-sm"
                   : "bg-white/50 hover:bg-white/80 hover:border-slate-300",
                 "border-slate-100",
                 "group"
@@ -107,9 +117,10 @@ export function JournalDetailInquiryList({
                     </div>
                   </div>
 
-                  
                   {/* サブ情報行 */}
-                  {(detail.subAccountCode || detail.partnerCode || detail.analysisCode) && (
+                  {(detail.subAccountCode ||
+                    detail.partnerCode ||
+                    detail.analysisCode) && (
                     <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
                       {detail.subAccountCode && (
                         <span>補助: {detail.subAccountCode}</span>
@@ -122,7 +133,7 @@ export function JournalDetailInquiryList({
                       )}
                     </div>
                   )}
-                  
+
                   {/* 摘要 */}
                   {detail.lineDescription && (
                     <div className="text-xs text-slate-600 mt-0.5 bg-slate-50 px-1 py-0.5 rounded truncate">
@@ -137,22 +148,4 @@ export function JournalDetailInquiryList({
       </CardContent>
     </Card>
   );
-}
-
-/**
- * 税区分のラベルを取得
- */
-function getTaxTypeLabel(taxType: string): string {
-  switch (taxType) {
-    case "taxable":
-      return "課税";
-    case "non_taxable":
-      return "対象外";
-    case "tax_free":
-      return "免税";
-    case "tax_entry":
-      return "税額";
-    default:
-      return taxType;
-  }
 }

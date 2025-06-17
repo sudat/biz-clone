@@ -10,15 +10,15 @@
 import React, { useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { 
-  Upload, 
-  FileText, 
-  FileImage, 
-  FileSpreadsheet, 
+import {
+  Upload,
+  FileText,
+  FileImage,
+  FileSpreadsheet,
   File as FileIcon,
   X,
   Download,
-  Plus
+  Plus,
 } from "lucide-react";
 
 // ファイル情報の型定義
@@ -41,7 +41,7 @@ interface FileAttachmentProps {
   maxFileSize?: number; // bytes
   acceptedFileTypes?: string[];
   className?: string;
-  mode?: 'upload' | 'display'; // アップロード可能か表示のみか
+  mode?: "upload" | "display"; // アップロード可能か表示のみか
 }
 
 export function FileAttachment({
@@ -52,9 +52,18 @@ export function FileAttachment({
   disabled = false,
   maxFiles = 10,
   maxFileSize = 10 * 1024 * 1024, // 10MB
-  acceptedFileTypes = ['.pdf', '.jpg', '.jpeg', '.png', '.xlsx', '.xls', '.docx', '.doc'],
+  acceptedFileTypes = [
+    ".pdf",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".xlsx",
+    ".xls",
+    ".docx",
+    ".doc",
+  ],
   className,
-  mode = 'upload'
+  mode = "upload",
 }: FileAttachmentProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,30 +71,33 @@ export function FileAttachment({
 
   // ファイルタイプからアイコンを取得
   const getFileIcon = (type: string, fileName: string) => {
-    const ext = fileName.toLowerCase().split('.').pop();
-    
-    if (type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
+    const ext = fileName.toLowerCase().split(".").pop();
+
+    if (
+      type.startsWith("image/") ||
+      ["jpg", "jpeg", "png", "gif", "webp"].includes(ext || "")
+    ) {
       return <FileImage className="h-5 w-5" />;
     }
-    
-    if (['xlsx', 'xls', 'csv'].includes(ext || '')) {
+
+    if (["xlsx", "xls", "csv"].includes(ext || "")) {
       return <FileSpreadsheet className="h-5 w-5" />;
     }
-    
-    if (['pdf', 'doc', 'docx', 'txt'].includes(ext || '')) {
+
+    if (["pdf", "doc", "docx", "txt"].includes(ext || "")) {
       return <FileText className="h-5 w-5" />;
     }
-    
+
     return <FileIcon className="h-5 w-5" />;
   };
 
   // ファイルサイズを読みやすい形式に変換
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
   // ファイル検証
@@ -96,14 +108,20 @@ export function FileAttachment({
     Array.from(fileList).forEach((file) => {
       // ファイルサイズチェック
       if (file.size > maxFileSize) {
-        errors.push(`${file.name}: ファイルサイズが大きすぎます (最大${formatFileSize(maxFileSize)})`);
+        errors.push(
+          `${file.name}: ファイルサイズが大きすぎます (最大${formatFileSize(
+            maxFileSize
+          )})`
+        );
         return;
       }
 
       // ファイルタイプチェック
-      const fileExt = '.' + file.name.toLowerCase().split('.').pop();
+      const fileExt = "." + file.name.toLowerCase().split(".").pop();
       if (!acceptedFileTypes.includes(fileExt)) {
-        errors.push(`${file.name}: この形式のファイルはアップロードできません（対応形式：PDF、JPG、PNG、Excel、Word）`);
+        errors.push(
+          `${file.name}: この形式のファイルはアップロードできません（対応形式：PDF、JPG、PNG、Excel、Word）`
+        );
         return;
       }
 
@@ -117,7 +135,7 @@ export function FileAttachment({
     }
 
     if (errors.length > 0) {
-      setError(errors.join('\n'));
+      setError(errors.join("\n"));
       return [];
     }
 
@@ -126,40 +144,56 @@ export function FileAttachment({
   };
 
   // ファイル選択処理
-  const handleFileSelect = useCallback((fileList: FileList | null) => {
-    if (!fileList || fileList.length === 0 || !onFilesChange) return;
+  const handleFileSelect = useCallback(
+    (fileList: FileList | null) => {
+      if (!fileList || fileList.length === 0 || !onFilesChange) return;
 
-    const validFiles = validateFiles(fileList);
-    if (validFiles.length > 0) {
-      onFilesChange(validFiles);
-    }
-  }, [files.length, maxFiles, maxFileSize, acceptedFileTypes, onFilesChange]);
+      const validFiles = validateFiles(fileList);
+      if (validFiles.length > 0) {
+        onFilesChange(validFiles);
+      }
+    },
+    [
+      files.length,
+      maxFiles,
+      maxFileSize,
+      acceptedFileTypes,
+      onFilesChange,
+      validateFiles,
+    ]
+  );
 
   // ドラッグ&ドロップ処理
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    if (!disabled && mode === 'upload') {
-      setIsDragging(true);
-    }
-  }, [disabled, mode]);
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      if (!disabled && mode === "upload") {
+        setIsDragging(true);
+      }
+    },
+    [disabled, mode]
+  );
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    
-    if (disabled || mode !== 'upload') return;
-    
-    handleFileSelect(e.dataTransfer.files);
-  }, [disabled, mode, handleFileSelect]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+
+      if (disabled || mode !== "upload") return;
+
+      handleFileSelect(e.dataTransfer.files);
+    },
+    [disabled, mode, handleFileSelect]
+  );
 
   // ファイル入力クリック
   const handleUploadClick = () => {
-    if (!disabled && mode === 'upload') {
+    if (!disabled && mode === "upload") {
       fileInputRef.current?.click();
     }
   };
@@ -170,7 +204,7 @@ export function FileAttachment({
       onFileDownload(file);
     } else if (file.url) {
       // デフォルトのダウンロード処理
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = file.url;
       link.download = file.name;
       document.body.appendChild(link);
@@ -182,7 +216,7 @@ export function FileAttachment({
   return (
     <div className={cn("space-y-4", className)}>
       {/* アップロードエリア（アップロードモードの場合のみ） */}
-      {mode === 'upload' && (
+      {mode === "upload" && (
         <div
           className={cn(
             "border-2 border-dashed rounded-lg p-6 text-center transition-colors",
@@ -213,7 +247,8 @@ export function FileAttachment({
             </Button>
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            対応形式: {acceptedFileTypes.join(', ')} / 最大サイズ: {formatFileSize(maxFileSize)} / 最大{maxFiles}件
+            対応形式: {acceptedFileTypes.join(", ")} / 最大サイズ:{" "}
+            {formatFileSize(maxFileSize)} / 最大{maxFiles}件
           </p>
         </div>
       )}
@@ -221,7 +256,7 @@ export function FileAttachment({
       {/* エラー表示 */}
       {error && (
         <div className="p-3 bg-orange-50 border border-orange-200 rounded text-sm text-orange-700">
-          {error.split('\n').map((line, index) => (
+          {error.split("\n").map((line, index) => (
             <div key={index}>{line}</div>
           ))}
         </div>
@@ -243,7 +278,7 @@ export function FileAttachment({
                 <div className="flex-shrink-0 text-gray-500">
                   {getFileIcon(file.type, file.name)}
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">
                     {file.name}
@@ -270,7 +305,7 @@ export function FileAttachment({
                   </Button>
 
                   {/* 削除ボタン（アップロードモードの場合のみ） */}
-                  {mode === 'upload' && onFileDelete && (
+                  {mode === "upload" && onFileDelete && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -298,7 +333,7 @@ export function FileAttachment({
         ref={fileInputRef}
         type="file"
         multiple
-        accept={acceptedFileTypes.join(',')}
+        accept={acceptedFileTypes.join(",")}
         onChange={(e) => handleFileSelect(e.target.files)}
         className="hidden"
       />

@@ -2,7 +2,7 @@
  * 統一エラー表示コンポーネント
  * ============================================================================
  * Shadcn/UI Toastを使用した統一エラー表示システム
- * 
+ *
  * 主要機能:
  * 1. エラー種別に応じた適切な表示スタイル
  * 2. アクションボタン付きトースト
@@ -15,21 +15,20 @@
 
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { 
-  ErrorInfo, 
-  ErrorType, 
+import {
+  ErrorInfo,
+  ErrorType,
   ErrorSeverity,
   DEFAULT_ERROR_DISPLAY,
-  isRetryableError 
+  isRetryableError,
 } from "@/lib/types/errors";
-import { 
-  AlertCircle, 
-  AlertTriangle, 
-  Info, 
+import {
+  AlertCircle,
+  AlertTriangle,
+  Info,
   XCircle,
   RefreshCw,
   LogIn,
-  RotateCcw
 } from "lucide-react";
 
 /**
@@ -44,10 +43,22 @@ interface ErrorToastOptions {
   additionalActions?: Array<{
     label: string;
     onClick: () => void;
-    variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+    variant?:
+      | "default"
+      | "destructive"
+      | "outline"
+      | "secondary"
+      | "ghost"
+      | "link";
   }>;
   /** トーストの位置を指定 */
-  position?: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "top-center" | "bottom-center";
+  position?:
+    | "top-left"
+    | "top-right"
+    | "bottom-left"
+    | "bottom-right"
+    | "top-center"
+    | "bottom-center";
 }
 
 /**
@@ -55,7 +66,7 @@ interface ErrorToastOptions {
  */
 function getErrorIcon(errorType: ErrorType): React.ReactNode {
   const iconClass = "h-4 w-4";
-  
+
   switch (errorType) {
     case ErrorType.VALIDATION:
       return <AlertTriangle className={iconClass} />;
@@ -74,19 +85,6 @@ function getErrorIcon(errorType: ErrorType): React.ReactNode {
 }
 
 /**
- * エラー重要度に応じたトーストタイプを取得
- */
-function getToastVariant(severity: ErrorSeverity): "default" | "destructive" {
-  switch (severity) {
-    case ErrorSeverity.ERROR:
-    case ErrorSeverity.CRITICAL:
-      return "destructive";
-    default:
-      return "default";
-  }
-}
-
-/**
  * 統一エラートースト表示関数
  */
 export function showErrorToast(
@@ -96,27 +94,37 @@ export function showErrorToast(
   const config = DEFAULT_ERROR_DISPLAY[error.type];
   const severity = config.severity;
   const icon = getErrorIcon(error.type);
-  
+
   // デフォルトの自動消去時間を設定
-  const duration = options.duration ?? (
-    severity === ErrorSeverity.CRITICAL ? undefined : // 重要なエラーは手動で閉じる
-    severity === ErrorSeverity.ERROR ? 8000 :
-    severity === ErrorSeverity.WARNING ? 6000 : 4000
-  );
+  const duration =
+    options.duration ??
+    (severity === ErrorSeverity.CRITICAL
+      ? undefined // 重要なエラーは手動で閉じる
+      : severity === ErrorSeverity.ERROR
+      ? 8000
+      : severity === ErrorSeverity.WARNING
+      ? 6000
+      : 4000);
 
   // アクションボタンの設定
   const actions: Array<{
     label: string;
     onClick: () => void;
-    variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+    variant?:
+      | "default"
+      | "destructive"
+      | "outline"
+      | "secondary"
+      | "ghost"
+      | "link";
   }> = [];
 
   // デフォルトアクション（再試行など）
   if (config.showAction && isRetryableError(error)) {
     actions.push({
-      label: config.actionLabel || '再試行',
+      label: config.actionLabel || "再試行",
       onClick: options.onAction || (() => window.location.reload()),
-      variant: 'outline'
+      variant: "outline",
     });
   }
 
@@ -130,31 +138,32 @@ export function showErrorToast(
     description: error.details?.suggestedAction,
     duration,
     icon,
-    action: actions.length > 0 ? (
-      <div className="flex gap-2">
-        {actions.map((action, index) => (
-          <Button
-            key={index}
-            variant={action.variant || "outline"}
-            size="sm"
-            onClick={() => {
-              action.onClick();
-              toast.dismiss(toastId);
-            }}
-          >
-            {action.label}
-          </Button>
-        ))}
-      </div>
-    ) : undefined,
+    action:
+      actions.length > 0 ? (
+        <div className="flex gap-2">
+          {actions.map((action, index) => (
+            <Button
+              key={index}
+              variant={action.variant || "outline"}
+              size="sm"
+              onClick={() => {
+                action.onClick();
+                toast.dismiss(toastId);
+              }}
+            >
+              {action.label}
+            </Button>
+          ))}
+        </div>
+      ) : undefined,
     // エラーの詳細情報をdata属性として追加（デバッグ用）
-    ...(process.env.NODE_ENV === 'development' && {
+    ...(process.env.NODE_ENV === "development" && {
       data: {
         errorType: error.type,
         errorCode: error.code,
-        timestamp: error.timestamp
-      }
-    })
+        timestamp: error.timestamp,
+      },
+    }),
   });
 
   return String(toastId);
@@ -167,33 +176,40 @@ export function showValidationError(
   message: string,
   fieldErrors?: Record<string, string[]>
 ): string {
-  const description = fieldErrors 
+  const description = fieldErrors
     ? Object.entries(fieldErrors)
-        .map(([field, errors]) => `${field}: ${errors.join(', ')}`)
-        .join('\n')
+        .map(([field, errors]) => `${field}: ${errors.join(", ")}`)
+        .join("\n")
     : undefined;
 
-  return String(toast.error(message, {
-    description,
-    duration: 6000,
-    icon: <AlertTriangle className="h-4 w-4" />,
-    action: description ? (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => {
-          // フォームのエラーフィールドにスクロール
-          const firstErrorField = document.querySelector('[data-invalid="true"]');
-          if (firstErrorField) {
-            firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            (firstErrorField as HTMLElement).focus();
-          }
-        }}
-      >
-        エラー箇所を確認
-      </Button>
-    ) : undefined
-  }));
+  return String(
+    toast.error(message, {
+      description,
+      duration: 6000,
+      icon: <AlertTriangle className="h-4 w-4" />,
+      action: description ? (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            // フォームのエラーフィールドにスクロール
+            const firstErrorField = document.querySelector(
+              '[data-invalid="true"]'
+            );
+            if (firstErrorField) {
+              firstErrorField.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
+              (firstErrorField as HTMLElement).focus();
+            }
+          }}
+        >
+          エラー箇所を確認
+        </Button>
+      ) : undefined,
+    })
+  );
 }
 
 /**
@@ -204,11 +220,13 @@ export function showSuccessToast(
   description?: string,
   duration: number = 4000
 ): string {
-  return String(toast.success(message, {
-    description,
-    duration,
-    icon: <Info className="h-4 w-4" />
-  }));
+  return String(
+    toast.success(message, {
+      description,
+      duration,
+      icon: <Info className="h-4 w-4" />,
+    })
+  );
 }
 
 /**
@@ -219,11 +237,13 @@ export function showInfoToast(
   description?: string,
   duration: number = 4000
 ): string {
-  return String(toast.info(message, {
-    description,
-    duration,
-    icon: <Info className="h-4 w-4" />
-  }));
+  return String(
+    toast.info(message, {
+      description,
+      duration,
+      icon: <Info className="h-4 w-4" />,
+    })
+  );
 }
 
 /**
@@ -234,11 +254,13 @@ export function showWarningToast(
   description?: string,
   duration: number = 6000
 ): string {
-  return String(toast.warning(message, {
-    description,
-    duration,
-    icon: <AlertTriangle className="h-4 w-4" />
-  }));
+  return String(
+    toast.warning(message, {
+      description,
+      duration,
+      icon: <AlertTriangle className="h-4 w-4" />,
+    })
+  );
 }
 
 /**
@@ -251,21 +273,23 @@ export function showLoadingToast(
     cancelLabel?: string;
   } = {}
 ): string {
-  return String(toast.loading(message, {
-    duration: Infinity, // 手動で閉じるまで表示
-    action: options.onCancel ? (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => {
-          options.onCancel?.();
-          toast.dismiss();
-        }}
-      >
-        {options.cancelLabel || 'キャンセル'}
-      </Button>
-    ) : undefined
-  }));
+  return String(
+    toast.loading(message, {
+      duration: Infinity, // 手動で閉じるまで表示
+      action: options.onCancel ? (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            options.onCancel?.();
+            toast.dismiss();
+          }}
+        >
+          {options.cancelLabel || "キャンセル"}
+        </Button>
+      ) : undefined,
+    })
+  );
 }
 
 /**

@@ -8,9 +8,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,12 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { MasterCodeInput } from "./master-code-input";
-import { JournalDetailData } from "@/types/journal";
+
+import type { JournalDetailData } from "@/types/journal";
 import { getTaxRates, type TaxRateForClient } from "@/app/actions/tax-rates";
-import { getAccounts, type AccountForClient } from "@/app/actions/accounts";
-import { showErrorToast, showSuccessToast } from "@/components/ui/error-toast";
-import { createSystemError } from "@/lib/types/errors";
+import { getAccounts } from "@/app/actions/accounts";
 
 interface JournalDetailInputProps {
   type: "debit" | "credit";

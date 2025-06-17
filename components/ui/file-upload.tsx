@@ -27,7 +27,7 @@ export function FileUpload({
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
-  const { startUpload, permittedFileInfo } = useUploadThing(endpoint, {
+  const { startUpload } = useUploadThing(endpoint, {
     onClientUploadComplete: (res) => {
       const uploaded = res.map((file) => ({
         name: file.name,
@@ -35,7 +35,7 @@ export function FileUpload({
         key: file.key,
         url: file.url,
       }));
-      setUploadedFiles(prev => [...prev, ...uploaded]);
+      setUploadedFiles((prev) => [...prev, ...uploaded]);
       setFiles([]);
       setIsUploading(false);
       onUploadComplete?.(uploaded);
@@ -46,29 +46,41 @@ export function FileUpload({
     },
   });
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    setFiles(prev => [...prev, ...acceptedFiles].slice(0, maxFiles));
-  }, [maxFiles]);
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      setFiles((prev) => [...prev, ...acceptedFiles].slice(0, maxFiles));
+    },
+    [maxFiles]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     maxFiles,
-    accept: permittedFileInfo?.config ? Object.fromEntries(
-      Object.entries(permittedFileInfo.config).map(([key, value]) => [key, []])
-    ) : undefined,
+    accept: {
+      "image/*": [".png", ".jpg", ".jpeg", ".gif"],
+      "application/pdf": [".pdf"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+        ".xlsx",
+      ],
+      "application/vnd.ms-excel": [".xls"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        [".docx"],
+      "application/msword": [".doc"],
+      "text/plain": [".txt"],
+    },
   });
 
   const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const removeUploadedFile = (index: number) => {
-    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleUpload = async () => {
     if (files.length === 0) return;
-    
+
     setIsUploading(true);
     await startUpload(files);
   };

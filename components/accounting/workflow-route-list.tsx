@@ -63,7 +63,7 @@ export function WorkflowRouteList({
   refreshTrigger = 0,
 }: WorkflowRouteListProps) {
   const [routes, setRoutes] = useState<WorkflowRouteForClient[]>([]);
-  const [originalRoutes, setOriginalRoutes] = useState<
+  const [_originalRoutes, setOriginalRoutes] = useState<
     WorkflowRouteForClient[]
   >([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +74,7 @@ export function WorkflowRouteList({
     sortDirection: "asc",
     activeOnly: false,
   });
-  const [searchLoading, setSearchLoading] = useState(false);
+  const [_searchLoading, _setSearchLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [useServerSearch, setUseServerSearch] = useState(false);
 
@@ -238,7 +238,7 @@ export function WorkflowRouteList({
   }, [refreshTrigger]);
 
   // Enterキーで検索
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const _handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       handleSearchChange(searchState);
     }

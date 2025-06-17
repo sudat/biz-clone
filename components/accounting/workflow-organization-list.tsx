@@ -110,7 +110,7 @@ export function WorkflowOrganizationList() {
     if (organizations.length === 0) {
       loadOrganizations();
     }
-  }, []);
+  }, [organizations.length]);
 
   const loadOrganizations = async () => {
     setLoading(true);

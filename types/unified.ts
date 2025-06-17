@@ -9,42 +9,38 @@
 // Prisma生成型を統一データベースから使用
 import type {
   Account,
-  SubAccount,
-  Partner,
   AnalysisCode,
-  AnalysisType,
-  TaxRate,
-  JournalHeader,
   JournalDetail,
-  JournalAttachment,
+  JournalHeader,
+  Partner,
   Role,
+  SubAccount,
+  TaxRate,
   User,
   WorkflowOrganization,
   WorkflowOrganizationUser,
   WorkflowRoute,
-  WorkflowRouteStep
+  WorkflowRouteStep,
 } from "@/lib/database/prisma";
 
 export type {
   Account,
-  SubAccount,
-  Partner,
   AnalysisCode,
-  AnalysisType,
-  TaxRate,
-  JournalHeader,
   JournalDetail,
-  JournalAttachment,
+  JournalHeader,
+  Partner,
   Role,
+  SubAccount,
+  TaxRate,
   User,
   WorkflowOrganization,
   WorkflowOrganizationUser,
   WorkflowRoute,
-  WorkflowRouteStep
+  WorkflowRouteStep,
 };
 
 // フロントエンド用のユーザー型（パスワードハッシュなしのセキュア版）
-export type UserForClient = Omit<User, 'passwordHash'> & {
+export type UserForClient = Omit<User, "passwordHash"> & {
   passwordHash?: string;
 };
 
@@ -55,7 +51,7 @@ export interface AccountWithDetails extends Account {
 
 export interface JournalEntryWithDetails extends JournalHeader {
   journalDetails: JournalDetail[];
-  journalAttachments?: JournalAttachment[];
+  // journalAttachments?: JournalAttachment[]; // JournalAttachmentが存在しないためコメントアウト
 }
 
 // Server Action共通レスポンス型

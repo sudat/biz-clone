@@ -8,10 +8,18 @@
 "use client";
 
 import React from "react";
-import { Scale, CheckCircle, AlertTriangle, Save, RefreshCw, Edit, Trash2 } from "lucide-react";
+import {
+  Scale,
+  CheckCircle,
+  AlertTriangle,
+  Save,
+  RefreshCw,
+  Edit,
+  Trash2,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
 
 interface BalanceMonitorProps {
@@ -26,7 +34,7 @@ interface BalanceMonitorProps {
   // 更新・削除機能（照会モード）
   onUpdate?: () => void;
   onDelete?: () => void;
-  mode?: 'create' | 'inquiry';
+  mode?: "create" | "inquiry";
   hasDetails?: boolean;
   detailsCount?: number;
   disabled?: boolean;
@@ -52,10 +60,10 @@ export function BalanceMonitor({
   isSubmitting = false,
   onUpdate,
   onDelete,
-  mode = 'create',
+  mode = "create",
   hasDetails = false,
   detailsCount = 0,
-  disabled = false
+  disabled = false,
 }: BalanceMonitorProps) {
   const difference = debitTotal - creditTotal;
   const isBalanced = Math.abs(difference) < 0.01;
@@ -65,33 +73,33 @@ export function BalanceMonitor({
   const getBalanceStatus = () => {
     if (!hasEntries) {
       return {
-        status: 'empty',
-        color: 'text-slate-500',
-        bgColor: 'bg-slate-50',
-        borderColor: 'border-slate-200',
+        status: "empty",
+        color: "text-slate-500",
+        bgColor: "bg-slate-50",
+        borderColor: "border-slate-200",
         icon: Scale,
-        message: '明細を追加してください'
+        message: "明細を追加してください",
       };
     }
-    
+
     if (isBalanced) {
       return {
-        status: 'balanced',
-        color: 'text-green-600',
-        bgColor: 'bg-green-50',
-        borderColor: 'border-green-200',
+        status: "balanced",
+        color: "text-green-600",
+        bgColor: "bg-green-50",
+        borderColor: "border-green-200",
         icon: CheckCircle,
-        message: 'バランス済み'
+        message: "バランス済み",
       };
     }
-    
+
     return {
-      status: 'unbalanced',
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50',
-      borderColor: 'border-amber-200',
+      status: "unbalanced",
+      color: "text-amber-600",
+      bgColor: "bg-amber-50",
+      borderColor: "border-amber-200",
       icon: AlertTriangle,
-      message: `差額 ¥${Math.abs(difference).toLocaleString()}`
+      message: `差額 ¥${Math.abs(difference).toLocaleString()}`,
     };
   };
 
@@ -99,12 +107,14 @@ export function BalanceMonitor({
   const StatusIcon = balanceStatus.icon;
 
   return (
-    <div className={cn(
-      "p-3 rounded-lg border transition-all duration-200",
-      balanceStatus.borderColor,
-      balanceStatus.bgColor,
-      className
-    )}>
+    <div
+      className={cn(
+        "p-3 rounded-lg border transition-all duration-200",
+        balanceStatus.borderColor,
+        balanceStatus.bgColor,
+        className
+      )}
+    >
       {/* 1行レイアウト: 左側（差額）、中央（合計）、右側（ボタン） */}
       <div className="flex items-center justify-between">
         {/* 左側: 差額表示 */}
@@ -114,9 +124,7 @@ export function BalanceMonitor({
             {balanceStatus.message}
           </span>
           {hasDetails && detailsCount > 0 && (
-            <span className="text-xs text-slate-500">
-              ({detailsCount}件)
-            </span>
+            <span className="text-xs text-slate-500">({detailsCount}件)</span>
           )}
         </div>
 
@@ -124,20 +132,21 @@ export function BalanceMonitor({
         <div className="flex items-center gap-4">
           {hasEntries && (
             <span className="text-sm text-slate-600 font-mono">
-              借方 {formatCurrency(debitTotal)}、貸方 {formatCurrency(creditTotal)}
+              借方 {formatCurrency(debitTotal)}、貸方{" "}
+              {formatCurrency(creditTotal)}
             </span>
           )}
         </div>
 
         {/* 右側: アクションボタン */}
-        {mode === 'create' && onSubmit && onReset ? (
+        {mode === "create" && onSubmit && onReset ? (
           <div className="flex gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onReset}
-              disabled={disabled || isSubmitting || (!hasDetails)}
+              disabled={disabled || isSubmitting || !hasDetails}
               className="min-w-[80px]"
             >
               <RefreshCw className="h-3 w-3" />
@@ -167,7 +176,7 @@ export function BalanceMonitor({
               )}
             </Button>
           </div>
-        ) : mode === 'inquiry' && (onUpdate || onDelete) ? (
+        ) : mode === "inquiry" && (onUpdate || onDelete) ? (
           <div className="flex gap-2">
             {onUpdate && (
               <Button

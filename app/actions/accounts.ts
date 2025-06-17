@@ -39,11 +39,13 @@ export async function getAccounts(): Promise<
     // 税区分データの変換、日時を日本時間に変換
     const accountsForClient: AccountForClient[] = accounts.map((account) => ({
       ...account,
-      defaultTaxRate: account.defaultTaxRate ? {
-        taxCode: account.defaultTaxRate.taxCode,
-        taxName: account.defaultTaxRate.taxName,
-        taxRate: account.defaultTaxRate.taxRate.toNumber(),
-      } : null,
+      defaultTaxRate: account.defaultTaxRate
+        ? {
+          taxCode: account.defaultTaxRate.taxCode,
+          taxName: account.defaultTaxRate.taxName,
+          taxRate: account.defaultTaxRate.taxRate.toNumber(),
+        }
+        : null,
       createdAt: toJST(account.createdAt),
       updatedAt: toJST(account.updatedAt),
     }));
@@ -63,7 +65,7 @@ export async function getAccounts(): Promise<
  */
 export async function checkAccountCodeExists(
   accountCode: string,
-): Promise<{ exists: boolean; account?: any }> {
+): Promise<{ exists: boolean; account?: Partial<Account> }> {
   try {
     const existingAccount = await prisma.account.findUnique({
       where: { accountCode },
@@ -118,8 +120,7 @@ export async function createAccount(
       // BS科目（資産・負債・純資産）→ 不課税(TAX0)
       if (["資産", "負債", "純資産"].includes(data.accountType)) {
         defaultTaxCode = "TAX0";
-      }
-      // PL科目（収益・費用）→ 課税(TAX10)
+      } // PL科目（収益・費用）→ 課税(TAX10)
       else if (["収益", "費用"].includes(data.accountType)) {
         defaultTaxCode = "TAX10";
       }
@@ -206,11 +207,13 @@ export async function updateAccount(
     // AccountForClient型に変換
     const accountForClient: AccountForClient = {
       ...account,
-      defaultTaxRate: account.defaultTaxRate ? {
-        taxCode: account.defaultTaxRate.taxCode,
-        taxName: account.defaultTaxRate.taxName,
-        taxRate: account.defaultTaxRate.taxRate.toNumber(),
-      } : null,
+      defaultTaxRate: account.defaultTaxRate
+        ? {
+          taxCode: account.defaultTaxRate.taxCode,
+          taxName: account.defaultTaxRate.taxName,
+          taxRate: account.defaultTaxRate.taxRate.toNumber(),
+        }
+        : null,
     };
 
     revalidatePath("/master/accounts");
@@ -295,11 +298,13 @@ export async function searchAccounts(
     // 税区分データの変換、日時を日本時間に変換
     const accountsForClient: AccountForClient[] = accounts.map((account) => ({
       ...account,
-      defaultTaxRate: account.defaultTaxRate ? {
-        taxCode: account.defaultTaxRate.taxCode,
-        taxName: account.defaultTaxRate.taxName,
-        taxRate: account.defaultTaxRate.taxRate.toNumber(),
-      } : null,
+      defaultTaxRate: account.defaultTaxRate
+        ? {
+          taxCode: account.defaultTaxRate.taxCode,
+          taxName: account.defaultTaxRate.taxName,
+          taxRate: account.defaultTaxRate.taxRate.toNumber(),
+        }
+        : null,
       createdAt: toJST(account.createdAt),
       updatedAt: toJST(account.updatedAt),
     }));

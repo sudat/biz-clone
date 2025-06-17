@@ -14,6 +14,10 @@ interface AmountDisplayProps {
   align?: "left" | "right" | "center";
 }
 
+// 定義済みのクラス名（CSVバンドル時の最適化回避）
+const positiveClass = "text-green-600 font-medium";
+const negativeClass = "text-red-600 font-medium";
+
 export function AmountDisplay({
   amount,
   className,

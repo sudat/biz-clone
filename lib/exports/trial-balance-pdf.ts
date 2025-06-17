@@ -49,7 +49,6 @@ export async function generateTrialBalancePdf(
     let yPosition = 20;
     const pageWidth = pdf.internal.pageSize.getWidth();
     const margin = 15;
-    const contentWidth = pageWidth - (margin * 2);
 
     // ヘッダー情報
     pdf.setFontSize(16);

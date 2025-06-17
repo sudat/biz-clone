@@ -10,7 +10,7 @@
 import { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 import { Label } from "@/components/ui/label";
 import {
   Popover,
@@ -51,7 +51,7 @@ export function DateRangePicker({
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth();
-    
+
     let newFrom: Date | undefined;
     let newTo: Date | undefined;
 
@@ -91,7 +91,9 @@ export function DateRangePicker({
               className="w-40 justify-start text-left font-normal"
             >
               <CalendarIcon className="h-4 w-4" />
-              {from ? format(from, "yyyy/MM/dd", { locale: ja }) : "選択してください"}
+              {from
+                ? format(from, "yyyy/MM/dd", { locale: ja })
+                : "選択してください"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -115,7 +117,9 @@ export function DateRangePicker({
               className="w-40 justify-start text-left font-normal"
             >
               <CalendarIcon className="h-4 w-4" />
-              {to ? format(to, "yyyy/MM/dd", { locale: ja }) : "選択してください"}
+              {to
+                ? format(to, "yyyy/MM/dd", { locale: ja })
+                : "選択してください"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">

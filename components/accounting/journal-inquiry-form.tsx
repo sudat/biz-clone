@@ -10,11 +10,9 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { FileAttachment, type AttachedFile } from "./file-attachment";
 import { JournalHeaderSection } from "./journal-header-section";
 import { BalanceMonitor } from "./balance-monitor";
-import { JournalDetailList } from "./journal-detail-list";
 import { JournalEntrySide } from "./journal-entry-side";
 import type { JournalInquiryData } from "@/app/actions/journal-inquiry";
 import type { JournalDetailData } from "@/types/journal";
@@ -156,7 +154,6 @@ export function JournalInquiryForm({
           />
         </div>
       )}
-
     </div>
   );
 }

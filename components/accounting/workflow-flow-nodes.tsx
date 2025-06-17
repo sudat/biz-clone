@@ -2,12 +2,12 @@
 
 import React from "react";
 import { Handle, Position, NodeProps } from "@xyflow/react";
-import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 
 // 始点ノード（StartNode）- 緑色の丸形
-export function StartNode({ data, selected }: NodeProps) {
+export function StartNode({ data: _data, selected }: NodeProps) {
   return (
     <div
       className={`relative w-16 h-16 rounded-full bg-green-500 border-4 shadow-lg flex items-center justify-center ${
@@ -15,11 +15,11 @@ export function StartNode({ data, selected }: NodeProps) {
       }`}
     >
       <div className="text-white font-bold text-xs">開始</div>
-      
+
       {/* 出力ハンドルのみ（下側） */}
-      <Handle 
-        type="source" 
-        position={Position.Bottom} 
+      <Handle
+        type="source"
+        position={Position.Bottom}
         className="w-3 h-3 bg-green-600 border-2 border-white"
       />
     </div>
@@ -27,7 +27,7 @@ export function StartNode({ data, selected }: NodeProps) {
 }
 
 // 終点ノード（EndNode）- 赤色の丸形
-export function EndNode({ data, selected }: NodeProps) {
+export function EndNode({ data: _data, selected }: NodeProps) {
   return (
     <div
       className={`relative w-16 h-16 rounded-full bg-red-500 border-4 shadow-lg flex items-center justify-center ${
@@ -35,11 +35,11 @@ export function EndNode({ data, selected }: NodeProps) {
       }`}
     >
       <div className="text-white font-bold text-xs">終了</div>
-      
+
       {/* 入力ハンドルのみ（上側） */}
-      <Handle 
-        type="target" 
-        position={Position.Top} 
+      <Handle
+        type="target"
+        position={Position.Top}
         className="w-3 h-3 bg-red-600 border-2 border-white"
       />
     </div>
@@ -50,7 +50,7 @@ export function EndNode({ data, selected }: NodeProps) {
 export function OrganizationNode({ data, selected }: NodeProps) {
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (data && 'onDelete' in data && typeof data.onDelete === 'function') {
+    if (data && "onDelete" in data && typeof data.onDelete === "function") {
       data.onDelete(data.id);
     }
   };
@@ -62,18 +62,18 @@ export function OrganizationNode({ data, selected }: NodeProps) {
       }`}
     >
       {/* 入力ハンドル（上側） */}
-      <Handle 
-        type="target" 
-        position={Position.Top} 
+      <Handle
+        type="target"
+        position={Position.Top}
         className="w-3 h-3 bg-blue-600 border-2 border-white"
       />
-      
+
       <div className="text-center">
         <div className="font-semibold text-sm text-blue-800">
-          {String(data.organizationName || '')}
+          {String(data.organizationName || "")}
         </div>
         <div className="text-xs text-blue-600 mt-1">
-          {String(data.organizationCode || '')}
+          {String(data.organizationCode || "")}
         </div>
       </div>
 
@@ -90,9 +90,9 @@ export function OrganizationNode({ data, selected }: NodeProps) {
       )}
 
       {/* 出力ハンドル（下側） */}
-      <Handle 
-        type="source" 
-        position={Position.Bottom} 
+      <Handle
+        type="source"
+        position={Position.Bottom}
         className="w-3 h-3 bg-blue-600 border-2 border-white"
       />
     </div>
@@ -127,11 +127,11 @@ export interface OrganizationNodeData {
 // ヘルパー関数：始点ノードを作成
 export function createStartNode(position: { x: number; y: number }) {
   return {
-    id: 'start-node',
-    type: 'startNode',
+    id: "start-node",
+    type: "startNode",
     position,
     data: {
-      label: '開始'
+      label: "開始",
     },
     deletable: false,
   };
@@ -140,11 +140,11 @@ export function createStartNode(position: { x: number; y: number }) {
 // ヘルパー関数：終点ノードを作成
 export function createEndNode(position: { x: number; y: number }) {
   return {
-    id: 'end-node',
-    type: 'endNode',
+    id: "end-node",
+    type: "endNode",
     position,
     data: {
-      label: '終了'
+      label: "終了",
     },
     deletable: false,
   };
@@ -161,7 +161,7 @@ export function createOrganizationNode(
 ) {
   return {
     id,
-    type: 'organizationNode',
+    type: "organizationNode",
     position,
     data: {
       id,

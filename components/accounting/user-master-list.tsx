@@ -122,7 +122,7 @@ export function UserMasterList() {
     if (users.length === 0) {
       loadUsers();
     }
-  }, []);
+  }, [users.length]);
 
   const loadUsers = async () => {
     setLoading(true);

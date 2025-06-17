@@ -144,7 +144,7 @@ export function AccountMasterList() {
     if (accounts.length === 0) {
       loadAccounts();
     }
-  }, []);
+  }, [accounts.length]);
 
   const loadAccounts = async () => {
     setLoading(true);
@@ -378,9 +378,7 @@ export function AccountMasterList() {
                         <div className="flex items-center">
                           <span style={{ marginLeft: `${depth * 10}px` }}>
                             {depth > 0 && (
-                              <span className="text-muted-foreground">
-                                └{" "}
-                              </span>
+                              <span className="text-muted-foreground">└ </span>
                             )}
                             {renderHighlightedText(account.accountName)}
                           </span>
@@ -399,10 +397,13 @@ export function AccountMasterList() {
                       <TableCell>
                         {account.defaultTaxRate ? (
                           <Badge variant="secondary">
-                            {account.defaultTaxRate.taxName} ({account.defaultTaxRate.taxRate}%)
+                            {account.defaultTaxRate.taxName} (
+                            {account.defaultTaxRate.taxRate}%)
                           </Badge>
                         ) : (
-                          <span className="text-muted-foreground text-sm">未設定</span>
+                          <span className="text-muted-foreground text-sm">
+                            未設定
+                          </span>
                         )}
                       </TableCell>
                       <TableCell>

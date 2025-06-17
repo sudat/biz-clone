@@ -20,14 +20,18 @@ import { BalanceMonitor } from "./balance-monitor";
 import { FileAttachment, type AttachedFile } from "./file-attachment";
 import { JournalDetailData, JournalSaveData } from "@/types/journal";
 import { useUploadThing } from "@/lib/uploadthing";
-import { saveJournalAttachment } from "@/app/actions/journal-attachments";
+import { saveJournal, updateJournal } from "@/app/actions/journal-save";
+import {
+  deleteJournalAttachment,
+  getJournalAttachments,
+} from "@/app/actions/journal-attachments";
 
 // 今日の日付をYYYYMMDD形式で取得
 const getTodayString = (): string => {
   const today = new Date();
   const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
   return `${year}${month}${day}`;
 };
 
@@ -36,20 +40,22 @@ const parseDateString = (dateStr: string): Date | null => {
   if (!dateStr || dateStr.length !== 8 || !/^\d{8}$/.test(dateStr)) {
     return null;
   }
-  
+
   const year = parseInt(dateStr.substring(0, 4));
   const month = parseInt(dateStr.substring(4, 6));
   const day = parseInt(dateStr.substring(6, 8));
-  
+
   const date = new Date(year, month - 1, day);
-  
+
   // 有効な日付かチェック
-  if (date.getFullYear() === year && 
-      date.getMonth() === month - 1 && 
-      date.getDate() === day) {
+  if (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  ) {
     return date;
   }
-  
+
   return null;
 };
 
@@ -57,8 +63,8 @@ const parseDateString = (dateStr: string): Date | null => {
 const journalEntrySchema = z.object({
   header: z.object({
     journalDate: z.string().optional(),
-    description: z.string().optional()
-  })
+    description: z.string().optional(),
+  }),
 });
 
 type JournalEntryForm = z.infer<typeof journalEntrySchema>;
@@ -98,20 +104,22 @@ export function JournalEntryForm({
   approvedUser,
   initialFiles = [],
   onFilesChange,
-  onFileDelete
+  onFileDelete,
 }: JournalEntryFormProps) {
   const [details, setDetails] = useState<JournalDetailData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>(initialFiles);
+  const [attachedFiles, setAttachedFiles] =
+    useState<AttachedFile[]>(initialFiles);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  
+
   // 明細クリック反映機能用の状態
-  const [selectedDetail, setSelectedDetail] = useState<JournalDetailData | null>(null);
-  const [displayMode, setDisplayMode] = useState<'input' | 'edit'>('input');
+  const [selectedDetail, setSelectedDetail] =
+    useState<JournalDetailData | null>(null);
+  const [displayMode, setDisplayMode] = useState<"input" | "edit">("input");
 
   // UploadThing フック
-  const { startUpload, isUploading: uploadingState } = useUploadThing("journalAttachment", {
+  const { startUpload } = useUploadThing("journalAttachment", {
     onClientUploadComplete: (res) => {
       console.log("アップロード完了:", res);
       setIsUploading(false);
@@ -120,9 +128,12 @@ export function JournalEntryForm({
     onUploadError: (error: Error) => {
       console.error("アップロードエラー:", error);
       // ユーザーフレンドリーなメッセージに変更
-      const message = error.message.includes('file type') || error.message.includes('extension') || error.message.includes('format')
-        ? "このファイル形式はアップロードできません。対応形式：PDF、JPG、PNG、Excel、Word"
-        : `ファイルのアップロードができませんでした：${error.message}`;
+      const message =
+        error.message.includes("file type") ||
+        error.message.includes("extension") ||
+        error.message.includes("format")
+          ? "このファイル形式はアップロードできません。対応形式：PDF、JPG、PNG、Excel、Word"
+          : `ファイルのアップロードができませんでした：${error.message}`;
       setUploadError(message);
       setIsUploading(false);
     },
@@ -141,29 +152,29 @@ export function JournalEntryForm({
     defaultValues: {
       header: {
         journalDate: getTodayString(),
-        description: initialData?.header?.description || ""
-      }
-    }
+        description: initialData?.header?.description || "",
+      },
+    },
   });
 
   // 借方・貸方の集計
-  const debitDetails = useMemo(() => 
-    details.filter(detail => detail.debitCredit === 'debit'), 
-    [details]
-  );
-  
-  const creditDetails = useMemo(() => 
-    details.filter(detail => detail.debitCredit === 'credit'), 
+  const debitDetails = useMemo(
+    () => details.filter((detail) => detail.debitCredit === "debit"),
     [details]
   );
 
-  const debitTotal = useMemo(() => 
-    debitDetails.reduce((sum, detail) => sum + detail.totalAmount, 0), 
+  const creditDetails = useMemo(
+    () => details.filter((detail) => detail.debitCredit === "credit"),
+    [details]
+  );
+
+  const debitTotal = useMemo(
+    () => debitDetails.reduce((sum, detail) => sum + detail.totalAmount, 0),
     [debitDetails]
   );
-  
-  const creditTotal = useMemo(() => 
-    creditDetails.reduce((sum, detail) => sum + detail.totalAmount, 0), 
+
+  const creditTotal = useMemo(
+    () => creditDetails.reduce((sum, detail) => sum + detail.totalAmount, 0),
     [creditDetails]
   );
 
@@ -173,39 +184,41 @@ export function JournalEntryForm({
 
   // 明細追加
   const handleAddDetail = (detail: JournalDetailData) => {
-    setDetails(prev => [...prev, detail]);
+    setDetails((prev) => [...prev, detail]);
   };
 
   // 明細削除
   const handleRemoveDetail = (index: number) => {
-    setDetails(prev => prev.filter((_, i) => i !== index));
+    setDetails((prev) => prev.filter((_, i) => i !== index));
     // 削除された明細が選択中の場合、選択を解除
     if (selectedDetail && details[index] === selectedDetail) {
       setSelectedDetail(null);
-      setDisplayMode('input');
+      setDisplayMode("input");
     }
   };
 
   // 明細クリック処理
   const handleDetailClick = (detail: JournalDetailData) => {
     setSelectedDetail(detail);
-    setDisplayMode('edit');
+    setDisplayMode("edit");
   };
 
   // 編集キャンセル処理
   const handleCancelEdit = () => {
     setSelectedDetail(null);
-    setDisplayMode('input');
+    setDisplayMode("input");
   };
 
   // 明細更新処理
   const handleUpdateDetail = (updatedDetail: JournalDetailData) => {
     if (selectedDetail) {
-      const index = details.findIndex(d => d === selectedDetail);
+      const index = details.findIndex((d) => d === selectedDetail);
       if (index !== -1) {
-        setDetails(prev => prev.map((d, i) => i === index ? updatedDetail : d));
+        setDetails((prev) =>
+          prev.map((d, i) => (i === index ? updatedDetail : d))
+        );
         setSelectedDetail(null);
-        setDisplayMode('input');
+        setDisplayMode("input");
       }
     }
   };
@@ -216,56 +229,61 @@ export function JournalEntryForm({
 
     setIsUploading(true);
     setUploadError(null); // 新しいアップロード開始時にエラーをクリア
-    
+
     try {
       // UploadThingを使ってファイルをアップロード
       const uploadResults = await startUpload(newFiles);
-      
+
       if (!uploadResults) {
-        console.error("UploadThingからnullが返されました:", { 
-          fileCount: newFiles.length, 
-          fileTypes: newFiles.map(f => f.type),
-          fileNames: newFiles.map(f => f.name)
+        console.error("UploadThingからnullが返されました:", {
+          fileCount: newFiles.length,
+          fileTypes: newFiles.map((f) => f.type),
+          fileNames: newFiles.map((f) => f.name),
         });
-        throw new Error("ファイルのアップロードに失敗しました。ファイル形式またはサイズを確認してください。");
+        throw new Error(
+          "ファイルのアップロードに失敗しました。ファイル形式またはサイズを確認してください。"
+        );
       }
 
       // アップロード成功したファイル情報をAttachedFile形式に変換
       const newAttachedFiles: AttachedFile[] = [];
-      
+
       for (const result of uploadResults) {
         // 新しい添付ファイル情報を作成
         const newAttachedFile: AttachedFile = {
           id: `uploaded-${Date.now()}-${Math.random()}`,
           name: result.name,
           size: result.size,
-          type: result.type || 'application/octet-stream',
+          type: result.type || "application/octet-stream",
           url: result.url,
-          uploadedAt: new Date()
+          uploadedAt: new Date(),
         };
-        
+
         newAttachedFiles.push(newAttachedFile);
 
         // UploadThingにアップロード済み、仕訳保存時にデータベースに保存する
       }
-      
+
       // 状態を更新
-      setAttachedFiles(prev => [...prev, ...newAttachedFiles]);
-      
+      setAttachedFiles((prev) => [...prev, ...newAttachedFiles]);
+
       // 親コンポーネントに通知（新しくアップロードされたファイル情報を渡す）
       if (onFilesChange) {
         onFilesChange(newAttachedFiles);
       }
 
       console.log("ファイルアップロード完了:", newAttachedFiles);
-      
     } catch (error) {
       console.error("ファイルアップロードエラー:", error);
       // ユーザーフレンドリーなメッセージに変更
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const message = errorMessage.includes('file type') || errorMessage.includes('extension') || errorMessage.includes('format')
-        ? "このファイル形式はアップロードできません。対応形式：PDF、JPG、PNG、Excel、Word"
-        : `ファイルのアップロードができませんでした：${errorMessage}`;
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const message =
+        errorMessage.includes("file type") ||
+        errorMessage.includes("extension") ||
+        errorMessage.includes("format")
+          ? "このファイル形式はアップロードできません。対応形式：PDF、JPG、PNG、Excel、Word"
+          : `ファイルのアップロードができませんでした：${errorMessage}`;
       setUploadError(message);
     } finally {
       setIsUploading(false);
@@ -274,8 +292,8 @@ export function JournalEntryForm({
 
   // ファイル削除処理
   const handleFileDelete = (fileId: string) => {
-    setAttachedFiles(prev => prev.filter(file => file.id !== fileId));
-    
+    setAttachedFiles((prev) => prev.filter((file) => file.id !== fileId));
+
     // 親コンポーネントに通知
     if (onFileDelete) {
       onFileDelete(fileId);
@@ -290,9 +308,12 @@ export function JournalEntryForm({
     try {
       // 詳細バリデーション（保存時のみ）
       const validationErrors: string[] = [];
-      
+
       // 日付チェック
-      if (!formData.header.journalDate || formData.header.journalDate.length !== 8) {
+      if (
+        !formData.header.journalDate ||
+        formData.header.journalDate.length !== 8
+      ) {
         validationErrors.push("計上日は8桁で入力してください");
       } else {
         const parsedDate = parseDateString(formData.header.journalDate);
@@ -300,22 +321,26 @@ export function JournalEntryForm({
           validationErrors.push("有効な日付を入力してください（例: 20250115）");
         }
       }
-      
+
       // 明細チェック
       if (details.length === 0) {
         validationErrors.push("明細を少なくとも1件追加してください");
       }
-      
+
       // バランスチェック
       if (!isBalanced) {
-        validationErrors.push(`借方と貸方の合計が一致していません（差額: ¥${Math.abs(debitTotal - creditTotal).toLocaleString()}）`);
+        validationErrors.push(
+          `借方と貸方の合計が一致していません（差額: ¥${Math.abs(
+            debitTotal - creditTotal
+          ).toLocaleString()}）`
+        );
       }
-      
+
       // エラーがある場合は表示して停止
       if (validationErrors.length > 0) {
         throw new Error(validationErrors.join("\n"));
       }
-      
+
       // 日付変換（バリデーション済みなのでnullチェック不要だが、型安全性のため確認）
       const parsedDate = parseDateString(formData.header.journalDate!);
       if (!parsedDate) {
@@ -325,24 +350,24 @@ export function JournalEntryForm({
       const journalSaveData: JournalSaveData = {
         header: {
           journalDate: parsedDate,
-          description: formData.header.description
+          description: formData.header.description,
         },
         details,
-        attachedFiles: attachedFiles.map(file => ({
+        attachedFiles: attachedFiles.map((file) => ({
           name: file.name,
-          url: file.url || '',
+          url: file.url || "",
           size: file.size,
-          type: file.type
-        }))
+          type: file.type,
+        })),
       };
-      
+
       await onSubmit(journalSaveData);
-      
+
       // 成功したらフォームをリセット
       form.reset();
       setDetails([]);
     } catch (error) {
-      console.error('仕訳保存エラー:', error);
+      console.error("仕訳保存エラー:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -353,7 +378,7 @@ export function JournalEntryForm({
     form.reset();
     setDetails([]);
     setSelectedDetail(null);
-    setDisplayMode('input');
+    setDisplayMode("input");
     setAttachedFiles([]);
     setIsUploading(false);
   };
@@ -363,15 +388,15 @@ export function JournalEntryForm({
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
           {/* ヘッダーセクション */}
-          <JournalHeaderSection 
-            control={form.control} 
+          <JournalHeaderSection
+            control={form.control}
             journalNumber={journalNumber}
             createdUser={createdUser}
             approvedUser={approvedUser}
           />
 
           {/* バランス監視バー */}
-          <BalanceMonitor 
+          <BalanceMonitor
             debitTotal={debitTotal}
             creditTotal={creditTotal}
             onSubmit={() => form.handleSubmit(handleSubmit)()}
@@ -395,7 +420,11 @@ export function JournalEntryForm({
                 onRemoveDetail={handleRemoveDetail}
                 onDetailClick={handleDetailClick}
                 onCancelEdit={handleCancelEdit}
-                selectedDetail={selectedDetail?.debitCredit === 'debit' ? selectedDetail : null}
+                selectedDetail={
+                  selectedDetail?.debitCredit === "debit"
+                    ? selectedDetail
+                    : null
+                }
                 displayMode={displayMode}
                 total={debitTotal}
                 disabled={disabled || isSubmitting}
@@ -412,7 +441,11 @@ export function JournalEntryForm({
                 onRemoveDetail={handleRemoveDetail}
                 onDetailClick={handleDetailClick}
                 onCancelEdit={handleCancelEdit}
-                selectedDetail={selectedDetail?.debitCredit === 'credit' ? selectedDetail : null}
+                selectedDetail={
+                  selectedDetail?.debitCredit === "credit"
+                    ? selectedDetail
+                    : null
+                }
                 displayMode={displayMode}
                 total={creditTotal}
                 disabled={disabled || isSubmitting}
@@ -447,7 +480,6 @@ export function JournalEntryForm({
               </div>
             )}
           </div>
-
         </form>
       </Form>
     </div>

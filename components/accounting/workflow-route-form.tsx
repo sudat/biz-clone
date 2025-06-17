@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -32,7 +32,10 @@ const routeFormSchema = z.object({
     .string()
     .min(1, "ルートコードは必須です")
     .max(20, "ルートコードは20文字以内で入力してください")
-    .regex(/^[A-Za-z0-9_-]+$/, "ルートコードは英数字、ハイフン、アンダースコアのみ使用できます"),
+    .regex(
+      /^[A-Za-z0-9_-]+$/,
+      "ルートコードは英数字、ハイフン、アンダースコアのみ使用できます"
+    ),
   routeName: z
     .string()
     .min(1, "ルート名は必須です")
@@ -42,11 +45,16 @@ const routeFormSchema = z.object({
     .max(1000, "説明は1000文字以内で入力してください")
     .optional(),
   sortOrder: z
-    .union([
-      z.string().length(0), // 空文字を許容
-      z.string().regex(/^\d+$/, "表示順は数値で入力してください").transform(Number),
-    ])
-    .optional(),
+    .string()
+    .optional()
+    .refine(
+      (val) =>
+        !val ||
+        (!isNaN(Number(val)) && Number(val) >= 0 && Number(val) <= 999999),
+      {
+        message: "表示順は0以上999999以下の数値で入力してください",
+      }
+    ),
   isActive: z.boolean(),
 });
 
@@ -80,7 +88,6 @@ export function WorkflowRouteForm({
       isActive: route?.isActive ?? true,
     },
   });
-
 
   // ルートコードの重複チェック
   const checkRouteCode = async (code: string) => {
@@ -126,7 +133,8 @@ export function WorkflowRouteForm({
         const formData = new FormData();
         formData.append("routeName", data.routeName);
         if (data.description) formData.append("description", data.description);
-        if (data.sortOrder) formData.append("sortOrder", data.sortOrder.toString());
+        if (data.sortOrder)
+          formData.append("sortOrder", data.sortOrder.toString());
         formData.append("isActive", data.isActive.toString());
         result = await updateWorkflowRoute(route.routeCode, formData);
       } else {
@@ -135,13 +143,16 @@ export function WorkflowRouteForm({
         formData.append("routeCode", data.routeCode);
         formData.append("routeName", data.routeName);
         if (data.description) formData.append("description", data.description);
-        if (data.sortOrder) formData.append("sortOrder", data.sortOrder.toString());
+        if (data.sortOrder)
+          formData.append("sortOrder", data.sortOrder.toString());
         result = await createWorkflowRoute(formData);
       }
 
       if (result.success) {
         showSuccessToast(
-          isEditing ? "ワークフロールートを更新しました" : "ワークフロールートを作成しました"
+          isEditing
+            ? "ワークフロールートを更新しました"
+            : "ワークフロールートを作成しました"
         );
         onSubmit();
       } else {
@@ -161,7 +172,6 @@ export function WorkflowRouteForm({
       setLoading(false);
     }
   };
-
 
   return (
     <>
@@ -300,28 +310,26 @@ export function WorkflowRouteForm({
                 </FormItem>
               )}
             />
-
           </div>
 
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={loading}
-          >
-            キャンセル
-          </Button>
-          <Button
-            type="submit"
-            disabled={loading || (!isEditing && codeCheckError)}
-          >
-            {loading ? "保存中..." : isEditing ? "更新" : "作成"}
-          </Button>
-        </div>
-      </form>
-    </Form>
-
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={loading}
+            >
+              キャンセル
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading || (!isEditing && codeCheckError)}
+            >
+              {loading ? "保存中..." : isEditing ? "更新" : "作成"}
+            </Button>
+          </div>
+        </form>
+      </Form>
     </>
   );
 }
