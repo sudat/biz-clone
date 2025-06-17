@@ -440,7 +440,7 @@ export function JournalDetailInput({
                   handleBaseAmountChange(baseAmount);
                 }}
                 onKeyPress={handleKeyPress}
-                disabled={(disabled && !mode) || mode === "input"}
+                disabled={disabled}
                 readOnly={disabled && mode === "edit"}
                 placeholder="本体額を入力..."
                 className="text-right font-mono h-9 text-black disabled:opacity-80 read-only:opacity-80 read-only:cursor-default"
@@ -480,7 +480,7 @@ export function JournalDetailInput({
                 }))
               }
               onKeyPress={handleKeyPress}
-              disabled={(disabled && !mode) || mode === "input"}
+              disabled={disabled}
               readOnly={disabled && mode === "edit"}
               placeholder="摘要を入力（任意）..."
               className="h-9 text-black disabled:opacity-80 read-only:opacity-80 read-only:cursor-default"
