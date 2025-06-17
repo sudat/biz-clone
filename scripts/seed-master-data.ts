@@ -2,7 +2,7 @@
  * マスタデータ投入スクリプト（消費税対応）
  */
 
-import { PrismaClient } from '../lib/generated/prisma';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();

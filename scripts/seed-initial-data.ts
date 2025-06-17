@@ -3,7 +3,7 @@
  * ロール、ユーザー、税区分、その他マスタデータを投入
  */
 
-import { PrismaClient } from '../lib/generated/prisma';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();

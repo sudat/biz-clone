@@ -3,7 +3,7 @@
  * 既存の分析コードから分析種別を抽出してマスタに登録
  */
 
-import { PrismaClient } from '../lib/generated/prisma';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
