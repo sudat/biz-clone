@@ -1,4 +1,4 @@
-import { PrismaClient } from "../generated/prisma";
+import { PrismaClient } from "@prisma/client";
 
 // Prismaクライアントのシングルトン実装
 const globalForPrisma = globalThis as unknown as {
@@ -29,4 +29,4 @@ export type {
   WorkflowOrganizationUser,
   WorkflowRoute,
   WorkflowRouteStep,
-} from "../generated/prisma";
+} from "@prisma/client";

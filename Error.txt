@@ -1,77 +1,192 @@
-test:biz-clone (main)$ bun dev
-$ next dev
-   ▲ Next.js 15.3.3
-   - Local:        http://localhost:3000
-   - Network:      http://172.26.248.144:3000
-   - Environments: .env
-
- ✓ Starting...
- ✓ Ready in 3.2s
- ✓ Compiled /middleware in 484ms (108 modules)
- ○ Compiling / ...
- ✓ Compiled / in 2.6s (1143 modules)
- GET / 200 in 4506ms
- ○ Compiling /siwake/new ...
- ✓ Compiled /siwake/new in 3s (1432 modules)
- GET /siwake/new 200 in 3402ms
- ○ Compiling /api/uploadthing ...
- ✓ Compiled /api/uploadthing in 2.4s (2066 modules)
- GET /api/uploadthing 200 in 3757ms
- GET /api/uploadthing 200 in 32ms
- POST /siwake/new 200 in 4001ms
- POST /siwake/new 200 in 96ms
- POST /siwake/new 200 in 91ms
- POST /siwake/new 200 in 106ms
- POST /siwake/new 200 in 117ms
- POST /siwake/new 200 in 190ms
- POST /siwake/new 200 in 107ms
- POST /siwake/new 200 in 131ms
- POST /siwake/new 200 in 106ms
- POST /siwake/new 200 in 132ms
- POST /siwake/new 200 in 102ms
- POST /siwake/new 200 in 108ms
-[16:41:54.713] INFO (#19) handleUploadAction=76ms: Sending presigned URLs to client
-  presignedUrls: [
-    {
-      url: 'https://sea1.ingest.uploadthing.com/ToMgo0RaB8HguvGE6rgYwD4H91maWjyhTLdb2XfFxiKUMeRJ?expires=1750149714691&x-ut-identifier=8t0vwssvbs&x-ut-file-name=%25E8%25A9%25A6%25E7%25AE%2597%25E8%25A1%25A8_20250101-20251231_20250614_131554.pdf&x-ut-file-size=12795&x-ut-file-type=application%252Fpdf&x-ut-slug=journalAttachment&x-ut-content-disposition=inline&signature=hmac-sha256%3Daabc6f4af6d53978d93bf28d78f46e837c95e39f6e2f1e352076692153999bef',
-      key: 'ToMgo0RaB8HguvGE6rgYwD4H91maWjyhTLdb2XfFxiKUMeRJ',
-      name: '試算表_20250101-20251231_20250614_131554.pdf',
-      customId: null
-    }
-  ]
- POST /api/uploadthing?actionType=upload&slug=journalAttachment 200 in 196ms
-Upload complete for userId: user
-⚠️ [uploadthing][deprecated] `file.url` is deprecated and will be removed in uploadthing v9. Use `file.ufsUrl` instead.
-File URL: https://utfs.io/f/ToMgo0RaB8HguvGE6rgYwD4H91maWjyhTLdb2XfFxiKUMeRJ
-⚠️ [uploadthing][deprecated] `file.url` is deprecated and will be removed in uploadthing v9. Use `file.ufsUrl` instead.
- POST /api/uploadthing?slug=journalAttachment 200 in 59ms
-[16:41:56.014] INFO (#29) handleCallbackRequest=201ms: Sent callback result to UploadThing
-prisma:error 
-Invalid `prisma.journalHeader.create()` invocation:
-
-
-Inconsistent column data: Error creating UUID, invalid character: expected an optional prefix of `urn:uuid:` followed by [0-9a-fA-F-], found `u` at 5
-仕訳保存エラー: Error [PrismaClientKnownRequestError]: 
-Invalid `prisma.journalHeader.create()` invocation:
-
-
-Inconsistent column data: Error creating UUID, invalid character: expected an optional prefix of `urn:uuid:` followed by [0-9a-fA-F-], found `u` at 5
-    at Zn.handleRequestError (lib/generated/prisma/runtime/library.js:124:7458)
-    at Zn.handleAndLogRequestError (lib/generated/prisma/runtime/library.js:124:6783)
-    at Zn.request (lib/generated/prisma/runtime/library.js:124:6490)
-    at async l (lib/generated/prisma/runtime/library.js:133:9777)
-    at async eval (app/actions/journal-save.ts:52:28)
-    at async Proxy._transactionWithCallback (lib/generated/prisma/runtime/library.js:133:8138)
-    at async saveJournal (app/actions/journal-save.ts:47:19)
-  122 |
-  123 | More Information: https://pris.ly/d/execute-raw
-> 124 | `)}var Co=({clientMethod:e,activeProvider:r})=>t=>{let n="",i;if(Fn(t))n=t.sql,i={values:Qr(t.values),__prismaRawParameters__:!0};else if(Array.isArray(t)){let[o,...s]=t;n=o,i={values:Qr(s||[]),__prismaRawParameters__:!0}}else switch(r){case"sqlite":case"mysql":{n=t.sql,i={values:Qr(t.values),__prismaRawParameters__:!0};break}case"cockroachdb":case"postgresql":case"postgres":{n=t.text,i={values:Qr(t.values),__prismaRawParameters__:!0};break}case"sqlserver":{n=jl(t),i={values:Qr(t.values),__prismaRawParameters__:!0};break}default:throw new Error(`The ${r} provider does not support ${e}`)}return i?.values?Ql(`prisma.${e}(${n}, ${i.values})`):Ql(`prisma.${e}(${n})`),{query:n,parameters:i}},Wl={requestArgsToMiddlewareArgs(e){return[e.strings,...e.values]},middlewareArgsToRequestArgs(e){let[r,...t]=e;return new oe(r,t)}},Jl={requestArgsToMiddlewareArgs(e){return[e]},middlewareArgsToRequestArgs(e){return e[0]}};function Ao(e){return function(t,n){let i,o=(s=e)=>{try{return s===void 0||s?.kind==="itx"?i??=Hl(t(s)):Hl(t(s))}catch(a){return Promise.reject(a)}};return{get spec(){return n},then(s,a){return o().then(s,a)},catch(s){return o().catch(s)},finally(s){return o().finally(s)},requestTransaction(s){let a=o(s);return a.requestTransaction?a.requestTransaction(s):a},[Symbol.toStringTag]:"PrismaPromise"}}}function Hl(e){return typeof e.then=="function"?e:Promise.resolve(e)}var Tf=Ei.split(".")[0],Sf={isEnabled(){return!1},getTraceParent(){return"00-10-10-00"},dispatchEngineSpans(){},getActiveContext(){},runInChildSpan(e,r){return r()}},Io=class{isEnabled(){return this.getGlobalTracingHelper().isEnabled()}getTraceParent(r){return this.getGlobalTracingHelper().getTraceParent(r)}dispatchEngineSpans(r){return this.getGlobalTracingHelper().dispatchEngineSpans(r)}getActiveContext(){return this.getGlobalTracingHelper().getActiveContext()}runInChildSpan(r,t){return this.getGlobalTracingHelper().runInChildSpan(r,t)}getGlobalTracingHelper(){let r=globalThis[`V${Tf}_PRISMA_INSTRUMENTATION`],t=globalThis.PRISMA_INSTRUMENTATION;return r?.helper??t?.helper??Sf}};function Kl(){return new Io}function Yl(e,r=()=>{}){let t,n=new Promise(i=>t=i);return{then(i){return--e===0&&t(r()),i?.(n)}}}function zl(e){return typeof e=="string"?e:e.reduce((r,t)=>{let n=typeof t=="string"?t:t.level;return n==="query"?r:r&&(t==="info"||r==="info")?"info":n},void 0)}var Hn=class{_middlewares=[];use(r){this._middlewares.push(r)}get(r){return this._middlewares[r]}has(r){return!!this._middlewares[r]}length(){return this._middlewares.length}};var Xl=k(Oi());function Kn(e){return typeof e.batchRequestIdx=="number"}function Zl(e){if(e.action!=="findUnique"&&e.action!=="findUniqueOrThrow")return;let r=[];return e.modelName&&r.push(e.modelName),e.query.arguments&&r.push(ko(e.query.arguments)),r.push(ko(e.query.selection)),r.join("")}function ko(e){return`(${Object.keys(e).sort().map(t=>{let n=e[t];return typeof n=="object"&&n!==null?`(${t} ${ko(n)})`:t}).join(" ")})`}var Rf={aggregate:!1,aggregateRaw:!1,createMany:!0,createManyAndReturn:!0,createOne:!0,deleteMany:!0,deleteOne:!0,executeRaw:!0,findFirst:!1,findFirstOrThrow:!1,findMany:!1,findRaw:!1,findUnique:!1,findUniqueOrThrow:!1,groupBy:!1,queryRaw:!1,runCommandRaw:!0,updateMany:!0,updateManyAndReturn:!0,updateOne:!0,upsertOne:!0};function Oo(e){return Rf[e]}var Yn=class{constructor(r){this.options=r;this.batches={}}batches;tickActive=!1;request(r){let t=this.options.batchBy(r);return t?(this.batches[t]||(this.batches[t]=[],this.tickActive||(this.tickActive=!0,process.nextTick(()=>{this.dispatchBatches(),this.tickActive=!1}))),new Promise((n,i)=>{this.batches[t].push({request:r,resolve:n,reject:i})})):this.options.singleLoader(r)}dispatchBatches(){for(let r in this.batches){let t=this.batches[r];delete this.batches[r],t.length===1?this.options.singleLoader(t[0].request).then(n=>{n instanceof Error?t[0].reject(n):t[0].resolve(n)}).catch(n=>{t[0].reject(n)}):(t.sort((n,i)=>this.options.batchOrder(n.request,i.request)),this.options.batchLoader(t.map(n=>n.request)).then(n=>{if(n instanceof Error)for(let i=0;i<t.length;i++)t[i].reject(n);else for(let i=0;i<t.length;i++){let o=n[i];o instanceof Error?t[i].reject(o):t[i].resolve(o)}}).catch(n=>{for(let i=0;i<t.length;i++)t[i].reject(n)}))}}get[Symbol.toStringTag](){return"DataLoader"}};function mr(e,r){if(r===null)return r;switch(e){case"bigint":return BigInt(r);case"bytes":{let{buffer:t,byteOffset:n,byteLength:i}=Buffer.from(r,"base64");return new Uint8Array(t,n,i)}case"decimal":return new Pe(r);case"datetime":case"date":return new Date(r);case"time":return new Date(`1970-01-01T${r}Z`);case"bigint-array":return r.map(t=>mr("bigint",t));case"bytes-array":return r.map(t=>mr("bytes",t));case"decimal-array":return r.map(t=>mr("decimal",t));case"datetime-array":return r.map(t=>mr("datetime",t));case"date-array":return r.map(t=>mr("date",t));case"time-array":return r.map(t=>mr("time",t));default:return r}}function zn(e){let r=[],t=Cf(e);for(let n=0;n<e.rows.length;n++){let i=e.rows[n],o={...t};for(let s=0;s<i.length;s++)o[e.columns[s]]=mr(e.types[s],i[s]);r.push(o)}return r}function Cf(e){let r={};for(let t=0;t<e.columns.length;t++)r[e.columns[t]]=null;return r}var Af=N("prisma:client:request_handler"),Zn=class{client;dataloader;logEmitter;constructor(r,t){this.logEmitter=t,this.client=r,this.dataloader=new Yn({batchLoader:ol(async({requests:n,customDataProxyFetch:i})=>{let{transaction:o,otelParentCtx:s}=n[0],a=n.map(p=>p.protocolQuery),l=this.client._tracingHelper.getTraceParent(s),u=n.some(p=>Oo(p.protocolQuery.action));return(await this.client._engine.requestBatch(a,{traceparent:l,transaction:If(o),containsWrite:u,customDataProxyFetch:i})).map((p,d)=>{if(p instanceof Error)return p;try{return this.mapQueryEngineResult(n[d],p)}catch(f){return f}})}),singleLoader:async n=>{let i=n.transaction?.kind==="itx"?eu(n.transaction):void 0,o=await this.client._engine.request(n.protocolQuery,{traceparent:this.client._tracingHelper.getTraceParent(),interactiveTransaction:i,isWrite:Oo(n.protocolQuery.action),customDataProxyFetch:n.customDataProxyFetch});return this.mapQueryEngineResult(n,o)},batchBy:n=>n.transaction?.id?`transaction-${n.transaction.id}`:Zl(n.protocolQuery),batchOrder(n,i){return n.transaction?.kind==="batch"&&i.transaction?.kind==="batch"?n.transaction.index-i.transaction.index:0}})}async request(r){try{return await this.dataloader.request(r)}catch(t){let{clientMethod:n,callsite:i,transaction:o,args:s,modelName:a}=r;this.handleAndLogRequestError({error:t,clientMethod:n,callsite:i,transaction:o,args:s,modelName:a,globalOmit:r.globalOmit})}}mapQueryEngineResult({dataPath:r,unpacker:t},n){let i=n?.data,o=this.unpack(i,r,t);return process.env.PRISMA_CLIENT_GET_TIME?{data:o}:o}handleAndLogRequestError(r){try{this.handleRequestError(r)}catch(t){throw this.logEmitter&&this.logEmitter.emit("error",{message:t.message,target:r.clientMethod,timestamp:new Date}),t}}handleRequestError({error:r,clientMethod:t,callsite:n,transaction:i,args:o,modelName:s,globalOmit:a}){if(Af(r),kf(r,i))throw r;if(r instanceof z&&Of(r)){let u=ru(r.meta);kn({args:o,errors:[u],callsite:n,errorFormat:this.client._errorFormat,originalMethod:t,clientVersion:this.client._clientVersion,globalOmit:a})}let l=r.message;if(n&&(l=wn({callsite:n,originalMethod:t,isPanic:r.isPanic,showColors:this.client._errorFormat==="pretty",message:l})),l=this.sanitizeMessage(l),r.code){let u=s?{modelName:s,...r.meta}:r.meta;throw new z(l,{code:r.code,clientVersion:this.client._clientVersion,meta:u,batchRequestIdx:r.batchRequestIdx})}else{if(r.isPanic)throw new le(l,this.client._clientVersion);if(r instanceof j)throw new j(l,{clientVersion:this.client._clientVersion,batchRequestIdx:r.batchRequestIdx});if(r instanceof T)throw new T(l,this.client._clientVersion);if(r instanceof le)throw new le(l,this.client._clientVersion)}throw r.clientVersion=this.client._clientVersion,r}sanitizeMessage(r){return this.client._errorFormat&&this.client._errorFormat!=="pretty"?(0,Xl.default)(r):r}unpack(r,t,n){if(!r||(r.data&&(r=r.data),!r))return r;let i=Object.keys(r)[0],o=Object.values(r)[0],s=t.filter(u=>u!=="select"&&u!=="include"),a=io(o,s),l=i==="queryRaw"?zn(a):Tr(a);return n?n(l):l}get[Symbol.toStringTag](){return"RequestHandler"}};function If(e){if(e){if(e.kind==="batch")return{kind:"batch",options:{isolationLevel:e.isolationLevel}};if(e.kind==="itx")return{kind:"itx",options:eu(e)};_e(e,"Unknown transaction kind")}}function eu(e){return{id:e.id,payload:e.payload}}function kf(e,r){return Kn(e)&&r?.kind==="batch"&&e.batchRequestIdx!==r.index}function Of(e){return e.code==="P2009"||e.code==="P2012"}function ru(e){if(e.kind==="Union")return{kind:"Union",errors:e.errors.map(ru)};if(Array.isArray(e.selectionPath)){let[,...r]=e.selectionPath;return{...e,selectionPath:r}}return e}var tu=Sl;var au=k(Qi());var D=class extends Error{constructor(r){super(r+`
-      |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  ^
-  125 | Read more at https://pris.ly/d/client-constructor`),this.name="PrismaClientConstructorValidationError"}get[Symbol.toStringTag](){return"PrismaClientConstructorValidationError"}};x(D,"PrismaClientConstructorValidationError");var nu=["datasources","datasourceUrl","errorFormat","adapter","log","transactionOptions","omit","__internal"],iu=["pretty","colorless","minimal"],ou=["info","query","warn","error"],Df={datasources:(e,{datasourceNames:r})=>{if(e){if(typeof e!="object"||Array.isArray(e))throw new D(`Invalid value ${JSON.stringify(e)} for "datasources" provided to PrismaClient constructor`);for(let[t,n]of Object.entries(e)){if(!r.includes(t)){let i=Wr(t,r)||` Available datasources: ${r.join(", ")}`;throw new D(`Unknown datasource ${t} provided to PrismaClient constructor.${i}`)}if(typeof n!="object"||Array.isArray(n))throw new D(`Invalid value ${JSON.stringify(e)} for datasource "${t}" provided to PrismaClient constructor.
-  126 | It should have this form: { url: "CONNECTION_STRING" }`);if(n&&typeof n=="object")for(let[i,o]of Object.entries(n)){if(i!=="url")throw new D(`Invalid value ${JSON.stringify(e)} for datasource "${t}" provided to PrismaClient constructor.
-  127 | It should have this form: { url: "CONNECTION_STRING" }`);if(typeof o!="string")throw new D(`Invalid value ${JSON.stringify(o)} for datasource "${t}" provided to PrismaClient constructor. {
-  code: 'P2023',
-  clientVersion: '6.9.0',
-  meta: [Object]
-}
- POST /siwake/new 200 in 1877ms
+[00:25:41.384] Running build in Washington, D.C., USA (East) – iad1
+[00:25:41.391] Build machine configuration: 2 cores, 8 GB
+[00:25:41.433] Cloning github.com/sudat/biz-clone (Branch: main, Commit: fb4c91f)
+[00:25:41.832] Previous build caches not available
+[00:25:42.067] Cloning completed: 634.000ms
+[00:25:42.954] Running "vercel build"
+[00:25:43.469] Vercel CLI 42.2.0
+[00:25:44.041] Installing dependencies...
+[00:25:55.693] npm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported
+[00:25:55.748] npm warn deprecated lodash.isequal@4.5.0: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
+[00:25:55.783] npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+[00:25:55.862] npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+[00:25:56.892] npm warn deprecated fstream@1.0.12: This package is no longer supported.
+[00:26:19.717] 
+[00:26:19.717] added 624 packages in 35s
+[00:26:19.718] 
+[00:26:19.718] 159 packages are looking for funding
+[00:26:19.718]   run `npm fund` for details
+[00:26:19.766] Detected Next.js version: 15.3.3
+[00:26:19.772] Running "npm run build"
+[00:26:19.885] 
+[00:26:19.886] > biz-clone@0.1.0 build
+[00:26:19.886] > next build
+[00:26:19.886] 
+[00:26:20.485] Attention: Next.js now collects completely anonymous telemetry regarding usage.
+[00:26:20.486] This information is used to shape Next.js' roadmap and prioritize features.
+[00:26:20.489] You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+[00:26:20.489] https://nextjs.org/telemetry
+[00:26:20.490] 
+[00:26:20.595]    ▲ Next.js 15.3.3
+[00:26:20.596] 
+[00:26:20.624]    Creating an optimized production build ...
+[00:27:10.329]  ✓ Compiled successfully in 45s
+[00:27:10.333]    Linting and checking validity of types ...
+[00:27:13.291] 
+[00:27:13.299]  ⚠ The Next.js plugin was not detected in your ESLint configuration. See https://nextjs.org/docs/app/api-reference/config/eslint#migrating-existing-config
+[00:27:21.663] 
+[00:27:21.665] ./app/actions/journal-inquiry.ts
+[00:27:21.666] 637:25  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.666] 
+[00:27:21.667] ./app/actions/master-search.ts
+[00:27:21.667] 53:18  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.667] 
+[00:27:21.668] ./app/actions/partners.ts
+[00:27:21.672] 15:105  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.672] 185:82  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.672] 
+[00:27:21.673] ./app/actions/roles.ts
+[00:27:21.673] 55:38  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.673] 
+[00:27:21.673] ./app/actions/sub-accounts.ts
+[00:27:21.674] 19:44  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.674] 214:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.674] 
+[00:27:21.674] ./app/actions/tax-rates.ts
+[00:27:21.674] 16:97  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.674] 179:82  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.675] 
+[00:27:21.675] ./app/actions/users.ts
+[00:27:21.676] 135:38  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.676] 162:38  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.676] 
+[00:27:21.676] ./app/actions/workflow-organizations.ts
+[00:27:21.677] 155:46  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.677] 
+[00:27:21.677] ./app/actions/workflow-routes.ts
+[00:27:21.680] 148:39  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.680] 305:15  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.680] 
+[00:27:21.680] ./components/accounting/amount-display.tsx
+[00:27:21.680] 18:7  Warning: 'positiveClass' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.681] 19:7  Warning: 'negativeClass' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.681] 26:3  Warning: 'positive' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.681] 27:3  Warning: 'negative' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.681] 
+[00:27:21.681] ./components/accounting/file-attachment.tsx
+[00:27:21.687] 156:5  Warning: React Hook useCallback has unnecessary dependencies: 'acceptedFileTypes', 'files.length', 'maxFileSize', and 'maxFiles'. Either exclude them or remove the dependency array.  react-hooks/exhaustive-deps
+[00:27:21.688] 
+[00:27:21.688] ./components/accounting/journal-detail-input.tsx
+[00:27:21.688] 129:6  Warning: React Hook useEffect has a missing dependency: 'resetForm'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+[00:27:21.689] 
+[00:27:21.689] ./components/accounting/journal-entry-form.tsx
+[00:27:21.689] 23:10  Warning: 'saveJournal' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.689] 23:23  Warning: 'updateJournal' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.690] 25:3  Warning: 'deleteJournalAttachment' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.690] 26:3  Warning: 'getJournalAttachments' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.690] 
+[00:27:21.690] ./components/accounting/journal-file-upload.tsx
+[00:27:21.690] 23:3  Warning: 'onFilesChange' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.691] 24:3  Warning: 'className' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.691] 26:3  Warning: 'maxFileSize' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.691] 27:3  Warning: 'acceptedFileTypes' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.691] 36:3  Warning: 'disabled' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.691] 
+[00:27:21.692] ./components/accounting/journal-header-section.tsx
+[00:27:21.692] 26:21  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.692] 
+[00:27:21.692] ./components/accounting/master-code-input.tsx
+[00:27:21.692] 91:6  Warning: React Hook useEffect has missing dependencies: 'fetchMasterName' and 'inputValue'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+[00:27:21.692] 
+[00:27:21.693] ./components/accounting/master-data-search.tsx
+[00:27:21.693] 37:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.693] 61:57  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.693] 
+[00:27:21.693] ./components/accounting/master-search-dialog.tsx
+[00:27:21.693] 102:3  Warning: 'className' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.694] 155:6  Warning: React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+[00:27:21.694] 
+[00:27:21.694] ./components/accounting/role-select-dialog.tsx
+[00:27:21.694] 120:6  Warning: React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+[00:27:21.694] 
+[00:27:21.694] ./components/accounting/user-master-list.tsx
+[00:27:21.695] 72:10  Warning: 'isPasswordDialogOpen' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.695] 72:32  Warning: 'setIsPasswordDialogOpen' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.695] 
+[00:27:21.695] ./components/accounting/workflow-flow-nodes.tsx
+[00:27:21.695] 10:35  Warning: '_data' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.696] 30:33  Warning: '_data' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.698] 
+[00:27:21.699] ./components/accounting/workflow-route-list.tsx
+[00:27:21.699] 66:10  Warning: '_originalRoutes' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.700] 77:10  Warning: '_searchLoading' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.700] 77:26  Warning: '_setSearchLoading' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.700] 241:9  Warning: '_handleKeyPress' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.700] 
+[00:27:21.701] ./components/ui/conflict-resolution-dialog.tsx
+[00:27:21.701] 40:45  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.701] 198:18  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.718] 200:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.718] 201:28  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.719] 302:47  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.719] 303:49  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.719] 
+[00:27:21.719] ./lib/database/journal-number.ts
+[00:27:21.720] 149:14  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.720] 208:5  Warning: 'maxRetries' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.720] 256:47  Warning: 'date' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.720] 258:12  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.720] 
+[00:27:21.720] ./lib/database/journal.ts
+[00:27:21.721] 8:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.721] 9:22  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.721] 11:6  Warning: 'GenerateJournalNumberArgs' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.721] 11:34  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.721] 12:6  Warning: 'GenerateJournalNumberReturn' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.722] 12:36  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.722] 26:28  Warning: 'filter' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.722] 75:29  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.722] 109:29  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.722] 
+[00:27:21.723] ./lib/schemas/master/account.ts
+[00:27:21.723] 6:34  Warning: 'AccountType' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.723] 
+[00:27:21.723] ./lib/schemas/master/partner.ts
+[00:27:21.723] 6:34  Warning: 'PartnerType' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.724] 
+[00:27:21.724] ./lib/utils/error-handler.ts
+[00:27:21.724] 14:10  Warning: 'Prisma' is defined but never used.  @typescript-eslint/no-unused-vars
+[00:27:21.724] 43:10  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.724] 211:18  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.724] 212:18  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.725] 323:37  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+[00:27:21.725] 
+[00:27:21.725] info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+[00:27:30.334]    Collecting page data ...
+[00:27:30.853] Prisma has detected that this project was built on Vercel, which caches dependencies. This leads to an outdated Prisma Client because Prisma's auto-generation isn't triggered. To fix this, make sure to run the `prisma generate` command during the build process.
+[00:27:30.853] 
+[00:27:30.853] Learn how: https://pris.ly/d/vercel-build
+[00:27:30.857] Error [PrismaClientInitializationError]: Prisma has detected that this project was built on Vercel, which caches dependencies. This leads to an outdated Prisma Client because Prisma's auto-generation isn't triggered. To fix this, make sure to run the `prisma generate` command during the build process.
+[00:27:30.857] 
+[00:27:30.857] Learn how: https://pris.ly/d/vercel-build
+[00:27:30.858]     at <unknown> (.next/server/chunks/9932.js:125:69)
+[00:27:30.858]     at new t (.next/server/chunks/9932.js:125:82)
+[00:27:30.858]     at 48056 (.next/server/chunks/9932.js:1:67467)
+[00:27:30.858]     at t (.next/server/webpack-runtime.js:1:143)
+[00:27:30.858]     at 77324 (.next/server/app/api/journal-attachments/delete/[attachmentId]/route.js:1:14266)
+[00:27:30.858]     at t (.next/server/webpack-runtime.js:1:143)
+[00:27:30.858]     at r (.next/server/app/api/journal-attachments/delete/[attachmentId]/route.js:1:20372)
+[00:27:30.858]     at <unknown> (.next/server/app/api/journal-attachments/delete/[attachmentId]/route.js:1:20409)
+[00:27:30.858]     at t.X (.next/server/webpack-runtime.js:1:1285)
+[00:27:30.858]     at <unknown> (.next/server/app/api/journal-attachments/delete/[attachmentId]/route.js:1:20385) {
+[00:27:30.858]   clientVersion: '6.9.0',
+[00:27:30.858]   errorCode: undefined
+[00:27:30.858] }
+[00:27:30.863] 
+[00:27:30.864] > Build error occurred
+[00:27:30.867] [Error: Failed to collect page data for /api/journal-attachments/delete/[attachmentId]] {
+[00:27:30.867]   type: 'Error'
+[00:27:30.867] }
+[00:27:30.891] Error: Command "npm run build" exited with 1
+[00:27:31.666] 
+[00:27:34.732] Exiting build container
