@@ -237,7 +237,8 @@ export function FileAttachment({
             {files.map((file) => (
               <div
                 key={file.id}
-                className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors cursor-pointer"
+                onClick={() => handleDownload(file)}
               >
                 <div className="flex-shrink-0 text-gray-500">
                   {getFileIcon(file.type, file.name)}
@@ -258,7 +259,10 @@ export function FileAttachment({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDownload(file)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownload(file);
+                    }}
                     className="h-8 w-8 p-0"
                     title="ダウンロード"
                   >
@@ -271,7 +275,10 @@ export function FileAttachment({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => onFileDelete(file.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onFileDelete(file.id);
+                      }}
                       className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
                       disabled={disabled}
                       title="削除"

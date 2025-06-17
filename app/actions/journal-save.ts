@@ -20,6 +20,7 @@ import {
   JournalSaveData, 
   JournalSaveResult 
 } from "@/types/journal";
+import type { AttachedFile } from "@/components/accounting/file-attachment";
 import { handleServerActionError, createValidationError } from "@/lib/utils/error-handler";
 import type { ActionResult } from "@/lib/types/errors";
 
@@ -212,6 +213,10 @@ function validateJournalData(
 export async function updateJournal(
   journalNumber: string,
   data: JournalSaveData,
+  fileChanges?: {
+    deletedFileIds?: string[];
+    newFiles?: AttachedFile[];
+  }
 ): Promise<JournalSaveResult> {
   try {
     // バリデーション
@@ -287,6 +292,42 @@ export async function updateJournal(
           });
         }),
       );
+
+      // ファイル変更処理
+      if (fileChanges) {
+        // 削除されたファイルをデータベースから削除
+        if (fileChanges.deletedFileIds && fileChanges.deletedFileIds.length > 0) {
+          await tx.journalAttachment.deleteMany({
+            where: {
+              attachmentId: { in: fileChanges.deletedFileIds },
+              journalNumber: journalNumber,
+            },
+          });
+        }
+
+        // 新しいファイルをデータベースに保存
+        if (fileChanges.newFiles && fileChanges.newFiles.length > 0) {
+          const attachmentData = fileChanges.newFiles
+            .filter(file => file.url) // URLがあるファイルのみ保存
+            .map(file => ({
+              attachmentId: crypto.randomUUID(),
+              journalNumber: journalNumber,
+              fileName: file.name,
+              originalFileName: file.name,
+              fileUrl: file.url!,
+              fileSize: BigInt(file.size),
+              fileExtension: file.name.split('.').pop() || '',
+              mimeType: file.type,
+              uploadedAt: file.uploadedAt || new Date(),
+            }));
+
+          if (attachmentData.length > 0) {
+            await tx.journalAttachment.createMany({
+              data: attachmentData,
+            });
+          }
+        }
+      }
 
       return {
         journalHeader,

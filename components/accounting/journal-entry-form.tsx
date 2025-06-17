@@ -83,7 +83,7 @@ interface JournalEntryFormProps {
     userKana: string | null;
   } | null;
   initialFiles?: AttachedFile[];
-  onFilesChange?: (files: File[]) => void;
+  onFilesChange?: (files: AttachedFile[]) => void;
   onFileDelete?: (fileId: string) => void;
 }
 
@@ -240,9 +240,9 @@ export function JournalEntryForm({
       // 状態を更新
       setAttachedFiles(prev => [...prev, ...newAttachedFiles]);
       
-      // 親コンポーネントに通知
+      // 親コンポーネントに通知（新しくアップロードされたファイル情報を渡す）
       if (onFilesChange) {
-        onFilesChange(newFiles);
+        onFilesChange(newAttachedFiles);
       }
 
       console.log("ファイルアップロード完了:", newAttachedFiles);

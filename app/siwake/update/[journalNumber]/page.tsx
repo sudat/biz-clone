@@ -16,6 +16,7 @@ import { JournalEntryForm } from "@/components/accounting/journal-entry-form";
 import type { AttachedFile } from "@/components/accounting/file-attachment";
 import { getJournalByNumber } from "@/app/actions/journal-inquiry";
 import { updateJournal } from "@/app/actions/journal-save";
+import { getJournalAttachments } from "@/app/actions/journal-attachments";
 import { JournalSaveData, JournalDetailData } from "@/types/journal";
 import type {
   JournalInquiryData,
@@ -40,7 +41,7 @@ export default function JournalUpdatePage({ params }: UpdatePageProps) {
     };
   } | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
-  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [deletedFileIds, setDeletedFileIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -95,25 +96,23 @@ export default function JournalUpdatePage({ params }: UpdatePageProps) {
 
         setInitialFormData(formData);
 
-        // TODO: 実際のファイル取得APIを実装後に置き換え
-        // モックの添付ファイルデータ
-        const mockFiles: AttachedFile[] = [
-          {
-            id: "mock-1",
-            name: "領収書_20250116.pdf",
-            size: 245760,
-            type: "application/pdf",
-            uploadedAt: new Date("2025-01-16T10:30:00"),
-          },
-          {
-            id: "mock-2", 
-            name: "請求書明細.xlsx",
-            size: 51200,
-            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            uploadedAt: new Date("2025-01-16T10:32:00"),
-          }
-        ];
-        setAttachedFiles(mockFiles);
+        // 実際の添付ファイルデータを取得
+        const attachmentsResult = await getJournalAttachments(resolvedParams.journalNumber);
+        if (attachmentsResult.success && attachmentsResult.data) {
+          // JournalAttachmentDataをAttachedFileに変換
+          const attachedFiles: AttachedFile[] = attachmentsResult.data.map(attachment => ({
+            id: attachment.attachmentId,
+            name: attachment.originalFileName,
+            size: attachment.fileSize,
+            type: attachment.mimeType,
+            url: attachment.fileUrl,
+            uploadedAt: attachment.uploadedAt,
+          }));
+          setAttachedFiles(attachedFiles);
+        } else {
+          console.error("添付ファイル取得エラー:", attachmentsResult.error);
+          setAttachedFiles([]);
+        }
       } catch (err) {
         console.error("データ取得エラー:", err);
         setError("仕訳データの取得中にエラーが発生しました");
@@ -123,31 +122,40 @@ export default function JournalUpdatePage({ params }: UpdatePageProps) {
     };
 
     loadData();
-  }, [params]);
+  }, []); // paramsのPromiseは変更されないため空の依存配列
 
   // ファイル変更処理
-  const handleFilesChange = (files: File[]) => {
-    setNewFiles(prev => [...prev, ...files]);
+  const handleFilesChange = (files: AttachedFile[]) => {
+    // JournalEntryFormから新しいAttachedFileが渡されるため、
+    // attachedFilesステートに直接追加する
+    setAttachedFiles(prev => [...prev, ...files]);
   };
 
   // ファイル削除処理
   const handleFileDelete = (fileId: string) => {
-    // 既存ファイルの削除
-    setAttachedFiles(prev => prev.filter(file => file.id !== fileId));
-    // 新しいファイルの削除（IDが"new-"で始まる場合）
-    if (fileId.startsWith("new-")) {
-      setNewFiles(prev => {
-        const index = parseInt(fileId.split("-")[2]);
-        return prev.filter((_, i) => i !== index);
-      });
+    // 新しくアップロードしたファイル（uploaded-で始まる）以外は
+    // データベースから削除する必要があるため削除リストに追加
+    if (!fileId.startsWith("uploaded-")) {
+      setDeletedFileIds(prev => [...prev, fileId]);
     }
+    
+    // ファイル一覧から削除
+    setAttachedFiles(prev => prev.filter(file => file.id !== fileId));
   };
 
   // ファイルダウンロード処理
   const handleFileDownload = (file: AttachedFile) => {
-    // TODO: 実際のダウンロード処理を実装
-    console.log("Download file:", file.name);
-    alert(`${file.name} のダウンロード機能は実装予定です`);
+    if (file.url) {
+      // ファイルURLがある場合はダウンロード実行
+      const link = document.createElement('a');
+      link.href = file.url;
+      link.download = file.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert(`${file.name} のダウンロードURLが見つかりません`);
+    }
   };
 
   // 更新処理
@@ -156,7 +164,22 @@ export default function JournalUpdatePage({ params }: UpdatePageProps) {
 
     setIsSaving(true);
     try {
-      const result = await updateJournal(journalNumber, data);
+      // 新しくアップロードされたファイル（uploaded-で始まるID）を抽出
+      const newFiles = attachedFiles.filter(file => 
+        file.id.startsWith("uploaded-") && file.url
+      );
+
+      // ファイル変更情報を作成
+      const fileChanges = {
+        deletedFileIds: deletedFileIds.length > 0 ? deletedFileIds : undefined,
+        newFiles: newFiles.length > 0 ? newFiles : undefined,
+      };
+
+      const result = await updateJournal(
+        journalNumber, 
+        data, 
+        (fileChanges.deletedFileIds || fileChanges.newFiles) ? fileChanges : undefined
+      );
 
       if (result.success) {
         // 更新成功 - 照会ページに遷移

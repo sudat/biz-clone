@@ -1,0 +1,12 @@
+A param property was accessed directly with `params.journalNumber`. `params` is now a Promise and should be unwrapped with `React.use()` before accessing properties of the underlying params object. In this version of Next.js direct access to param properties is still supported to facilitate migration but in a future version you will be required to unwrap `params` with `React.use()`.
+
+app/siwake/update/[journalNumber]/page.tsx (102:70) @ JournalUpdatePage.useEffect.loadData
+
+
+  100 |
+  101 |         // 実際の添付ファイルデータを取得
+> 102 |         const attachmentsResult = await getJournalAttachments(params.journalNumber);
+      |                                                                      ^
+  103 |         if (attachmentsResult.success && attachmentsResult.data) {
+  104 |           // JournalAttachmentDataをAttachedFileに変換
+  105 |           const attachedFiles: AttachedFile[] = attachmentsResult.data.map(attachment => ({
