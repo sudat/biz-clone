@@ -38,6 +38,7 @@ export class TestDataHelper {
     data?: Partial<{
       partnerCode: string;
       partnerName: string;
+      partnerType: string;
       isActive: boolean;
     }>,
   ) {
@@ -45,6 +46,7 @@ export class TestDataHelper {
       partnerCode: data?.partnerCode ||
         faker.number.int({ min: 1000, max: 9999 }).toString(),
       partnerName: data?.partnerName || faker.company.name(),
+      partnerType: data?.partnerType || "得意先",
       isActive: data?.isActive ?? true,
     };
 
@@ -97,7 +99,7 @@ export class TestDataHelper {
     const description = data?.description || faker.lorem.sentence();
 
     // 仕訳ヘッダーを作成
-    const journal = await prisma.journalEntry.create({
+    const journal = await prisma.journalHeader.create({
       data: {
         journalNumber,
         journalDate,
@@ -107,14 +109,18 @@ export class TestDataHelper {
 
     // 明細がある場合は作成
     if (data?.details && data.details.length > 0) {
-      for (const detail of data.details) {
+      for (let i = 0; i < data.details.length; i++) {
+        const detail = data.details[i];
         await prisma.journalDetail.create({
           data: {
             journalNumber,
+            lineNumber: i + 1,
             accountCode: detail.accountCode,
-            amount: detail.amount,
-            side: detail.side,
-            description: detail.description || "",
+            baseAmount: detail.amount || 0,
+            taxAmount: 0,
+            totalAmount: detail.amount || 0,
+            debitCredit: detail.side || "D",
+            lineDescription: detail.description || "",
             partnerCode: detail.partnerCode,
             analysisCode: detail.analysisCode,
           },
@@ -162,7 +168,7 @@ export class TestDataHelper {
   static async cleanupTestData() {
     // 外部キー制約の順序を考慮した削除順序
     await prisma.journalDetail.deleteMany({});
-    await prisma.journalEntry.deleteMany({});
+    await prisma.journalHeader.deleteMany({});
     await prisma.subAccount.deleteMany({});
     await prisma.analysisCode.deleteMany({});
     await prisma.partner.deleteMany({});
@@ -176,7 +182,7 @@ export class TestDataHelper {
     await prisma.journalDetail.deleteMany({
       where: { journalNumber },
     });
-    await prisma.journalEntry.delete({
+    await prisma.journalHeader.delete({
       where: { journalNumber },
     });
   }

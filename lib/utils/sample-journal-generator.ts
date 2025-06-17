@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker";
 import { prisma } from "@/lib/database/prisma";
-import { Prisma } from "@/lib/generated/prisma";
+import { Prisma } from "@prisma/client";
 
 /**
  * 開発・デモ用途のダミー仕訳を大量生成するユーティリティ。
