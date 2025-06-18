@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TrialBalanceTable } from "@/components/accounting/trial-balance-table";
-import { generateTrialBalancePdfFromHtml } from "@/lib/exports/trial-balance-pdf";
+import { generateTrialBalancePdf } from "@/lib/exports/trial-balance-pdf";
 import { generateTrialBalanceExcel } from "@/lib/exports/trial-balance-excel";
 
 export default function TrialBalanceReportPage() {
@@ -154,7 +154,8 @@ export default function TrialBalanceReportPage() {
     try {
       toast.info("PDF出力を開始しています...");
 
-      await generateTrialBalancePdfFromHtml("trial-balance-print", {
+      await generateTrialBalancePdf({
+        data: trialBalanceData,
         dateFrom,
         dateTo,
         companyName: "株式会社サンプル",
