@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/accounting/date-range-picker";
@@ -40,7 +40,7 @@ export default function TrialBalanceReportPage() {
 
   const [includeZeroBalance, setIncludeZeroBalance] = useState<boolean>(true);
   const [includeSubAccounts, setIncludeSubAccounts] = useState<boolean>(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [trialBalanceData, setTrialBalanceData] = useState<TrialBalanceData[]>(
     []
   );
@@ -98,38 +98,45 @@ export default function TrialBalanceReportPage() {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      const params: TrialBalanceParams = {
-        dateFrom,
-        dateTo,
-        includeZeroBalance,
-        includeSubAccounts,
-      };
+    const params: TrialBalanceParams = {
+      dateFrom,
+      dateTo,
+      includeZeroBalance,
+      includeSubAccounts,
+    };
 
-      const result = await getTrialBalanceData(params);
+    const promise = getTrialBalanceData(params);
 
-      if (result.success && result.data) {
-        setTrialBalanceData(result.data);
-
-        if (result.data.length === 0) {
-          toast.info("検索条件に該当するデータがありませんでした");
-        } else {
-          toast.success(`${result.data.length}件のデータを取得しました`);
+    toast.promise(promise, {
+      loading: "検索中...",
+      success: (result) => {
+        if (result.success && result.data) {
+          if (result.data.length === 0) {
+            return "検索条件に該当するデータがありませんでした";
+          } else {
+            return `${result.data.length}件のデータを取得しました`;
+          }
         }
-      } else {
-        const errorMessage = result.error || "データの取得に失敗しました";
-        toast.error(errorMessage);
-        console.error("検索エラー詳細:", result);
+        return "データを取得しました";
+      },
+      error: "データの取得に失敗しました",
+    });
+
+    startTransition(async () => {
+      try {
+        const result = await promise;
+
+        if (result.success && result.data) {
+          setTrialBalanceData(result.data);
+        } else {
+          console.error("検索エラー詳細:", result);
+          setTrialBalanceData([]);
+        }
+      } catch (error) {
+        console.error("検索エラー:", error);
         setTrialBalanceData([]);
       }
-    } catch (error) {
-      console.error("検索エラー:", error);
-      toast.error("データの取得中にエラーが発生しました");
-      setTrialBalanceData([]);
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
 
   // PDF出力機能
@@ -320,13 +327,13 @@ export default function TrialBalanceReportPage() {
 
           <div className="flex justify-between items-center">
             <div className="flex gap-2">
-              <Button onClick={handleSearch} disabled={isLoading}>
-                {isLoading ? "検索中..." : "検索"}
+              <Button onClick={handleSearch} disabled={isPending}>
+                {isPending ? "検索中..." : "検索"}
               </Button>
               <Button
                 variant="outline"
                 onClick={handleClearFilters}
-                disabled={isLoading}
+                disabled={isPending}
               >
                 クリア
               </Button>
@@ -364,12 +371,9 @@ export default function TrialBalanceReportPage() {
               </p>
             </div>
 
-            {/* データ件数表示・ローディング */}
-            <div className="mb-4 text-sm text-muted-foreground print:hidden flex justify-between items-center">
+            {/* データ件数表示 */}
+            <div className="mb-4 text-sm text-muted-foreground print:hidden">
               <span>検索結果: {trialBalanceData.length}件</span>
-              {isLoading && (
-                <span className="text-primary animate-pulse">検索中...</span>
-              )}
             </div>
 
             {/* 試算表テーブル */}

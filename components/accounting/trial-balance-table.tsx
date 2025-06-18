@@ -7,7 +7,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -46,14 +46,16 @@ export function TrialBalanceTable({
   showGrandTotal = true,
   className,
 }: TrialBalanceTableProps) {
-  // 科目タイプ別小計を計算
-  const calculateSubtotals = (): AccountTypeSubtotal[] => {
-    const subtotals = new Map<string, AccountTypeSubtotal>();
+  // 科目タイプ別小計を計算（メモ化）
+  const subtotals = useMemo((): AccountTypeSubtotal[] => {
+    if (!showSubtotals) return [];
+
+    const subtotalsMap = new Map<string, AccountTypeSubtotal>();
 
     data.forEach((item) => {
       // レベル0（親科目）のみを集計対象とする
       if (item.level === 0) {
-        const existing = subtotals.get(item.accountType) || {
+        const existing = subtotalsMap.get(item.accountType) || {
           accountType: item.accountType,
           openingBalance: 0,
           debitAmount: 0,
@@ -68,17 +70,19 @@ export function TrialBalanceTable({
         existing.closingBalance += item.closingBalance;
         existing.count += 1;
 
-        subtotals.set(item.accountType, existing);
+        subtotalsMap.set(item.accountType, existing);
       }
     });
 
-    return Array.from(subtotals.values()).sort((a, b) =>
+    return Array.from(subtotalsMap.values()).sort((a, b) =>
       a.accountType.localeCompare(b.accountType)
     );
-  };
+  }, [data, showSubtotals]);
 
-  // 総合計を計算
-  const calculateGrandTotal = () => {
+  // 総合計を計算（メモ化）
+  const grandTotal = useMemo(() => {
+    if (!showGrandTotal) return null;
+
     const parentAccounts = data.filter((item) => item.level === 0);
 
     return parentAccounts.reduce(
@@ -95,22 +99,23 @@ export function TrialBalanceTable({
         closingBalance: 0,
       }
     );
-  };
+  }, [data, showGrandTotal]);
 
-  const subtotals = showSubtotals ? calculateSubtotals() : [];
-  const grandTotal = showGrandTotal ? calculateGrandTotal() : null;
+  // データを科目タイプ別にグループ化（メモ化）
+  const { groupedData, accountTypes } = useMemo(() => {
+    const grouped = data.reduce((groups, item) => {
+      const type = item.accountType;
+      if (!groups[type]) {
+        groups[type] = [];
+      }
+      groups[type].push(item);
+      return groups;
+    }, {} as Record<string, TrialBalanceData[]>);
 
-  // データを科目タイプ別にグループ化
-  const groupedData = data.reduce((groups, item) => {
-    const type = item.accountType;
-    if (!groups[type]) {
-      groups[type] = [];
-    }
-    groups[type].push(item);
-    return groups;
-  }, {} as Record<string, TrialBalanceData[]>);
+    const types = Object.keys(grouped).sort();
 
-  const accountTypes = Object.keys(groupedData).sort();
+    return { groupedData: grouped, accountTypes: types };
+  }, [data]);
 
   return (
     <div className={cn("overflow-x-auto", className)}>
