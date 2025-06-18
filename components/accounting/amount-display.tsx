@@ -12,6 +12,7 @@ interface AmountDisplayProps {
   negative?: boolean;
   size?: "sm" | "md" | "lg";
   align?: "left" | "right" | "center";
+  monospace?: boolean;
 }
 
 // 定義済みのクラス名（CSVバンドル時の最適化回避）
@@ -27,6 +28,7 @@ export function AmountDisplay({
   negative,
   size = "md",
   align = "right",
+  monospace = true,
 }: AmountDisplayProps) {
   const numericAmount =
     typeof amount === "string" ? parseFloat(amount) || 0 : amount;
@@ -52,10 +54,13 @@ export function AmountDisplay({
     center: "text-center",
   };
 
+  const fontClasses = monospace ? "font-mono" : "font-sans";
+
   return (
     <span
       className={cn(
-        "font-mono font-medium",
+        fontClasses,
+        "font-medium",
         sizeClasses[size],
         alignClasses[align],
         isZero && "text-muted-foreground",

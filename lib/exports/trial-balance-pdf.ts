@@ -10,6 +10,7 @@ import html2canvas from "html2canvas";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { TrialBalanceData } from "@/app/actions/trial-balance";
+import { loadJapaneseFont } from "@/lib/utils/load-jspdf-japanese-font";
 
 export interface TrialBalancePdfOptions {
   data: TrialBalanceData[];
@@ -43,8 +44,10 @@ export async function generateTrialBalancePdf(
       format: "a4",
     });
 
-    // フォント設定（日本語対応）
-    pdf.setFont("helvetica");
+    // 日本語フォント読み込み
+    await loadJapaneseFont(pdf);
+
+    pdf.setFont("SawarabiGothic", "normal");
 
     let yPosition = 20;
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -86,7 +89,7 @@ export async function generateTrialBalancePdf(
     const colWidths = [20, 35, 15, 30, 25, 25, 25, 25]; // mm
 
     pdf.setFontSize(9);
-    pdf.setFont("helvetica", "bold");
+    pdf.setFont("SawarabiGothic", "normal");
 
     let xPosition = margin;
     headers.forEach((header, index) => {
@@ -101,7 +104,7 @@ export async function generateTrialBalancePdf(
     yPosition += 8;
 
     // データ行
-    pdf.setFont("helvetica", "normal");
+    pdf.setFont("SawarabiGothic", "normal");
     pdf.setFontSize(8);
 
     for (const item of data) {
@@ -111,7 +114,7 @@ export async function generateTrialBalancePdf(
         yPosition = 20;
 
         // 新ページでのヘッダー再描画
-        pdf.setFont("helvetica", "bold");
+        pdf.setFont("SawarabiGothic", "normal");
         pdf.setFontSize(9);
         xPosition = margin;
         headers.forEach((header, index) => {
@@ -122,7 +125,7 @@ export async function generateTrialBalancePdf(
         });
         pdf.line(margin, yPosition + 2, pageWidth - margin, yPosition + 2);
         yPosition += 8;
-        pdf.setFont("helvetica", "normal");
+        pdf.setFont("SawarabiGothic", "normal");
         pdf.setFontSize(8);
       }
 

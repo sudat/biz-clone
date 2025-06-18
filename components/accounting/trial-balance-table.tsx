@@ -203,24 +203,28 @@ export function TrialBalanceTable({
                             <BalanceAmount
                               amount={item.openingBalance}
                               showCurrency={true}
+                              monospace={false}
                             />
                           </TableCell>
                           <TableCell className="text-right border-r">
                             <AmountDisplay
                               amount={item.debitAmount}
                               showCurrency={true}
+                              monospace={false}
                             />
                           </TableCell>
                           <TableCell className="text-right border-r">
                             <AmountDisplay
                               amount={item.creditAmount}
                               showCurrency={true}
+                              monospace={false}
                             />
                           </TableCell>
                           <TableCell className="text-right">
                             <BalanceAmount
                               amount={item.closingBalance}
                               showCurrency={true}
+                              monospace={false}
                             />
                           </TableCell>
                         </TableRow>
@@ -244,6 +248,7 @@ export function TrialBalanceTable({
                                 amount={subtotal.openingBalance}
                                 showCurrency={true}
                                 className="font-semibold text-slate-700"
+                                monospace={false}
                               />
                             </TableCell>
                             <TableCell className="text-right border-r">
@@ -251,6 +256,7 @@ export function TrialBalanceTable({
                                 amount={subtotal.debitAmount}
                                 showCurrency={true}
                                 className="font-semibold text-slate-700"
+                                monospace={false}
                               />
                             </TableCell>
                             <TableCell className="text-right border-r">
@@ -258,6 +264,7 @@ export function TrialBalanceTable({
                                 amount={subtotal.creditAmount}
                                 showCurrency={true}
                                 className="font-semibold text-slate-700"
+                                monospace={false}
                               />
                             </TableCell>
                             <TableCell className="text-right">
@@ -265,6 +272,7 @@ export function TrialBalanceTable({
                                 amount={subtotal.closingBalance}
                                 showCurrency={true}
                                 className="font-semibold text-slate-700"
+                                monospace={false}
                               />
                             </TableCell>
                           </TableRow>
@@ -300,24 +308,28 @@ export function TrialBalanceTable({
                         <BalanceAmount
                           amount={item.openingBalance}
                           showCurrency={true}
+                          monospace={false}
                         />
                       </TableCell>
                       <TableCell className="text-right border-r">
                         <AmountDisplay
                           amount={item.debitAmount}
                           showCurrency={true}
+                          monospace={false}
                         />
                       </TableCell>
                       <TableCell className="text-right border-r">
                         <AmountDisplay
                           amount={item.creditAmount}
                           showCurrency={true}
+                          monospace={false}
                         />
                       </TableCell>
                       <TableCell className="text-right">
                         <BalanceAmount
                           amount={item.closingBalance}
                           showCurrency={true}
+                          monospace={false}
                         />
                       </TableCell>
                     </TableRow>
@@ -337,6 +349,7 @@ export function TrialBalanceTable({
                       amount={grandTotal.openingBalance}
                       showCurrency={true}
                       className="font-bold text-slate-900"
+                      monospace={false}
                     />
                   </TableCell>
                   <TableCell className="text-right border-r">
@@ -344,6 +357,7 @@ export function TrialBalanceTable({
                       amount={grandTotal.debitAmount}
                       showCurrency={true}
                       className="font-bold text-slate-900"
+                      monospace={false}
                     />
                   </TableCell>
                   <TableCell className="text-right border-r">
@@ -351,6 +365,7 @@ export function TrialBalanceTable({
                       amount={grandTotal.creditAmount}
                       showCurrency={true}
                       className="font-bold text-slate-900"
+                      monospace={false}
                     />
                   </TableCell>
                   <TableCell className="text-right">
@@ -358,6 +373,7 @@ export function TrialBalanceTable({
                       amount={grandTotal.closingBalance}
                       showCurrency={true}
                       className="font-bold text-slate-900"
+                      monospace={false}
                     />
                   </TableCell>
                 </TableRow>
