@@ -1,6 +1,7 @@
 import { faker } from "@faker-js/faker";
 import { prisma } from "@/lib/database/prisma";
 import { Prisma } from "@prisma/client";
+import { JournalNumberService } from "@/lib/database/journal-number";
 
 /**
  * 開発・デモ用途のダミー仕訳を大量生成するユーティリティ。
@@ -9,7 +10,20 @@ import { Prisma } from "@prisma/client";
  * - 既存のマスターデータ（勘定科目・税区分）を利用
  * - 本番コードから独立しているため import して呼び出すだけで利用可能
  */
-export async function generateSampleJournals(count = 1000) {
+export async function generateSampleJournals(
+  count = 1000,
+  clearExisting = false,
+) {
+  // 既存データのクリアが指定されている場合
+  if (clearExisting) {
+    console.log("既存の仕訳データをクリアしています...");
+    await prisma.$transaction([
+      prisma.journalDetail.deleteMany({}),
+      prisma.journalHeader.deleteMany({}),
+    ]);
+    console.log("✔ 既存の仕訳データをクリアしました");
+  }
+
   // 借方・貸方候補の勘定科目を取得
   const accounts = await prisma.account.findMany({
     where: { isActive: true, isDetail: true, isTaxAccount: false },
@@ -37,7 +51,6 @@ export async function generateSampleJournals(count = 1000) {
     throw new Error("借方／貸方の候補勘定科目が不足しています。");
   }
 
-  // 乱数シード固定で再現性を持たせても良いが、ここでは都度ランダム
   console.time(`generateSampleJournals(${count})`);
 
   for (let i = 0; i < count; i++) {
@@ -51,17 +64,24 @@ export async function generateSampleJournals(count = 1000) {
     const taxAmount = Math.round(baseAmount * taxRateDecimal);
     const totalAmount = baseAmount + taxAmount;
 
-    // 連番形式: JVYYYYMMDDxxxx
+    // 仕訳日付を生成（今年の範囲内でランダム）
     const journalDate = faker.date.between({
       from: new Date(`${new Date().getFullYear()}-01-01`),
       to: new Date(`${new Date().getFullYear()}-12-31`),
     });
-    const journalNumber = `JV${
-      journalDate
-        .toISOString()
-        .slice(0, 10)
-        .replace(/-/g, "")
-    }${String(i + 1).padStart(4, "0")}`;
+
+    // 正しい仕訳番号採番ロジックを使用（YYYYMMDD + 6桁連番）
+    const journalDateStr = journalDate.toISOString().slice(0, 10);
+    const journalNumberResult = await JournalNumberService
+      .generateNextJournalNumber(journalDateStr);
+
+    if (!journalNumberResult.success || !journalNumberResult.data) {
+      throw new Error(
+        `仕訳番号の生成に失敗しました: ${journalNumberResult.error}`,
+      );
+    }
+
+    const journalNumber = journalNumberResult.data;
 
     // Prisma Decimal 型へ変換
     const baseDec = new Prisma.Decimal(baseAmount);
@@ -102,6 +122,11 @@ export async function generateSampleJournals(count = 1000) {
         ],
       }),
     ]);
+
+    // 進捗表示
+    if ((i + 1) % 5 === 0 || i === count - 1) {
+      console.log(`進捗: ${i + 1}/${count} 件完了`);
+    }
   }
 
   console.timeEnd(`generateSampleJournals(${count})`);
