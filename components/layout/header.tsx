@@ -112,6 +112,14 @@ export function Header() {
                     </MenubarItem>
                     <MenubarItem asChild>
                       <Link
+                        href="/master/tax-rates"
+                        className="px-4 py-3 text-base"
+                      >
+                        税区分
+                      </Link>
+                    </MenubarItem>
+                    <MenubarItem asChild>
+                      <Link
                         href="/master/roles"
                         className="px-4 py-3 text-base"
                       >
@@ -311,6 +319,13 @@ export function Header() {
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     ユーザ
+                  </Link>
+                  <Link
+                    href="/master/tax-rates"
+                    className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors ml-4"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    税区分
                   </Link>
                 </div>
 

@@ -302,7 +302,7 @@ export function SubAccountMasterForm({
                     const value = e.target.value;
                     field.onChange(value === "" ? null : parseInt(value));
                   }}
-                  value={field.value || ""}
+                  value={field.value?.toString() ?? ""}
                 />
               </FormControl>
               <FormDescription>表示順序を指定します（省略可）</FormDescription>

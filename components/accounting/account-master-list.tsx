@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, RefreshCw } from "lucide-react";
+import { showErrorToast } from "@/components/ui/error-toast";
+import { ErrorType } from "@/lib/types/errors";
 import {
   Dialog,
   DialogContent,
@@ -249,10 +251,23 @@ export function AccountMasterList() {
           // 削除成功時はリフレッシュ
           await refreshData();
         } else {
-          alert("削除エラー: " + result.error);
+          // エラーレスポンスがある場合はそれを使用し、そうでなければデフォルトメッセージ
+          const errorInfo = result.error || {
+            type: ErrorType.BUSINESS,
+            message: "削除に失敗しました",
+            details: { retryable: false }
+          };
+          showErrorToast(errorInfo);
         }
       } catch (error) {
-        alert("削除エラー: " + error);
+        showErrorToast({
+          type: ErrorType.SYSTEM,
+          message: "削除処理中にエラーが発生しました",
+          details: { 
+            originalError: error instanceof Error ? error.message : String(error),
+            retryable: true 
+          }
+        });
       }
     }
   };

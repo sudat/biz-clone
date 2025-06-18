@@ -44,6 +44,13 @@ export type UserForClient = Omit<User, "passwordHash"> & {
   passwordHash?: string;
 };
 
+// フロントエンド用の税区分型（Decimal型をnumber型に変換）
+export type TaxRateForClient = Omit<TaxRate, "taxRate"> & {
+  taxRate: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 // よく使用される複合型
 export interface AccountWithDetails extends Account {
   subAccounts?: SubAccount[];

@@ -18,7 +18,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { JournalDetailInquiryData } from "@/app/actions/journal-inquiry";
 import { useState, useEffect } from "react";
-import { getTaxRates, type TaxRateForClient } from "@/app/actions/tax-rates";
+import { getTaxRates } from "@/app/actions/tax-rates";
+import type { TaxRateForClient } from "@/types/unified";
 
 interface JournalDetailViewProps {
   details: JournalDetailInquiryData[];

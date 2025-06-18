@@ -400,7 +400,7 @@ export function AnalysisCodeMasterForm({
                     type="number"
                     min="0"
                     placeholder="例: 1"
-                    value={field.value || ""}
+                    value={field.value?.toString() ?? ""}
                     onChange={(e) => {
                       const value = e.target.value;
                       field.onChange(

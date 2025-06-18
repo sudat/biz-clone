@@ -5,7 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createAccount, updateAccount, checkAccountCodeExists, getAccounts, type AccountForClient } from "@/app/actions/accounts";
-import { getTaxRates, createTaxRate, type TaxRateForClient } from "@/app/actions/tax-rates";
+import { getTaxRates, createTaxRate } from "@/app/actions/tax-rates";
+import type { TaxRateForClient } from "@/types/unified";
 import { ACCOUNT_TYPE_LIST, ACCOUNT_TYPE_OPTIONS, type AccountType } from "@/types/master-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -233,7 +234,7 @@ export function AccountMasterForm({
           setIsAddingNewTaxRate(false);
           showSuccessToast(`税区分「${taxName}」を追加しました`);
         } else {
-          showErrorToast(createSystemError(result.error || "税区分の追加に失敗しました", "税区分追加"));
+          showErrorToast(createSystemError(String(result.error) || "税区分の追加に失敗しました", "税区分追加"));
         }
       } catch (error) {
         console.error("税区分追加エラー:", error);
@@ -576,7 +577,7 @@ export function AccountMasterForm({
                     const value = e.target.value;
                     field.onChange(value === "" ? null : parseInt(value));
                   }}
-                  value={field.value || ""}
+                  value={field.value?.toString() ?? ""}
                 />
               </FormControl>
               <FormDescription>表示順序を指定します（省略可）</FormDescription>

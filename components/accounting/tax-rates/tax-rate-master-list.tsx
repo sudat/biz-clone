@@ -1,18 +1,18 @@
 "use client";
 
 import {
-  deleteRole,
-  getRoles,
-  searchRoles,
-  type RoleForClient,
-} from "@/app/actions/roles";
+  deleteTaxRate,
+  getTaxRates,
+  searchTaxRates,
+} from "@/app/actions/tax-rates";
+import type { TaxRateForClient } from "@/types/unified";
 import {
   MasterDataSearch,
   SearchFilter,
   SearchState,
   SortOption,
 } from "@/components/accounting/master-data-search";
-import { RoleMasterForm } from "@/components/accounting/role-master-form";
+import { TaxRateMasterForm } from "@/components/accounting/tax-rates/tax-rate-master-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,7 +35,6 @@ import {
   highlightSearchTerm,
   searchAndSort,
 } from "@/lib/utils/search-filter";
-import { ROLE_TYPE_LIST } from "@/types/master-types";
 import { Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { showErrorToast } from "@/components/ui/error-toast";
@@ -43,34 +42,37 @@ import { ErrorType } from "@/lib/types/errors";
 
 const searchFilters: SearchFilter[] = [
   {
-    field: "roleType",
-    label: "ロール種別",
+    field: "taxRateRange",
+    label: "税率範囲",
     type: "select",
-    options: ROLE_TYPE_LIST.map((type) => ({
-      value: type,
-      label: type,
-    })),
+    options: [
+      { value: "0", label: "0%" },
+      { value: "8", label: "8%" },
+      { value: "10", label: "10%" },
+      { value: "other", label: "その他" },
+    ],
   },
 ];
 
 const sortOptions: SortOption[] = [
-  { field: "roleCode", label: "コード順" },
-  { field: "roleName", label: "名称順" },
+  { field: "taxCode", label: "コード順" },
+  { field: "taxName", label: "名称順" },
+  { field: "taxRate", label: "税率順" },
   { field: "sortOrder", label: "並び順" },
   { field: "createdAt", label: "作成日順" },
 ];
 
-export function RoleMasterList() {
-  const [roles, setRoles] = useState<RoleForClient[]>([]);
+export function TaxRateMasterList() {
+  const [taxRates, setTaxRates] = useState<TaxRateForClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchState, setSearchState] = useState<SearchState>({
     searchTerm: "",
     filters: {},
-    sortField: "roleCode",
+    sortField: "taxCode",
     sortDirection: "asc",
     activeOnly: false,
   });
-  const [editingRole, setEditingRole] = useState<RoleForClient | null>(null);
+  const [editingTaxRate, setEditingTaxRate] = useState<TaxRateForClient | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [useServerSearch, setUseServerSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -79,36 +81,36 @@ export function RoleMasterList() {
   const refreshData = useCallback(async () => {
     setRefreshing(true);
     try {
-      const result = await getRoles();
+      const result = await getTaxRates();
       if (result.success && result.data) {
-        setRoles(result.data || []);
+        setTaxRates(result.data || []);
       } else if (!result.success) {
-        console.error("ロールデータの取得エラー:", result.error);
+        console.error("税区分データの取得エラー:", result.error);
       }
     } catch (error) {
-      console.error("ロールデータの取得エラー:", error);
+      console.error("税区分データの取得エラー:", error);
     } finally {
       setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    if (roles.length === 0) {
-      loadRoles();
+    if (taxRates.length === 0) {
+      loadTaxRates();
     }
-  }, [roles.length]);
+  }, [taxRates.length]);
 
-  const loadRoles = async () => {
+  const loadTaxRates = async () => {
     setLoading(true);
     try {
-      const result = await getRoles();
+      const result = await getTaxRates();
       if (result.success && result.data) {
-        setRoles(result.data || []);
+        setTaxRates(result.data || []);
       } else if (!result.success) {
-        console.error("ロールデータの取得エラー:", result.error);
+        console.error("税区分データの取得エラー:", result.error);
       }
     } catch (error) {
-      console.error("ロールデータの取得エラー:", error);
+      console.error("税区分データの取得エラー:", error);
     } finally {
       setLoading(false);
     }
@@ -118,12 +120,12 @@ export function RoleMasterList() {
   const performServerSearch = useCallback(async (searchState: SearchState) => {
     setLoading(true);
     try {
-      const result = await searchRoles(searchState.searchTerm, {
+      const result = await searchTaxRates(searchState.searchTerm, {
         isActive: searchState.activeOnly ? true : undefined,
       });
 
       if (result.success) {
-        setRoles(result.data || []);
+        setTaxRates(result.data || []);
       } else {
         console.error("検索エラー:", result.error);
       }
@@ -135,42 +137,37 @@ export function RoleMasterList() {
   }, []);
 
   // クライアントサイド検索・フィルタリング
-  const filteredRoles = useMemo(() => {
-    let processedRoles = roles;
+  const filteredTaxRates = useMemo(() => {
+    let processedTaxRates = taxRates;
 
     if (useServerSearch) {
-      processedRoles = roles; // サーバーサイド検索済みのデータをそのまま使用
+      processedTaxRates = taxRates; // サーバーサイド検索済みのデータをそのまま使用
     } else {
       // まず基本的な検索とソートを適用
-      processedRoles = searchAndSort(roles, searchState, [
-        "roleCode",
-        "roleName",
-        "description",
+      processedTaxRates = searchAndSort(taxRates, searchState, [
+        "taxCode",
+        "taxName",
       ]);
 
-      // ロール種別フィルタを手動で適用
-      if (searchState.filters.roleType) {
-        const filterType = searchState.filters.roleType;
-        processedRoles = processedRoles.filter((role) => {
-          // ロール名や説明に基づいてロール種別を判定
-          const roleName = role.roleName.toLowerCase();
-          const description = (role.description || "").toLowerCase();
-          const filterTypeLower = filterType.toLowerCase();
-
-          return (
-            roleName.includes(filterTypeLower) ||
-            description.includes(filterTypeLower)
-          );
+      // 税率範囲フィルタを手動で適用
+      if (searchState.filters.taxRateRange) {
+        const filterValue = searchState.filters.taxRateRange;
+        processedTaxRates = processedTaxRates.filter((taxRate) => {
+          if (filterValue === "0") return taxRate.taxRate === 0;
+          if (filterValue === "8") return taxRate.taxRate === 8;
+          if (filterValue === "10") return taxRate.taxRate === 10;
+          if (filterValue === "other") return ![0, 8, 10].includes(taxRate.taxRate);
+          return true;
         });
       }
     }
 
-    return processedRoles;
-  }, [roles, searchState, useServerSearch]);
+    return processedTaxRates;
+  }, [taxRates, searchState, useServerSearch]);
 
   const searchStats = useMemo(() => {
-    return getSearchStats(roles, filteredRoles);
-  }, [roles, filteredRoles]);
+    return getSearchStats(taxRates, filteredTaxRates);
+  }, [taxRates, filteredTaxRates]);
 
   const handleSearchChange = useCallback(
     (newSearchState: SearchState) => {
@@ -194,19 +191,19 @@ export function RoleMasterList() {
     if (!useServerSearch) {
       performServerSearch(searchState);
     } else {
-      loadRoles();
+      loadTaxRates();
     }
   };
 
-  const handleEdit = (role: RoleForClient) => {
-    setEditingRole(role);
+  const handleEdit = (taxRate: TaxRateForClient) => {
+    setEditingTaxRate(taxRate);
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (role: RoleForClient) => {
-    if (confirm(`ロール「${role.roleName}」を削除しますか？`)) {
+  const handleDelete = async (taxRate: TaxRateForClient) => {
+    if (confirm(`税区分「${taxRate.taxName}」を削除しますか？`)) {
       try {
-        const result = await deleteRole(role.roleCode);
+        const result = await deleteTaxRate(taxRate.taxCode);
         if (result.success) {
           // 削除成功時はリフレッシュ
           await refreshData();
@@ -234,7 +231,7 @@ export function RoleMasterList() {
 
   const handleFormSubmit = async () => {
     setIsDialogOpen(false);
-    setEditingRole(null);
+    setEditingTaxRate(null);
     // フォーム送信後は手動でリフレッシュ
     await refreshData();
   };
@@ -248,6 +245,10 @@ export function RoleMasterList() {
         }}
       />
     );
+  };
+
+  const formatTaxRate = (rate: number) => {
+    return `${rate.toFixed(2)}%`;
   };
 
   if (loading && !refreshing) {
@@ -264,10 +265,10 @@ export function RoleMasterList() {
       <div className="space-y-4">
         {/* 検索・フィルタコンポーネント */}
         <MasterDataSearch
-          placeholder="ロールコード・名称・説明で検索..."
+          placeholder="税区分コード・名称で検索..."
           searchFilters={searchFilters}
           sortOptions={sortOptions}
-          defaultSortField="roleCode"
+          defaultSortField="taxCode"
           onSearchChange={handleSearchChange}
         />
 
@@ -318,14 +319,14 @@ export function RoleMasterList() {
               <TableRow>
                 <TableHead>コード</TableHead>
                 <TableHead>名称</TableHead>
-                <TableHead>説明</TableHead>
+                <TableHead>税率</TableHead>
                 <TableHead>並び順</TableHead>
                 <TableHead>状態</TableHead>
                 <TableHead className="text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRoles.length === 0 ? (
+              {filteredTaxRates.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={6}
@@ -334,34 +335,28 @@ export function RoleMasterList() {
                     {searchState.searchTerm ||
                     Object.keys(searchState.filters).length > 0 ||
                     searchState.activeOnly
-                      ? "検索条件に一致するロールが見つかりませんでした"
-                      : "ロールが登録されていません"}
+                      ? "検索条件に一致する税区分が見つかりませんでした"
+                      : "税区分が登録されていません"}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredRoles.map((role) => (
-                  <TableRow key={role.roleCode}>
+                filteredTaxRates.map((taxRate) => (
+                  <TableRow key={taxRate.taxCode}>
                     <TableCell className="font-mono">
-                      {renderHighlightedText(role.roleCode)}
+                      {renderHighlightedText(taxRate.taxCode)}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {renderHighlightedText(role.roleName)}
+                      {renderHighlightedText(taxRate.taxName)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {formatTaxRate(taxRate.taxRate)}
                     </TableCell>
                     <TableCell>
-                      {role.description ? (
-                        renderHighlightedText(role.description)
-                      ) : (
-                        <span className="text-muted-foreground text-sm">
-                          未設定
-                        </span>
-                      )}
+                      {taxRate.sortOrder !== null ? taxRate.sortOrder : "-"}
                     </TableCell>
                     <TableCell>
-                      {role.sortOrder !== null ? role.sortOrder : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={role.isActive ? "default" : "outline"}>
-                        {role.isActive ? "有効" : "無効"}
+                      <Badge variant={taxRate.isActive ? "default" : "outline"}>
+                        {taxRate.isActive ? "有効" : "無効"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -370,7 +365,7 @@ export function RoleMasterList() {
                           variant="outline"
                           size="sm"
                           className="cursor-pointer"
-                          onClick={() => handleEdit(role)}
+                          onClick={() => handleEdit(taxRate)}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -378,7 +373,7 @@ export function RoleMasterList() {
                           variant="outline"
                           size="sm"
                           className="cursor-pointer"
-                          onClick={() => handleDelete(role)}
+                          onClick={() => handleDelete(taxRate)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -396,18 +391,18 @@ export function RoleMasterList() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-hide">
           <DialogHeader>
             <DialogTitle>
-              {editingRole ? "ロール編集" : "新規ロール作成"}
+              {editingTaxRate ? "税区分編集" : "新規税区分作成"}
             </DialogTitle>
             <DialogDescription>
-              ロールの情報を入力してください。
+              税区分の情報を入力してください。
             </DialogDescription>
           </DialogHeader>
-          <RoleMasterForm
-            role={editingRole}
+          <TaxRateMasterForm
+            taxRate={editingTaxRate}
             onSubmit={handleFormSubmit}
             onCancel={() => {
               setIsDialogOpen(false);
-              setEditingRole(null);
+              setEditingTaxRate(null);
             }}
           />
         </DialogContent>
@@ -416,4 +411,4 @@ export function RoleMasterList() {
   );
 }
 
-export default RoleMasterList;
+export default TaxRateMasterList;

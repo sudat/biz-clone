@@ -26,7 +26,8 @@ import {
   getJournalLedgerData,
   JournalInquiryData,
 } from "@/app/actions/journal-inquiry";
-import { getTaxRates, type TaxRateForClient } from "@/app/actions/tax-rates";
+import { getTaxRates } from "@/app/actions/tax-rates";
+import type { TaxRateForClient } from "@/types/unified";
 import { toast } from "sonner";
 
 export default function JournalReportPage() {

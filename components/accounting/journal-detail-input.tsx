@@ -25,8 +25,9 @@ import { cn } from "@/lib/utils";
 import { MasterCodeInput } from "./master-code-input";
 
 import type { JournalDetailData } from "@/types/journal";
-import { getTaxRates, type TaxRateForClient } from "@/app/actions/tax-rates";
+import { getTaxRates } from "@/app/actions/tax-rates";
 import { getAccounts } from "@/app/actions/accounts";
+import type { TaxRateForClient } from "@/types/unified";
 
 interface JournalDetailInputProps {
   type: "debit" | "credit";
