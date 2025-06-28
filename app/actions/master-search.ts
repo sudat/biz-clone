@@ -13,7 +13,7 @@ import { prisma } from "@/lib/database/prisma";
 export interface MasterSearchResult {
   code: string;
   name: string;
-  type: 'account' | 'subAccount' | 'partner' | 'analysisCode' | 'role';
+  type: 'account' | 'subAccount' | 'partner' | 'analysisCode' | 'department' | 'role';
 }
 
 // 勘定科目検索
@@ -138,6 +138,35 @@ export async function searchAnalysisCodes(query: string): Promise<MasterSearchRe
   }
 }
 
+// 計上部門検索
+export async function searchDepartments(query: string): Promise<MasterSearchResult[]> {
+  try {
+    if (!query || query.length < 1) return [];
+
+    const departments = await prisma.department.findMany({
+      where: {
+        OR: [
+          { departmentCode: { contains: query, mode: 'insensitive' } },
+          { departmentName: { contains: query, mode: 'insensitive' } }
+        ]
+      },
+      take: 10,
+      orderBy: [
+        { departmentCode: 'asc' }
+      ]
+    });
+
+    return departments.map(department => ({
+      code: department.departmentCode,
+      name: department.departmentName,
+      type: 'department' as const
+    }));
+  } catch (error) {
+    console.error('計上部門検索エラー:', error);
+    return [];
+  }
+}
+
 // 統合検索（全マスタを対象）
 export async function searchAllMasters(query: string): Promise<MasterSearchResult[]> {
   try {
@@ -157,7 +186,7 @@ export async function searchAllMasters(query: string): Promise<MasterSearchResul
 }
 
 // コードから名称を取得
-export async function getMasterName(type: 'account' | 'subAccount' | 'partner' | 'analysisCode', code: string, parentCode?: string): Promise<string | null> {
+export async function getMasterName(type: 'account' | 'subAccount' | 'partner' | 'analysisCode' | 'department', code: string, parentCode?: string): Promise<string | null> {
   try {
     if (!code) return null;
 
@@ -194,6 +223,12 @@ export async function getMasterName(type: 'account' | 'subAccount' | 'partner' |
           where: { analysisCode: code }
         });
         return analysisCode?.analysisName || null;
+
+      case 'department':
+        const department = await prisma.department.findUnique({
+          where: { departmentCode: code }
+        });
+        return department?.departmentName || null;
 
       default:
         return null;
@@ -292,6 +327,30 @@ export async function getAllAnalysisCodes(): Promise<MasterSearchResult[]> {
     }));
   } catch (error) {
     console.error('全分析コード取得エラー:', error);
+    return [];
+  }
+}
+
+// 全計上部門取得
+export async function getAllDepartments(): Promise<MasterSearchResult[]> {
+  try {
+    const departments = await prisma.department.findMany({
+      where: {
+        isActive: true  // 有効な計上部門のみ
+      },
+      orderBy: [
+        { sortOrder: 'asc' },
+        { departmentCode: 'asc' }
+      ]
+    });
+
+    return departments.map(department => ({
+      code: department.departmentCode,
+      name: department.departmentName,
+      type: 'department' as const
+    }));
+  } catch (error) {
+    console.error('全計上部門取得エラー:', error);
     return [];
   }
 }

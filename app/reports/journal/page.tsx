@@ -156,7 +156,7 @@ export default function JournalReportPage() {
     try {
       // CSVヘッダー
       const csvHeaders = [
-        "日付",
+        "計上日",
         "仕訳番号",
         "伝票摘要",
         "行番号",
@@ -327,7 +327,7 @@ export default function JournalReportPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-center w-20 print:w-auto">
-                      日付
+                      計上日
                     </TableHead>
                     <TableHead className="text-center w-32 print:w-auto">
                       仕訳番号

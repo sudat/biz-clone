@@ -72,3 +72,11 @@ export {
   type CreateTaxRateInput,
   type UpdateTaxRateInput
 } from "./tax-rates";
+
+// 計上部門スキーマ
+export {
+  createDepartmentSchema,
+  updateDepartmentSchema,
+  type CreateDepartmentInput,
+  type UpdateDepartmentInput
+} from "./department";

@@ -112,6 +112,14 @@ export function Header() {
                     </MenubarItem>
                     <MenubarItem asChild>
                       <Link
+                        href="/master/departments"
+                        className="px-4 py-3 text-base"
+                      >
+                        計上部門
+                      </Link>
+                    </MenubarItem>
+                    <MenubarItem asChild>
+                      <Link
                         href="/master/tax-rates"
                         className="px-4 py-3 text-base"
                       >
@@ -305,6 +313,20 @@ export function Header() {
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     分析コード
+                  </Link>
+                  <Link
+                    href="/master/departments"
+                    className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors ml-4"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    計上部門
+                  </Link>
+                  <Link
+                    href="/master/tax-rates"
+                    className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors ml-4"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    税区分
                   </Link>
                   <Link
                     href="/master/roles"

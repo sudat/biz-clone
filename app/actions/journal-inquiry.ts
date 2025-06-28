@@ -58,6 +58,8 @@ export interface JournalDetailInquiryData {
   partnerName: string | null;
   analysisCode: string | null;
   analysisCodeName: string | null;
+  departmentCode: string | null;
+  departmentName: string | null;
   baseAmount: number;
   taxAmount: number;
   totalAmount: number;
@@ -97,6 +99,7 @@ export async function getJournalByNumber(
             subAccount: true,
             partner: true,
             analysisCodeRel: true,
+            department: true,
           },
           orderBy: { lineNumber: "asc" },
         },
@@ -144,6 +147,8 @@ export async function getJournalByNumber(
         partnerName: detail.partner?.partnerName || null,
         analysisCode: detail.analysisCode,
         analysisCodeName: detail.analysisCodeRel?.analysisName || null,
+        departmentCode: detail.departmentCode,
+        departmentName: detail.department?.departmentName || null,
         baseAmount: detail.baseAmount.toNumber(),
         taxAmount: detail.taxAmount.toNumber(),
         totalAmount: detail.totalAmount.toNumber(),
@@ -244,6 +249,7 @@ export async function getJournals(params: {
               subAccount: true,
               partner: true,
               analysisCodeRel: true,
+            department: true,
             },
             orderBy: { lineNumber: "asc" },
           },
@@ -286,6 +292,8 @@ export async function getJournals(params: {
         partnerName: detail.partner?.partnerName || null,
         analysisCode: detail.analysisCode,
         analysisCodeName: detail.analysisCodeRel?.analysisName || null,
+        departmentCode: detail.departmentCode,
+        departmentName: detail.department?.departmentName || null,
         baseAmount: detail.baseAmount.toNumber(),
         taxAmount: detail.taxAmount.toNumber(),
         totalAmount: detail.totalAmount.toNumber(),
@@ -450,6 +458,7 @@ export async function getJournalLedgerData(params: {
             subAccount: true,
             partner: true,
             analysisCodeRel: true,
+            department: true,
           },
           orderBy: { lineNumber: "asc" },
         },
@@ -491,6 +500,8 @@ export async function getJournalLedgerData(params: {
         partnerName: detail.partner?.partnerName || null,
         analysisCode: detail.analysisCode,
         analysisCodeName: detail.analysisCodeRel?.analysisName || null,
+        departmentCode: detail.departmentCode,
+        departmentName: detail.department?.departmentName || null,
         baseAmount: detail.baseAmount?.toNumber() || 0,
         taxAmount: detail.taxAmount?.toNumber() || 0,
         totalAmount: detail.totalAmount?.toNumber() || 0,
@@ -562,6 +573,7 @@ export async function getUserCreatedPendingJournals(params: {
               subAccount: true,
               partner: true,
               analysisCodeRel: true,
+            department: true,
             },
             orderBy: { lineNumber: "asc" },
           },
@@ -604,6 +616,8 @@ export async function getUserCreatedPendingJournals(params: {
         partnerName: detail.partner?.partnerName || null,
         analysisCode: detail.analysisCode,
         analysisCodeName: detail.analysisCodeRel?.analysisName || null,
+        departmentCode: detail.departmentCode,
+        departmentName: detail.department?.departmentName || null,
         baseAmount: detail.baseAmount.toNumber(),
         taxAmount: detail.taxAmount.toNumber(),
         totalAmount: detail.totalAmount.toNumber(),
@@ -823,6 +837,7 @@ export async function getApprovableJournals(params: {
               subAccount: true,
               partner: true,
               analysisCodeRel: true,
+            department: true,
             },
             orderBy: [
               { lineNumber: "asc" },
@@ -867,6 +882,8 @@ export async function getApprovableJournals(params: {
         partnerName: detail.partner?.partnerName || null,
         analysisCode: detail.analysisCode,
         analysisCodeName: detail.analysisCodeRel?.analysisName || null,
+        departmentCode: detail.departmentCode,
+        departmentName: detail.department?.departmentName || null,
         baseAmount: detail.baseAmount.toNumber(),
         taxAmount: detail.taxAmount.toNumber(),
         totalAmount: detail.totalAmount.toNumber(),
@@ -935,6 +952,7 @@ export async function getApprovedJournalsByUser(params: {
               subAccount: true,
               partner: true,
               analysisCodeRel: true,
+            department: true,
             },
             orderBy: { lineNumber: "asc" },
           },
@@ -977,6 +995,8 @@ export async function getApprovedJournalsByUser(params: {
         partnerName: detail.partner?.partnerName || null,
         analysisCode: detail.analysisCode,
         analysisCodeName: detail.analysisCodeRel?.analysisName || null,
+        departmentCode: detail.departmentCode,
+        departmentName: detail.department?.departmentName || null,
         baseAmount: detail.baseAmount.toNumber(),
         taxAmount: detail.taxAmount.toNumber(),
         totalAmount: detail.totalAmount.toNumber(),

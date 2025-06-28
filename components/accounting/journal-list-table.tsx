@@ -217,7 +217,7 @@ export function JournalListTable({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-32">仕訳番号</TableHead>
-                <TableHead className="w-28">仕訳日</TableHead>
+                <TableHead className="w-28">計上日</TableHead>
                 <TableHead>摘要</TableHead>
                 <TableHead className="w-32 text-right">金額</TableHead>
                 <TableHead className="w-24">作成者</TableHead>

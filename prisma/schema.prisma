@@ -145,6 +145,21 @@ model TaxRate {
   @@map("tax_rates")
 }
 
+// 計上部門マスタ
+model Department {
+  departmentCode String   @id @db.VarChar(10)
+  departmentName String   @db.VarChar(100)
+  isActive       Boolean  @default(true)
+  sortOrder      Int?
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // 他テーブルとの関係
+  journalDetails JournalDetail[]
+
+  @@map("departments")
+}
+
 // ロールマスタ
 model Role {
   roleCode    String   @id @db.VarChar(20)
@@ -316,6 +331,7 @@ model JournalDetail {
   subAccountCode  String?  @db.VarChar(15)
   partnerCode     String?  @db.VarChar(15)
   analysisCode    String?  @db.VarChar(15)
+  departmentCode  String?  @db.VarChar(10)
   
   // 金額関連（完全リデザイン）
   baseAmount      Decimal  @db.Decimal(15, 2)                      // 本体額（税抜）※必須
@@ -337,6 +353,7 @@ model JournalDetail {
   subAccount      SubAccount?   @relation(fields: [accountCode, subAccountCode], references: [accountCode, subAccountCode])
   partner         Partner?      @relation(fields: [partnerCode], references: [partnerCode])
   analysisCodeRel AnalysisCode? @relation(fields: [analysisCode], references: [analysisCode])
+  department      Department?   @relation(fields: [departmentCode], references: [departmentCode])
   taxRate         TaxRate?      @relation(fields: [taxCode], references: [taxCode])
   
   // 自己参照（親仕訳との関係）

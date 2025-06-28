@@ -97,3 +97,35 @@ export const isValidRoleType = (value: string): value is RoleType => {
   return ROLE_TYPE_LIST.includes(value as RoleType);
 };
 
+// 分析コード種別（配列ベース一元管理）
+export const ANALYSIS_TYPE_LIST = [
+  "部門",
+  "プロジェクト", 
+  "製品",
+  "地域",
+  "顧客"
+] as const;
+
+// 型定義は配列から自動生成
+export type AnalysisType = typeof ANALYSIS_TYPE_LIST[number];
+
+// オプション配列も自動生成
+export const ANALYSIS_TYPE_OPTIONS = ANALYSIS_TYPE_LIST.map(type => ({
+  value: type,
+  label: type
+}));
+
+// 後方互換性のためのオブジェクト（必要に応じて）
+export const ANALYSIS_TYPES = {
+  DEPARTMENT: ANALYSIS_TYPE_LIST[0],  // "部門"
+  PROJECT: ANALYSIS_TYPE_LIST[1],     // "プロジェクト"
+  PRODUCT: ANALYSIS_TYPE_LIST[2],     // "製品"
+  REGION: ANALYSIS_TYPE_LIST[3],      // "地域"
+  CUSTOMER: ANALYSIS_TYPE_LIST[4]     // "顧客"
+} as const;
+
+// 型ガード関数
+export const isValidAnalysisType = (value: string): value is AnalysisType => {
+  return ANALYSIS_TYPE_LIST.includes(value as AnalysisType);
+};
+

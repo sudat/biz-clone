@@ -35,12 +35,13 @@ import {
   getAllSubAccounts,
   getAllPartners,
   getAllAnalysisCodes,
+  getAllDepartments,
   getAllRoles,
   type MasterSearchResult
 } from "@/app/actions/master-search";
 
 interface MasterSearchDialogProps {
-  type: 'account' | 'subAccount' | 'partner' | 'analysisCode' | 'role';
+  type: 'account' | 'subAccount' | 'partner' | 'analysisCode' | 'department' | 'role';
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (code: string, name: string) => void;
@@ -70,6 +71,11 @@ const MASTER_TYPES = {
     label: "\u5206\u6790\u30b3\u30fc\u30c9",
     searchPlaceholder: "\u5206\u6790\u30b3\u30fc\u30c9\u306e\u30b3\u30fc\u30c9\u307e\u305f\u306f\u540d\u79f0\u3067\u691c\u7d22...",
     emptyMessage: "\u5206\u6790\u30b3\u30fc\u30c9\u304c\u767b\u9332\u3055\u308c\u3066\u3044\u307e\u305b\u3093"
+  },
+  department: {
+    label: "\u8a08\u4e0a\u90e8\u9580",
+    searchPlaceholder: "\u8a08\u4e0a\u90e8\u9580\u306e\u30b3\u30fc\u30c9\u307e\u305f\u306f\u540d\u79f0\u3067\u691c\u7d22...",
+    emptyMessage: "\u8a08\u4e0a\u90e8\u9580\u304c\u767b\u9332\u3055\u308c\u3066\u3044\u307e\u305b\u3093"
   },
   role: {
     label: "\u30ed\u30fc\u30eb",
@@ -131,6 +137,9 @@ export function MasterSearchDialog({
           break;
         case 'analysisCode':
           data = await getAllAnalysisCodes();
+          break;
+        case 'department':
+          data = await getAllDepartments();
           break;
         case 'role':
           data = await getAllRoles();

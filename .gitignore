@@ -72,3 +72,4 @@ node_modules/
 tasks.json
 tasks/ 
 /lib/generated/prisma
+mcp-server/

@@ -17,7 +17,7 @@ import { getMasterName } from "@/app/actions/master-search";
 import { MasterSearchDialog } from "./master-search-dialog";
 
 interface MasterCodeInputProps {
-  type: "account" | "subAccount" | "partner" | "analysisCode";
+  type: "account" | "subAccount" | "partner" | "analysisCode" | "department";
   value: string;
   onChange: (code: string, name?: string) => void;
   parentCode?: string;
@@ -32,6 +32,7 @@ const TYPE_LABELS = {
   subAccount: "補助科目",
   partner: "取引先",
   analysisCode: "分析コード",
+  department: "計上部門",
 } as const;
 
 export function MasterCodeInput({

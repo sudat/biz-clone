@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
-  getAnalysisCodes,
-  searchAnalysisCodes,
-  deleteAnalysisCode,
-} from "@/app/actions/analysis-codes";
-import type { AnalysisCode } from "@/lib/database/prisma";
+  getDepartments,
+  searchDepartments,
+  deleteDepartment,
+  type DepartmentForClient,
+} from "@/app/actions/departments";
 import {
   searchAndSort,
   getSearchStats,
@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, RefreshCw } from "lucide-react";
+import { showErrorToast } from "@/components/ui/error-toast";
+import { ErrorType } from "@/lib/types/errors";
 import {
   Dialog,
   DialogContent,
@@ -35,41 +37,41 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AnalysisCodeMasterForm } from "@/components/accounting/analysis-code-master-form";
+import { DepartmentMasterForm } from "@/components/accounting/department-master-form";
 import { Badge } from "@/components/ui/badge";
-import { ANALYSIS_TYPE_OPTIONS } from "@/types/master-types";
 
 const searchFilters: SearchFilter[] = [
   {
-    field: "analysisType",
-    label: "分析種別",
+    field: "isActive",
+    label: "状態",
     type: "select",
-    options: ANALYSIS_TYPE_OPTIONS.map((option) => ({
-      value: option.value,
-      label: option.label,
-    })),
+    options: [
+      { value: "true", label: "有効" },
+      { value: "false", label: "無効" },
+    ],
   },
 ];
 
 const sortOptions: SortOption[] = [
-  { field: "analysisCode", label: "コード順" },
-  { field: "analysisName", label: "名称順" },
-  { field: "analysisType", label: "種別順" },
+  { field: "departmentCode", label: "部門コード順" },
+  { field: "departmentName", label: "部門名順" },
+  { field: "sortOrder", label: "並び順" },
   { field: "createdAt", label: "作成日順" },
 ];
 
-export function AnalysisCodeMasterList() {
-  const [analysisCodes, setAnalysisCodes] = useState<AnalysisCode[]>([]);
+export function DepartmentMasterList() {
+  const [departments, setDepartments] = useState<DepartmentForClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchState, setSearchState] = useState<SearchState>({
     searchTerm: "",
     filters: {},
-    sortField: "analysisCode",
+    sortField: "departmentCode",
     sortDirection: "asc",
     activeOnly: false,
   });
-  const [editingAnalysisCode, setEditingAnalysisCode] =
-    useState<AnalysisCode | null>(null);
+  const [editingDepartment, setEditingDepartment] = useState<DepartmentForClient | null>(
+    null
+  );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [useServerSearch, setUseServerSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -78,78 +80,104 @@ export function AnalysisCodeMasterList() {
   const refreshData = useCallback(async () => {
     setRefreshing(true);
     try {
-      const result = await getAnalysisCodes();
+      const result = await getDepartments();
       if (result.success && result.data) {
-        setAnalysisCodes(result.data || []);
+        setDepartments(result.data || []);
       } else if (!result.success) {
-        console.error("分析コードデータの取得エラー:", result.error);
+        console.error("計上部門データの取得エラー:", result.error);
       }
     } catch (error) {
-      console.error("分析コードデータの取得エラー:", error);
+      console.error("計上部門データの取得エラー:", error);
     } finally {
       setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    if (analysisCodes.length === 0) {
-      loadAnalysisCodes();
+    if (departments.length === 0) {
+      loadDepartments();
     }
-  }, [analysisCodes.length]);
+  }, [departments.length]);
 
-  const loadAnalysisCodes = async () => {
+  const loadDepartments = async () => {
     setLoading(true);
     try {
-      const result = await getAnalysisCodes();
+      const result = await getDepartments();
       if (result.success && result.data) {
-        setAnalysisCodes(result.data || []);
+        setDepartments(result.data || []);
       } else if (!result.success) {
-        console.error("分析コードデータの取得エラー:", result.error);
+        console.error("計上部門データの取得エラー:", result.error);
       }
     } catch (error) {
-      console.error("分析コードデータの取得エラー:", error);
+      console.error("計上部門データの取得エラー:", error);
     } finally {
       setLoading(false);
     }
   };
 
   // サーバーサイド検索（新しいServer Actions使用）
-  const performServerSearch = useCallback(async (searchState: SearchState) => {
-    setLoading(true);
-    try {
-      const result = await searchAnalysisCodes(searchState.searchTerm, {
-        analysisType: searchState.filters.analysisType,
-        isActive: searchState.activeOnly ? true : undefined,
-      });
+  const performServerSearch = useCallback(
+    async (searchState: SearchState) => {
+      setLoading(true);
+      try {
+        // フィルタから状態を取得
+        const isActiveFilter = searchState.filters.isActive;
+        let isActiveValue: boolean | undefined;
+        
+        if (isActiveFilter === "true") {
+          isActiveValue = true;
+        } else if (isActiveFilter === "false") {
+          isActiveValue = false;
+        } else if (searchState.activeOnly) {
+          isActiveValue = true;
+        } else {
+          isActiveValue = undefined; // すべて表示
+        }
 
-      if (result.success) {
-        setAnalysisCodes(result.data || []);
-      } else {
-        console.error("検索エラー:", result.error);
+        const result = await searchDepartments(searchState.searchTerm, {
+          isActive: isActiveValue,
+        });
+
+        if (result.success) {
+          setDepartments(result.data || []);
+        } else {
+          console.error("検索エラー:", result.error);
+        }
+      } catch (error) {
+        console.error("検索エラー:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("検索エラー:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   // クライアントサイド検索・フィルタリング
-  const filteredAnalysisCodes = useMemo(() => {
+  const filteredDepartments = useMemo(() => {
     if (useServerSearch) {
-      return analysisCodes; // サーバーサイド検索済みのデータをそのまま使用
+      return departments; // サーバーサイド検索済みのデータをそのまま使用
+    } else {
+      // フィルタを変換（文字列のブール値を実際のブール値に変換）
+      const transformedSearchState = {
+        ...searchState,
+        filters: {
+          ...searchState.filters,
+          ...(searchState.filters.isActive && {
+            isActive: searchState.filters.isActive === "true",
+          }),
+        },
+      };
+      
+      return searchAndSort(departments, transformedSearchState, [
+        "departmentCode",
+        "departmentName",
+      ]);
     }
-
-    return searchAndSort(analysisCodes, searchState, [
-      "analysisCode",
-      "analysisName",
-      "analysisType",
-    ]);
-  }, [analysisCodes, searchState, useServerSearch]);
+  }, [departments, searchState, useServerSearch]);
 
   const searchStats = useMemo(() => {
-    return getSearchStats(analysisCodes, filteredAnalysisCodes);
-  }, [analysisCodes, filteredAnalysisCodes]);
+    return getSearchStats(departments, filteredDepartments);
+  }, [departments, filteredDepartments]);
 
   const handleSearchChange = useCallback(
     (newSearchState: SearchState) => {
@@ -173,34 +201,47 @@ export function AnalysisCodeMasterList() {
     if (!useServerSearch) {
       performServerSearch(searchState);
     } else {
-      loadAnalysisCodes();
+      loadDepartments();
     }
   };
 
-  const handleEdit = (analysisCode: AnalysisCode) => {
-    setEditingAnalysisCode(analysisCode);
+  const handleEdit = (department: DepartmentForClient) => {
+    setEditingDepartment(department);
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (analysisCode: AnalysisCode) => {
-    if (confirm(`分析コード「${analysisCode.analysisName}」を削除しますか？`)) {
+  const handleDelete = async (department: DepartmentForClient) => {
+    if (confirm(`計上部門「${department.departmentName}」を削除しますか？`)) {
       try {
-        const result = await deleteAnalysisCode(analysisCode.analysisCode);
+        const result = await deleteDepartment(department.departmentCode);
         if (result.success) {
           // 削除成功時はリフレッシュ
           await refreshData();
         } else {
-          alert("削除エラー: " + result.error);
+          // エラーレスポンスがある場合はそれを使用し、そうでなければデフォルトメッセージ
+          const errorInfo = result.error || {
+            type: ErrorType.BUSINESS,
+            message: "削除に失敗しました",
+            details: { retryable: false }
+          };
+          showErrorToast(errorInfo);
         }
       } catch (error) {
-        alert("削除エラー: " + error);
+        showErrorToast({
+          type: ErrorType.SYSTEM,
+          message: "削除処理中にエラーが発生しました",
+          details: { 
+            originalError: error instanceof Error ? error.message : String(error),
+            retryable: true 
+          }
+        });
       }
     }
   };
 
   const handleFormSubmit = async () => {
     setIsDialogOpen(false);
-    setEditingAnalysisCode(null);
+    setEditingDepartment(null);
     // フォーム送信後は手動でリフレッシュ
     await refreshData();
   };
@@ -230,10 +271,10 @@ export function AnalysisCodeMasterList() {
       <div className="space-y-4">
         {/* 検索・フィルタコンポーネント */}
         <MasterDataSearch
-          placeholder="分析コード・名称・種別で検索..."
+          placeholder="部門コード・部門名で検索..."
           searchFilters={searchFilters}
           sortOptions={sortOptions}
-          defaultSortField="analysisCode"
+          defaultSortField="departmentCode"
           onSearchChange={handleSearchChange}
         />
 
@@ -282,15 +323,15 @@ export function AnalysisCodeMasterList() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>コード</TableHead>
-                <TableHead>名称</TableHead>
-                <TableHead>種別</TableHead>
+                <TableHead>部門コード</TableHead>
+                <TableHead>部門名</TableHead>
+                <TableHead>並び順</TableHead>
                 <TableHead>状態</TableHead>
                 <TableHead className="text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAnalysisCodes.length === 0 ? (
+              {filteredDepartments.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={5}
@@ -299,29 +340,33 @@ export function AnalysisCodeMasterList() {
                     {searchState.searchTerm ||
                     Object.keys(searchState.filters).length > 0 ||
                     searchState.activeOnly
-                      ? "検索条件に一致する分析コードが見つかりませんでした"
-                      : "分析コードが登録されていません"}
+                      ? "検索条件に一致する計上部門が見つかりませんでした"
+                      : "計上部門が登録されていません"}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredAnalysisCodes.map((analysisCode) => (
-                  <TableRow key={analysisCode.analysisCode}>
+                filteredDepartments.map((department) => (
+                  <TableRow key={department.departmentCode}>
                     <TableCell className="font-mono">
-                      {renderHighlightedText(analysisCode.analysisCode)}
+                      {renderHighlightedText(department.departmentCode)}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {renderHighlightedText(analysisCode.analysisName)}
+                      {renderHighlightedText(department.departmentName)}
                     </TableCell>
                     <TableCell>
-                      {renderHighlightedText(analysisCode.analysisType)}
+                      {department.sortOrder !== null ? (
+                        <span className="text-sm">{department.sortOrder}</span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">
+                          未設定
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={
-                          analysisCode.isActive ? "default" : "secondary"
-                        }
+                        variant={department.isActive ? "default" : "outline"}
                       >
-                        {analysisCode.isActive ? "有効" : "無効"}
+                        {department.isActive ? "有効" : "無効"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -330,7 +375,7 @@ export function AnalysisCodeMasterList() {
                           variant="outline"
                           size="sm"
                           className="cursor-pointer"
-                          onClick={() => handleEdit(analysisCode)}
+                          onClick={() => handleEdit(department)}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -338,7 +383,7 @@ export function AnalysisCodeMasterList() {
                           variant="outline"
                           size="sm"
                           className="cursor-pointer"
-                          onClick={() => handleDelete(analysisCode)}
+                          onClick={() => handleDelete(department)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -353,21 +398,21 @@ export function AnalysisCodeMasterList() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-hide">
           <DialogHeader>
             <DialogTitle>
-              {editingAnalysisCode ? "分析コード編集" : "新規分析コード作成"}
+              {editingDepartment ? "計上部門編集" : "新規計上部門作成"}
             </DialogTitle>
             <DialogDescription>
-              分析コードの情報を入力してください。
+              計上部門の情報を入力してください。
             </DialogDescription>
           </DialogHeader>
-          <AnalysisCodeMasterForm
-            analysisCode={editingAnalysisCode}
+          <DepartmentMasterForm
+            department={editingDepartment}
             onSubmit={handleFormSubmit}
             onCancel={() => {
               setIsDialogOpen(false);
-              setEditingAnalysisCode(null);
+              setEditingDepartment(null);
             }}
           />
         </DialogContent>
@@ -375,3 +420,5 @@ export function AnalysisCodeMasterList() {
     </>
   );
 }
+
+export default DepartmentMasterList;

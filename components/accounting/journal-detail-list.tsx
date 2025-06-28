@@ -159,7 +159,7 @@ export function JournalDetailList({
                     </div>
                     
                     {/* サブ情報行 */}
-                    {(detail.subAccountCode || detail.partnerCode || detail.analysisCode) && (
+                    {(detail.subAccountCode || detail.partnerCode || detail.analysisCode || detail.departmentCode) && (
                       <div className="flex items-center gap-3 mt-0.5 text-xs text-black">
                         {detail.subAccountCode && (
                           <span>補助: {detail.subAccountCode}</span>
@@ -169,6 +169,9 @@ export function JournalDetailList({
                         )}
                         {detail.analysisCode && (
                           <span>分析: {detail.analysisCode}</span>
+                        )}
+                        {detail.departmentCode && (
+                          <span>部門: {detail.departmentCode}</span>
                         )}
                       </div>
                     )}

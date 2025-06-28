@@ -17,6 +17,8 @@ export interface JournalDetailData {
   partnerName?: string;
   analysisCode?: string;
   analysisCodeName?: string;
+  departmentCode?: string;
+  departmentName?: string;
   
   // 金額関連（消費税対応）
   baseAmount: number;      // 本体額（税抜）

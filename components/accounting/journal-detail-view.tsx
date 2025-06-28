@@ -70,6 +70,7 @@ export function JournalDetailView({ details }: JournalDetailViewProps) {
             <TableHead>補助科目</TableHead>
             <TableHead>取引先</TableHead>
             <TableHead>分析コード</TableHead>
+            <TableHead>計上部門</TableHead>
             <TableHead className="text-right">本体額</TableHead>
             <TableHead className="text-right">税額</TableHead>
             <TableHead className="text-right">合計額</TableHead>
@@ -130,6 +131,18 @@ export function JournalDetailView({ details }: JournalDetailViewProps) {
                       {detail.analysisCode}
                     </div>
                     <div className="text-sm">{detail.analysisCodeName}</div>
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </TableCell>
+              <TableCell>
+                {detail.departmentCode ? (
+                  <div className="space-y-1">
+                    <div className="font-mono text-sm text-muted-foreground">
+                      {detail.departmentCode}
+                    </div>
+                    <div className="text-sm">{detail.departmentName}</div>
                   </div>
                 ) : (
                   <span className="text-muted-foreground">-</span>

@@ -73,6 +73,7 @@ export function JournalDetailInput({
     subAccountCode: "",
     partnerCode: "",
     analysisCode: "",
+    departmentCode: "",
     baseAmount: undefined,
     taxAmount: 0,
     totalAmount: undefined,
@@ -118,6 +119,8 @@ export function JournalDetailInput({
         partnerName: editingDetail.partnerName,
         analysisCode: editingDetail.analysisCode || "",
         analysisCodeName: editingDetail.analysisCodeName,
+        departmentCode: editingDetail.departmentCode || "",
+        departmentName: editingDetail.departmentName,
         baseAmount: editingDetail.baseAmount,
         taxAmount: editingDetail.taxAmount,
         totalAmount: editingDetail.totalAmount,
@@ -137,6 +140,7 @@ export function JournalDetailInput({
       subAccountCode: "",
       partnerCode: "",
       analysisCode: "",
+      departmentCode: "",
       baseAmount: undefined,
       taxAmount: 0,
       totalAmount: undefined,
@@ -205,6 +209,8 @@ export function JournalDetailInput({
       partnerName: formData.partnerName,
       analysisCode: formData.analysisCode,
       analysisCodeName: formData.analysisCodeName,
+      departmentCode: formData.departmentCode,
+      departmentName: formData.departmentName,
       baseAmount: formData.baseAmount || 0,
       taxAmount: formData.taxAmount || 0,
       totalAmount: formData.totalAmount || 0,
@@ -392,6 +398,29 @@ export function JournalDetailInput({
               disabled={disabled}
               readOnly={disabled && mode === "edit"}
               placeholder="分析コードを選択..."
+            />
+          </div>
+        </div>
+
+        {/* 計上部門 */}
+        <div className="flex items-center gap-2">
+          <Label className="min-w-[80px] text-sm font-medium whitespace-nowrap">
+            計上部門
+          </Label>
+          <div className="flex-1">
+            <MasterCodeInput
+              type="department"
+              value={formData.departmentCode || ""}
+              onChange={(code, name) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  departmentCode: code,
+                  departmentName: name,
+                }))
+              }
+              disabled={disabled}
+              readOnly={disabled && mode === "edit"}
+              placeholder="計上部門を選択..."
             />
           </div>
         </div>
