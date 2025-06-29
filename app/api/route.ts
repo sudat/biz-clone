@@ -30,31 +30,59 @@ interface JsonRpcResponse {
 const MCP_TOOLS = [
   {
     name: "save_journal",
-    description: "新しい仕訳を保存します",
+    description:
+      "新しい仕訳を保存します。会計仕訳データを受け取り、システムに保存します。",
     inputSchema: {
       type: "object",
       properties: {
         header: {
           type: "object",
+          description: "仕訳ヘッダー情報",
           properties: {
             journalDate: {
               type: "string",
               description: "計上日 (YYYY-MM-DD形式)",
+              pattern: "^\\d{4}-\\d{2}-\\d{2}$",
             },
-            description: { type: "string", description: "摘要" },
+            description: {
+              type: "string",
+              description: "摘要（仕訳の説明）",
+              maxLength: 255,
+            },
           },
           required: ["journalDate"],
+          additionalProperties: false,
         },
         details: {
           type: "array",
+          description: "仕訳明細のリスト（借方・貸方のペア）",
           items: {
             type: "object",
             properties: {
-              debitCredit: { type: "string", enum: ["debit", "credit"] },
-              accountCode: { type: "string" },
-              baseAmount: { type: "number" },
-              taxAmount: { type: "number" },
-              totalAmount: { type: "number" },
+              debitCredit: {
+                type: "string",
+                enum: ["debit", "credit"],
+                description: "借方(debit)または貸方(credit)",
+              },
+              accountCode: {
+                type: "string",
+                description: "勘定科目コード",
+              },
+              baseAmount: {
+                type: "number",
+                description: "基本金額（税抜き）",
+                minimum: 0,
+              },
+              taxAmount: {
+                type: "number",
+                description: "税額",
+                minimum: 0,
+              },
+              totalAmount: {
+                type: "number",
+                description: "合計金額（税込み）",
+                minimum: 0,
+              },
             },
             required: [
               "debitCredit",
@@ -63,29 +91,52 @@ const MCP_TOOLS = [
               "taxAmount",
               "totalAmount",
             ],
+            additionalProperties: false,
           },
           minItems: 2,
         },
       },
       required: ["header", "details"],
+      additionalProperties: false,
     },
   },
   {
     name: "search_journals",
-    description: "仕訳を検索します",
+    description:
+      "仕訳データを検索します。条件に基づいて仕訳履歴を検索し、結果を返します。",
     inputSchema: {
       type: "object",
       properties: {
-        searchTerm: { type: "string", description: "検索キーワード" },
-        fromDate: { type: "string", description: "開始日 (YYYY-MM-DD形式)" },
-        toDate: { type: "string", description: "終了日 (YYYY-MM-DD形式)" },
-        page: { type: "number", default: 1, description: "ページ番号" },
+        searchTerm: {
+          type: "string",
+          description: "検索キーワード（摘要や勘定科目名で検索）",
+          maxLength: 100,
+        },
+        fromDate: {
+          type: "string",
+          description: "開始日 (YYYY-MM-DD形式)",
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$",
+        },
+        toDate: {
+          type: "string",
+          description: "終了日 (YYYY-MM-DD形式)",
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$",
+        },
+        page: {
+          type: "number",
+          default: 1,
+          description: "ページ番号",
+          minimum: 1,
+        },
         limit: {
           type: "number",
           default: 20,
           description: "1ページあたりの件数",
+          minimum: 1,
+          maximum: 100,
         },
       },
+      additionalProperties: false,
     },
   },
 ];
@@ -194,6 +245,10 @@ export async function POST(request: NextRequest) {
         result = await handleCallTool(body.params, request);
         break;
 
+      case "list_resources":
+        result = await handleListResources();
+        break;
+
       default:
         const notFoundError = {
           jsonrpc: "2.0",
@@ -201,7 +256,12 @@ export async function POST(request: NextRequest) {
             code: -32601,
             message: `Method not found: ${body.method}`,
             data: {
-              availableMethods: ["initialize", "list_tools", "call_tool"],
+              availableMethods: [
+                "initialize",
+                "list_tools",
+                "call_tool",
+                "list_resources",
+              ],
             },
           },
           id: body.id,
@@ -265,7 +325,12 @@ export async function GET(request: NextRequest) {
   const debugInfo = {
     status: "MCP endpoint is running",
     timestamp: new Date().toISOString(),
-    availableMethods: ["initialize", "list_tools", "call_tool"],
+    availableMethods: [
+      "initialize",
+      "list_tools",
+      "call_tool",
+      "list_resources",
+    ],
     corsEnabled: true,
     endpoint: "/api",
     protocol: "JSON-RPC 2.0",
@@ -280,7 +345,7 @@ async function handleInitialize(params: any) {
   console.log("Handling initialize with params:", params);
 
   // クライアントから送られてきたバージョンを尊重する
-  const clientProtocolVersion = params?.protocolVersion || "2024-11-05";
+  const clientProtocolVersion = params?.protocolVersion || "2025-03-26";
 
   const result = {
     protocolVersion: clientProtocolVersion,
@@ -296,8 +361,19 @@ async function handleInitialize(params: any) {
         listChanged: false,
       },
       logging: {},
+      // Claude Web版用の認証サポート
+      auth: {
+        oauth: true,
+        // 簡易認証として、認証なしでもアクセス可能にする
+        anonymous: true,
+      },
     },
     serverInfo: {
+      name: "biz-clone-mcp-server",
+      version: "1.0.0",
+    },
+    // Claude Web版用の追加情報
+    implementation: {
       name: "biz-clone-mcp-server",
       version: "1.0.0",
     },
@@ -310,9 +386,45 @@ async function handleInitialize(params: any) {
 async function handleListTools() {
   console.log("Handling list_tools");
   const result = {
-    tools: MCP_TOOLS,
+    tools: MCP_TOOLS.map((tool) => ({
+      ...tool,
+      // Claude Web版用の追加メタデータ
+      annotations: {
+        audience: ["user"],
+        level: "beginner",
+      },
+    })),
+    // Claude Web版用のメタデータ
+    _meta: {
+      description: "biz-clone会計システムのMCPツール",
+      version: "1.0.0",
+      author: "biz-clone team",
+    },
   };
   console.log(`Returning ${MCP_TOOLS.length} tools`);
+  return result;
+}
+
+// リソース一覧ハンドラー
+async function handleListResources() {
+  console.log("Handling list_resources");
+  const result = {
+    resources: [
+      {
+        uri: "biz-clone://accounting/schema",
+        name: "会計スキーマ",
+        description: "biz-cloneシステムの会計データスキーマ情報",
+        mimeType: "application/json",
+      },
+      {
+        uri: "biz-clone://accounting/docs",
+        name: "API仕様書",
+        description: "会計APIの利用方法とサンプル",
+        mimeType: "text/markdown",
+      },
+    ],
+  };
+  console.log("Returning resources");
   return result;
 }
 
