@@ -274,8 +274,12 @@ export async function GET(request: NextRequest) {
 // 初期化ハンドラー
 async function handleInitialize(params: any) {
   console.log("Handling initialize with params:", params);
+
+  // クライアントから送られてきたバージョンを尊重する
+  const clientProtocolVersion = params?.protocolVersion || "0.1.0";
+
   const result = {
-    protocolVersion: "0.1.0",
+    protocolVersion: clientProtocolVersion,
     capabilities: {
       tools: {},
       sse: {

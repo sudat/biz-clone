@@ -66,38 +66,14 @@ export async function GET(request: NextRequest) {
   // ReadableStreamでSSE接続を作成
   const stream = new ReadableStream({
     start(controller) {
-      try {
-        // 接続をイベントマネージャーに追加
-        sseEventManager.addConnection(connectionId, controller, userId);
-
-        console.log(
-          `✅ SSE connection established: ${connectionId}${
-            userId ? ` (user: ${userId})` : ""
-          }`,
-        );
-
-        // 初期接続確認メッセージ
-        const encoder = new TextEncoder();
-        const testMessage = `data: ${
-          JSON.stringify({
-            type: "connection",
-            connectionId,
-            timestamp: new Date().toISOString(),
-            message: "SSE connection established",
-          })
-        }\n\n`;
-        controller.enqueue(encoder.encode(testMessage));
-        console.log("Sent initial connection message");
-      } catch (error) {
-        console.error("Error in SSE start:", error);
-        controller.error(error);
-      }
+      // 接続をイベントマネージャーに追加
+      sseEventManager.addConnection(connectionId, controller, userId);
     },
 
-    cancel(reason) {
+    cancel() {
       // 接続が中断された場合のクリーンアップ
-      console.log(`SSE connection cancelled: ${connectionId}, reason:`, reason);
       sseEventManager.removeConnection(connectionId);
+      console.log(`SSE connection cancelled by client: ${connectionId}`);
     },
   });
 
