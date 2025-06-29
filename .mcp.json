@@ -1,18 +1,13 @@
 {
   "mcpServers": {
-    "biz-clone-mcp": {
+    "biz-clone-accounting": {
       "command": "node",
-      "args": [
-        "/usr/local/src/dev/wsl/jfr/biz-clone/mcp-server/dist/index.js"
-      ],
+      "args": ["mcp-server/dist/index.js"],
+      "cwd": "/usr/local/src/dev/wsl/jfr/biz-clone",
       "env": {
-        "NODE_ENV": "production",
         "MCP_TRANSPORT": "stdio",
-        "DATABASE_URL": "postgresql://postgres:password@localhost:54322/postgres?schema=public",
-        "DIRECT_URL": "postgresql://postgres:password@localhost:54322/postgres?schema=public",
-        "MCP_ISSUER": "http://localhost:3002",
-        "MCP_CLIENT_ID": "claude-web-client",
-        "ALLOWED_ORIGINS": "http://localhost:3000,https://claude.ai,https://app.claude.ai"
+        "NODE_ENV": "development",
+        "DATABASE_URL": "postgresql://postgres:postgres@localhost:54322/postgres"
       }
     }
   }
