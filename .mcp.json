@@ -1,14 +1,7 @@
 {
   "mcpServers": {
     "biz-clone-accounting": {
-      "command": "node",
-      "args": ["mcp-server/dist/index.js"],
-      "cwd": "/usr/local/src/dev/wsl/jfr/biz-clone",
-      "env": {
-        "MCP_TRANSPORT": "stdio",
-        "NODE_ENV": "development",
-        "DATABASE_URL": "postgresql://postgres:postgres@localhost:54322/postgres"
-      }
+      "url": "https://biz-clone.vercel.app/api/mcp"
     }
   }
 }
