@@ -21,15 +21,41 @@ const searchSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    // NextRequest.nextUrlを使用してより安全にパーシング
+    const searchParams = request.nextUrl.searchParams;
     
-    // クエリパラメータを取得
-    const query = searchParams.get("query");
+    // クエリパラメータを取得（堅牢な文字エンコーディング処理）
+    const rawQuery = searchParams.get("query");
+    let query: string | null = null;
+    
+    if (rawQuery) {
+      try {
+        // 複数の方法でデコードを試行
+        if (rawQuery.includes('%')) {
+          // URL エンコードされている場合
+          query = decodeURIComponent(rawQuery);
+        } else {
+          // プレーンテキストの場合
+          query = rawQuery;
+        }
+        
+        // 文字列の妥当性チェック
+        if (query && query.length > 0) {
+          // 制御文字を除去
+          query = query.replace(/[\x00-\x1F\x7F]/g, '');
+        }
+      } catch (error) {
+        console.warn('クエリパラメータのデコードに失敗:', error);
+        // デコードに失敗した場合は元の値を使用
+        query = rawQuery;
+      }
+    }
+    
     const categoriesParam = searchParams.get("categories");
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "10")));
 
     // パラメータの検証
     const validationResult = searchSchema.safeParse({
@@ -48,7 +74,12 @@ export async function GET(request: NextRequest) {
           error: "パラメータが無効です",
           details: validationResult.error.errors 
         },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8'
+          }
+        }
       );
     }
 
@@ -66,6 +97,10 @@ export async function GET(request: NextRequest) {
         limit: params.limit,
         categories: params.categories || ["journals", "accounts", "partners", "departments", "analysis_codes"]
       }
+    }, {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8'
+      }
     });
 
   } catch (error) {
@@ -74,9 +109,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { 
         success: false, 
-        error: error instanceof Error ? error.message : "統合検索に失敗しました"
+        error: error instanceof Error ? error.message : "統合検索に失敗しました",
+        timestamp: new Date().toISOString()
       },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8'
+        }
+      }
     );
   }
 }
@@ -95,7 +136,12 @@ export async function POST(request: NextRequest) {
           error: "リクエストボディが無効です",
           details: validationResult.error.errors 
         },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8'
+          }
+        }
       );
     }
 
@@ -113,6 +159,10 @@ export async function POST(request: NextRequest) {
         limit: params.limit,
         categories: params.categories || ["journals", "accounts", "partners", "departments", "analysis_codes"]
       }
+    }, {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8'
+      }
     });
 
   } catch (error) {
@@ -121,9 +171,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         success: false, 
-        error: error instanceof Error ? error.message : "統合検索に失敗しました"
+        error: error instanceof Error ? error.message : "統合検索に失敗しました",
+        timestamp: new Date().toISOString()
       },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8'
+        }
+      }
     );
   }
 }

@@ -8,6 +8,7 @@ import { handleServerActionError } from "@/lib/utils/error-handler";
 import type { ActionResult } from "@/lib/types/errors";
 import { ErrorType } from "@/lib/types/errors";
 import { toJST } from "@/lib/utils/date-utils";
+import { notifyMasterDataUpdated } from "@/lib/sse/event-helpers";
 
 // ====================
 // 勘定科目のシンプルなServer Actions
@@ -138,6 +139,10 @@ export async function createAccount(
     });
 
     revalidatePath("/master/accounts");
+    
+    // SSEイベント送信（勘定科目作成通知）
+    await notifyMasterDataUpdated('accounts', 'created', account);
+    
     return { success: true, data: account };
   } catch (error) {
     return handleServerActionError(error, "勘定科目の作成", "勘定科目");
@@ -217,6 +222,10 @@ export async function updateAccount(
     };
 
     revalidatePath("/master/accounts");
+    
+    // SSEイベント送信（勘定科目更新通知）
+    await notifyMasterDataUpdated('accounts', 'updated', accountForClient);
+    
     return { success: true, data: accountForClient };
   } catch (error) {
     return handleServerActionError(error, "勘定科目の更新", "勘定科目");

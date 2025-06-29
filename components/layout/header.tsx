@@ -24,6 +24,7 @@ import {
   Database,
   BarChart3,
   GitBranch,
+  Zap,
 } from "lucide-react";
 import { UserAvatarMenu } from "./user-avatar-menu";
 
@@ -216,6 +217,24 @@ export function Header() {
               </MenubarItem>
             </MenubarContent>
           </MenubarMenu>
+
+          {/* SSEデモメニュー */}
+          <MenubarMenu>
+            <MenubarTrigger className="px-4 py-2 text-base font-medium hover:bg-accent/50 data-[state=open]:bg-accent/50 transition-colors flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              リアルタイム
+            </MenubarTrigger>
+            <MenubarContent className="shadow-xl border-0 bg-card/95 backdrop-blur-md">
+              <MenubarItem asChild>
+                <Link
+                  href="/sse-demo"
+                  className="px-4 py-3 text-base"
+                >
+                  SSE デモ
+                </Link>
+              </MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
         </Menubar>
 
         {/* 右側のアクション */}
@@ -395,6 +414,24 @@ export function Header() {
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   承認対象一覧
+                </Link>
+              </div>
+            </div>
+
+            {/* リアルタイムセクション */}
+            <div className="space-y-3">
+              <p className="text-lg font-bold text-foreground px-3 flex items-center gap-2">
+                <Zap className="h-5 w-5" />
+                リアルタイム
+              </p>
+
+              <div className="space-y-4 ml-4">
+                <Link
+                  href="/sse-demo"
+                  className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  SSE デモ
                 </Link>
               </div>
             </div>

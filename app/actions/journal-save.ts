@@ -15,6 +15,7 @@ import { convertToJapaneseDate } from "@/lib/utils/date-utils";
 import { getCurrentUserIdFromCookie } from "@/lib/utils/auth-utils";
 import { JournalSaveData, JournalSaveResult } from "@/types/journal";
 import type { AttachedFile } from "@/components/accounting/file-attachment";
+import { notifyJournalCreated } from "@/lib/sse/event-helpers";
 
 /**
  * UUID形式の検証
@@ -126,6 +127,18 @@ export async function saveJournal(
     // キャッシュ更新
     revalidatePath("/siwake");
     revalidatePath("/siwake/new");
+
+    // SSEイベント送信（仕訳作成通知）
+    const totalDebitAmount = data.details
+      .filter(detail => detail.debitCredit === 'debit')
+      .reduce((sum, detail) => sum + detail.totalAmount, 0);
+    
+    await notifyJournalCreated({
+      journalNumber: result.journalHeader.journalNumber,
+      date: result.journalHeader.journalDate,
+      description: result.journalHeader.description,
+      totalDebitAmount
+    }, currentUserId || undefined);
 
     return {
       success: true,

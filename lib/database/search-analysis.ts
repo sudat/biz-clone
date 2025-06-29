@@ -17,7 +17,19 @@ function convertDecimalToNumber(decimal: Decimal | null | undefined): number {
 // 検索キーワードのサニタイズ
 function sanitizeSearchTerm(term: string): string {
   if (!term || typeof term !== 'string') return '';
-  return term.trim().replace(/[%_\\]/g, '\\$&');
+  
+  // 基本的なサニタイズ
+  let sanitized = term.trim();
+  
+  // SQLインジェクション対策（LIKE句用）
+  sanitized = sanitized.replace(/[%_\\]/g, '\\$&');
+  
+  // 過度に長い検索語は切り詰め
+  if (sanitized.length > 100) {
+    sanitized = sanitized.substring(0, 100);
+  }
+  
+  return sanitized;
 }
 
 // ページネーション検証
@@ -76,16 +88,17 @@ export interface UnifiedSearchResult {
 }
 
 export async function performUnifiedSearch(params: UnifiedSearchParams): Promise<UnifiedSearchResult> {
-  const { query, categories, dateFrom, dateTo, page = 1, limit = 10 } = params;
-  const sanitizedQuery = sanitizeSearchTerm(query);
-  
-  if (!sanitizedQuery) {
-    throw new Error('検索クエリを入力してください');
-  }
+  try {
+    const { query, categories, dateFrom, dateTo, page = 1, limit = 10 } = params;
+    const sanitizedQuery = sanitizeSearchTerm(query);
+    
+    if (!sanitizedQuery) {
+      throw new Error('検索クエリを入力してください');
+    }
 
-  const searchCategories = categories || ['journals', 'accounts', 'partners', 'departments', 'analysis_codes'];
-  const pagination = validatePagination(page, limit);
-  const results: any = {};
+    const searchCategories = categories || ['journals', 'accounts', 'partners', 'departments', 'analysis_codes'];
+    const pagination = validatePagination(page, limit);
+    const results: any = {};
 
   // 仕訳検索
   if (searchCategories.includes('journals')) {
@@ -259,11 +272,17 @@ export async function performUnifiedSearch(params: UnifiedSearchParams): Promise
     };
   }
 
-  return {
-    query: sanitizedQuery,
-    searchCategories,
-    results
-  };
+    return {
+      query: sanitizedQuery,
+      searchCategories,
+      results
+    };
+  } catch (error) {
+    console.error('統合検索処理エラー:', error);
+    throw error instanceof Error 
+      ? error 
+      : new Error('統合検索の実行中に予期しないエラーが発生しました');
+  }
 }
 
 // ====================

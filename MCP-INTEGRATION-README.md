@@ -275,14 +275,89 @@ vercel --prod
 - ✅ **統合検索**: 全データ横断検索
 - ✅ **試算表**: 期間指定での残高集計
 - ✅ **仕訳集計**: 勘定科目・取引先・期間別集計
+- ✅ **リアルタイム通信**: Server-Sent Events（SSE）による即座な通知
 - ✅ **エラーハンドリング**: 詳細なエラーメッセージ
 - ✅ **バリデーション**: Zodスキーマによる型安全性
 - ✅ **ページネーション**: 大量データ対応
 
+### 📡 リアルタイム通信（SSE）
+
+```bash
+# SSE接続エンドポイント
+GET https://[your-app-name].vercel.app/api/sse?userId=demo-user
+
+# イベント送信API
+POST https://[your-app-name].vercel.app/api/sse/events
+Content-Type: application/json
+
+{
+  "eventType": "JOURNAL_CREATED",
+  "data": {
+    "journalNumber": "20241229001",
+    "description": "現金売上の計上"
+  },
+  "targetUserId": "demo-user" // オプション
+}
+
+# 接続状況確認
+GET https://[your-app-name].vercel.app/api/sse/events
+```
+
+#### SSE デモページ
+
+```bash
+# SSE機能のデモページ
+GET https://[your-app-name].vercel.app/sse-demo
+```
+
+SSEデモページでは以下の機能を確認できます：
+- リアルタイム接続状態の表示
+- テスト仕訳作成によるリアルタイム通知
+- マスタデータ更新イベントの配信
+- カスタムイベントの送信テスト
+
+#### 対応イベントタイプ
+
+- `JOURNAL_CREATED`: 仕訳作成通知
+- `JOURNAL_UPDATED`: 仕訳更新通知
+- `MASTER_DATA_UPDATED`: マスタデータ更新通知
+- `SYSTEM_STATUS`: システム状態通知
+
+#### Claude MCPクライアント向け接続例
+
+```javascript
+// SSE接続の確立
+const eventSource = new EventSource('https://[your-app-name].vercel.app/api/sse?userId=claude-client');
+
+eventSource.onmessage = function(event) {
+  const data = JSON.parse(event.data);
+  console.log('Received SSE event:', data);
+  
+  switch(data.type) {
+    case 'JOURNAL_CREATED':
+      console.log('新しい仕訳が作成されました:', data.data);
+      break;
+    case 'MASTER_DATA_UPDATED':
+      console.log('マスタデータが更新されました:', data.data);
+      break;
+  }
+};
+
+// カスタムイベントの送信
+await fetch('https://[your-app-name].vercel.app/api/sse/events', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    eventType: 'SYSTEM_STATUS',
+    data: { message: 'Claude MCPクライアントからの通知' }
+  })
+});
+```
+
 ## 🎯 将来的な拡張
 
 1. **認証機能の再有効化**: `allowPublic: false` の設定
-2. **リアルタイム機能**: Server-Sent Events（SSE）の追加
+2. ✅ **リアルタイム機能**: Server-Sent Events（SSE）の実装完了
 3. **ファイル添付**: 仕訳への証憑ファイル添付機能
 4. **承認ワークフロー**: 仕訳承認機能の追加
 5. **監査ログ**: 操作履歴の記録機能
