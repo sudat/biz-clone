@@ -640,68 +640,72 @@ export async function GET(request: NextRequest) {
 
       // SSE接続の確立
       const stream = new ReadableStream({
-        start(controller) {
+        async start(controller) {
           const encoder = new TextEncoder();
 
-          // SSE初期化メッセージ
+          // 1. MCP初期化メッセージ（JSON-RPC形式）
+          const initResult = await handleInitialize({
+            protocolVersion: "2024-11-05",
+            capabilities: {},
+            clientInfo: { name: "claude-web", version: "1.0.0" },
+          });
+
           const initMessage = {
-            type: "mcp_init",
-            data: {
-              protocolVersion: "2024-11-05",
-              capabilities: {
-                tools: { listChanged: true },
-                resources: { subscribe: false, listChanged: false },
-                prompts: { listChanged: false },
-                logging: {},
-                auth: {
-                  oauth: true,
-                  flows: ["authorization_code"],
-                  scopes: ["read", "write", "claudeai"],
-                  authorizationUrl:
-                    "https://biz-clone.vercel.app/api/oauth/authorize",
-                  tokenUrl: "https://biz-clone.vercel.app/api/oauth/token",
-                  registrationUrl:
-                    "https://biz-clone.vercel.app/api/oauth/register",
-                },
-              },
-              serverInfo: {
-                name: "biz-clone-mcp-server",
-                version: "1.0.0",
-                description: "biz-clone会計システムのMCPサーバー",
-                author: "biz-clone team",
-                homepage: "https://biz-clone.vercel.app",
-              },
-            },
+            jsonrpc: "2.0",
+            id: 1,
+            result: initResult,
           };
 
-          // SSE形式でデータ送信
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify(initMessage)}\n\n`),
           );
           console.log("🚀 SSE init message sent");
 
-          // ツール一覧の送信
+          // 2. ツール一覧の送信（JSON-RPC形式）
+          const toolsResult = await handleListTools();
           const toolsMessage = {
-            type: "tools_list",
-            data: {
-              tools: MCP_TOOLS,
-            },
+            jsonrpc: "2.0",
+            id: 2,
+            result: toolsResult,
           };
 
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify(toolsMessage)}\n\n`),
           );
-          console.log("🔧 SSE tools list sent");
+          console.log("🔧 SSE tools message sent");
+
+          // 3. リソース一覧の送信
+          const resourcesResult = await handleListResources();
+          const resourcesMessage = {
+            jsonrpc: "2.0",
+            id: 3,
+            result: resourcesResult,
+          };
+
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(resourcesMessage)}\n\n`),
+          );
+          console.log("🔧 SSE resources message sent");
+
+          // 4. プロンプト一覧の送信
+          const promptsResult = await handleListPrompts();
+          const promptsMessage = {
+            jsonrpc: "2.0",
+            id: 4,
+            result: promptsResult,
+          };
+
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(promptsMessage)}\n\n`),
+          );
+          console.log("🔧 SSE prompts message sent");
 
           // 定期的なハートビート（20秒間隔）
           const heartbeatInterval = setInterval(() => {
             try {
-              const heartbeat = {
-                type: "heartbeat",
-                timestamp: new Date().toISOString(),
-              };
+              // SSEコメント形式のハートビート
               controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify(heartbeat)}\n\n`),
+                encoder.encode(`: heartbeat ${new Date().toISOString()}\n\n`),
               );
               console.log("💓 SSE heartbeat sent");
             } catch (error) {
