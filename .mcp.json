@@ -1,14 +1,7 @@
 {
   "mcpServers": {
     "biz-clone-accounting": {
-      "url": "https://biz-clone.vercel.app/api/mcp",
-      "auth": {
-        "type": "oauth2",
-        "registrationEndpoint": "https://biz-clone.vercel.app/api/oauth/register",
-        "tokenEndpoint": "https://biz-clone.vercel.app/api/oauth/token",
-        "authorizationEndpoint": "https://biz-clone.vercel.app/api/oauth/authorize",
-        "scopes": ["mcp:read", "mcp:write"]
-      }
+      "url": "https://biz-clone.vercel.app/api/mcp"
     }
   }
 }
