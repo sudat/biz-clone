@@ -611,6 +611,10 @@ export async function GET(request: NextRequest) {
   console.log(`GET request to: ${pathname}`);
   console.log("Query params:", Object.fromEntries(searchParams.entries()));
 
+  // Claude Web版のSSE接続要求をチェック
+  const acceptHeader = request.headers.get("accept") || "";
+  console.log("Accept header:", acceptHeader);
+
   try {
     // OAuth 2.0 Well-Known Configuration
     if (pathname === "/api/.well-known/oauth-authorization-server") {
@@ -630,6 +634,104 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
+    // Claude Web版のSSE接続要求に対応
+    if (pathname === "/api" && acceptHeader.includes("text/event-stream")) {
+      console.log("🌊 SSE connection requested by Claude Web");
+
+      // SSE接続の確立
+      const stream = new ReadableStream({
+        start(controller) {
+          const encoder = new TextEncoder();
+
+          // SSE初期化メッセージ
+          const initMessage = {
+            type: "mcp_init",
+            data: {
+              protocolVersion: "2024-11-05",
+              capabilities: {
+                tools: { listChanged: true },
+                resources: { subscribe: false, listChanged: false },
+                prompts: { listChanged: false },
+                logging: {},
+                auth: {
+                  oauth: true,
+                  flows: ["authorization_code"],
+                  scopes: ["read", "write", "claudeai"],
+                  authorizationUrl:
+                    "https://biz-clone.vercel.app/api/oauth/authorize",
+                  tokenUrl: "https://biz-clone.vercel.app/api/oauth/token",
+                  registrationUrl:
+                    "https://biz-clone.vercel.app/api/oauth/register",
+                },
+              },
+              serverInfo: {
+                name: "biz-clone-mcp-server",
+                version: "1.0.0",
+                description: "biz-clone会計システムのMCPサーバー",
+                author: "biz-clone team",
+                homepage: "https://biz-clone.vercel.app",
+              },
+            },
+          };
+
+          // SSE形式でデータ送信
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(initMessage)}\n\n`),
+          );
+          console.log("🚀 SSE init message sent");
+
+          // ツール一覧の送信
+          const toolsMessage = {
+            type: "tools_list",
+            data: {
+              tools: MCP_TOOLS,
+            },
+          };
+
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(toolsMessage)}\n\n`),
+          );
+          console.log("🔧 SSE tools list sent");
+
+          // 定期的なハートビート（20秒間隔）
+          const heartbeatInterval = setInterval(() => {
+            try {
+              const heartbeat = {
+                type: "heartbeat",
+                timestamp: new Date().toISOString(),
+              };
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify(heartbeat)}\n\n`),
+              );
+              console.log("💓 SSE heartbeat sent");
+            } catch (error) {
+              console.log("❌ Heartbeat error, closing connection:", error);
+              clearInterval(heartbeatInterval);
+              controller.close();
+            }
+          }, 20000);
+
+          // 接続終了時のクリーンアップ
+          request.signal.addEventListener("abort", () => {
+            console.log("🔌 SSE connection aborted");
+            clearInterval(heartbeatInterval);
+            controller.close();
+          });
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
+        },
+      });
+    }
+
     // デフォルトレスポンス（MCP情報）
     const info = {
       status: "MCP endpoint is running",
@@ -643,7 +745,7 @@ export async function GET(request: NextRequest) {
       ],
       corsEnabled: true,
       endpoint: "/api",
-      protocol: "JSON-RPC 2.0",
+      protocol: "JSON-RPC 2.0 + SSE",
       authentication: {
         supported: true,
         methods: ["OAuth 2.0"],
