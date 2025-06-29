@@ -123,6 +123,15 @@ export async function GET(request: NextRequest) {
 }
 
 // デバッグ用：登録済みクライアント一覧
+// PUT メソッド - Claude Code互換性のため（POSTと同じ処理）
+export async function PUT(request: NextRequest) {
+  console.log(
+    "[OAuth Register] PUT request received (Claude Code compatibility)",
+  );
+  // PUTメソッドをPOSTメソッドと同じ処理にリダイレクト
+  return POST(request);
+}
+
 export async function OPTIONS() {
   return NextResponse.json({
     registered_clients: oauthStorage.getAllClients().map((client) => ({
