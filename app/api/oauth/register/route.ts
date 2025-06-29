@@ -78,6 +78,9 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
         "Cache-Control": "no-store",
         "Pragma": "no-cache",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, PUT, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
       },
     });
   } catch (error) {
@@ -133,13 +136,13 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function OPTIONS() {
-  return NextResponse.json({
-    registered_clients: oauthStorage.getAllClients().map((client) => ({
-      client_id: client.client_id,
-      client_name: client.client_name,
-      redirect_uris: client.redirect_uris,
-      created_at: client.created_at,
-    })),
-    storage_stats: oauthStorage.getStats(),
+  return new Response(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "86400"
+    },
   });
 }
