@@ -94,27 +94,89 @@ const corsHeaders = {
   "Access-Control-Allow-Credentials": "true",
 };
 
-export async function POST(request: NextRequest) {
-  try {
-    const body: JsonRpcRequest = await request.json();
+// ロギングユーティリティ
+function logRequest(method: string, path: string, body: any, headers: any) {
+  console.log("=== MCP Request Debug ===");
+  console.log("Timestamp:", new Date().toISOString());
+  console.log("Method:", method);
+  console.log("Path:", path);
+  console.log("Headers:", JSON.stringify(headers, null, 2));
+  console.log("Body:", JSON.stringify(body, null, 2));
+  console.log("========================");
+}
 
-    // JSON-RPC 2.0の検証
-    if (body.jsonrpc !== "2.0") {
+function logResponse(status: number, body: any) {
+  console.log("=== MCP Response Debug ===");
+  console.log("Timestamp:", new Date().toISOString());
+  console.log("Status:", status);
+  console.log("Body:", JSON.stringify(body, null, 2));
+  console.log("=========================");
+}
+
+function logError(error: any, context: string) {
+  console.error("=== MCP Error ===");
+  console.error("Context:", context);
+  console.error("Error Type:", error?.constructor?.name);
+  console.error("Error Message:", error?.message);
+  console.error("Error Stack:", error?.stack);
+  console.error("Error Object:", error);
+  console.error("=================");
+}
+
+export async function POST(request: NextRequest) {
+  const requestHeaders = Object.fromEntries(request.headers.entries());
+  let body: JsonRpcRequest | null = null;
+
+  try {
+    // リクエストボディを取得
+    const rawBody = await request.text();
+    console.log("Raw request body:", rawBody);
+
+    try {
+      body = JSON.parse(rawBody);
+    } catch (parseError) {
+      logError(parseError, "JSON Parse Error");
       return NextResponse.json(
         {
           jsonrpc: "2.0",
           error: {
-            code: -32600,
-            message: 'Invalid Request: jsonrpc must be "2.0"',
+            code: -32700,
+            message: "Parse error",
+            data: `Invalid JSON: ${
+              parseError instanceof Error ? parseError.message : "Unknown error"
+            }`,
           },
-          id: body.id || null,
+          id: null,
         },
         { status: 400, headers: corsHeaders },
       );
     }
 
+    // リクエストをログ
+    logRequest("POST", "/api", body, requestHeaders);
+
+    // JSON-RPC 2.0の検証
+    if (!body || body.jsonrpc !== "2.0") {
+      const errorResponse = {
+        jsonrpc: "2.0",
+        error: {
+          code: -32600,
+          message: 'Invalid Request: jsonrpc must be "2.0"',
+          data: { received: body?.jsonrpc || "undefined" },
+        },
+        id: body?.id || null,
+      };
+      logResponse(400, errorResponse);
+      return NextResponse.json(errorResponse, {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
+
     // メソッドのルーティング
+    console.log(`Processing method: ${body.method}`);
     let result;
+
     switch (body.method) {
       case "initialize":
         result = await handleInitialize(body.params);
@@ -129,55 +191,90 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        return NextResponse.json(
-          {
-            jsonrpc: "2.0",
-            error: {
-              code: -32601,
-              message: `Method not found: ${body.method}`,
+        const notFoundError = {
+          jsonrpc: "2.0",
+          error: {
+            code: -32601,
+            message: `Method not found: ${body.method}`,
+            data: {
+              availableMethods: ["initialize", "list_tools", "call_tool"],
             },
-            id: body.id,
           },
-          { status: 404, headers: corsHeaders },
-        );
+          id: body.id,
+        };
+        logResponse(404, notFoundError);
+        return NextResponse.json(notFoundError, {
+          status: 404,
+          headers: corsHeaders,
+        });
     }
 
-    return NextResponse.json(
-      {
-        jsonrpc: "2.0",
-        result,
-        id: body.id,
-      },
-      { headers: corsHeaders },
-    );
+    const successResponse = {
+      jsonrpc: "2.0",
+      result,
+      id: body.id,
+    };
+
+    logResponse(200, successResponse);
+    return NextResponse.json(successResponse, { headers: corsHeaders });
   } catch (error) {
-    console.error("MCP JSON-RPC Error:", error);
-    return NextResponse.json(
-      {
-        jsonrpc: "2.0",
-        error: {
-          code: -32603,
-          message: "Internal error",
-          data: error instanceof Error ? error.message : "Unknown error",
+    logError(error, "Unhandled Error in POST handler");
+    const errorResponse = {
+      jsonrpc: "2.0",
+      error: {
+        code: -32603,
+        message: "Internal error",
+        data: {
+          error: error instanceof Error ? error.message : "Unknown error",
+          stack: error instanceof Error ? error.stack : undefined,
         },
-        id: null,
       },
-      { status: 500, headers: corsHeaders },
-    );
+      id: body?.id || null,
+    };
+    logResponse(500, errorResponse);
+    return NextResponse.json(errorResponse, {
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 }
 
 // OPTIONSメソッドのハンドラー（CORS対応）
-export async function OPTIONS() {
-  return new Response(null, {
+export async function OPTIONS(request: NextRequest) {
+  const requestHeaders = Object.fromEntries(request.headers.entries());
+  logRequest("OPTIONS", "/api", null, requestHeaders);
+
+  const response = new Response(null, {
     status: 200,
     headers: corsHeaders,
   });
+
+  logResponse(200, "OPTIONS response with CORS headers");
+  return response;
+}
+
+// GETメソッドのハンドラー（デバッグ用）
+export async function GET(request: NextRequest) {
+  const requestHeaders = Object.fromEntries(request.headers.entries());
+  logRequest("GET", "/api", null, requestHeaders);
+
+  const debugInfo = {
+    status: "MCP endpoint is running",
+    timestamp: new Date().toISOString(),
+    availableMethods: ["initialize", "list_tools", "call_tool"],
+    corsEnabled: true,
+    endpoint: "/api",
+    protocol: "JSON-RPC 2.0",
+  };
+
+  logResponse(200, debugInfo);
+  return NextResponse.json(debugInfo, { headers: corsHeaders });
 }
 
 // 初期化ハンドラー
 async function handleInitialize(params: any) {
-  return {
+  console.log("Handling initialize with params:", params);
+  const result = {
     protocolVersion: "0.1.0",
     capabilities: {
       tools: {},
@@ -190,24 +287,36 @@ async function handleInitialize(params: any) {
       version: "1.0.0",
     },
   };
+  console.log("Initialize result:", result);
+  return result;
 }
 
 // ツール一覧ハンドラー
 async function handleListTools() {
-  return {
+  console.log("Handling list_tools");
+  const result = {
     tools: MCP_TOOLS,
   };
+  console.log(`Returning ${MCP_TOOLS.length} tools`);
+  return result;
 }
 
 // ツール実行ハンドラー
 async function handleCallTool(params: any, request: NextRequest) {
-  const { name, arguments: args } = params;
+  console.log("Handling call_tool with params:", params);
+  const { name, arguments: args } = params || {};
+
+  if (!name) {
+    throw new Error("Tool name is required");
+  }
 
   // ツールの検証
   const tool = MCP_TOOLS.find((t) => t.name === name);
   if (!tool) {
     throw new Error(`Tool not found: ${name}`);
   }
+
+  console.log(`Executing tool: ${name} with arguments:`, args);
 
   // 実際のAPIエンドポイントを呼び出す
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
@@ -237,27 +346,38 @@ async function handleCallTool(params: any, request: NextRequest) {
   const authHeader = request.headers.get("Authorization");
   if (authHeader) {
     headers["Authorization"] = authHeader;
+    console.log("Forwarding Authorization header");
   }
 
-  // APIリクエストの実行
-  const response = await fetch(endpoint, {
-    method,
-    headers,
-    body: method === "POST" ? JSON.stringify(args) : undefined,
-  });
+  console.log(`Calling API: ${method} ${endpoint}`);
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`API call failed: ${error}`);
+  try {
+    // APIリクエストの実行
+    const response = await fetch(endpoint, {
+      method,
+      headers,
+      body: method === "POST" ? JSON.stringify(args) : undefined,
+    });
+
+    const responseText = await response.text();
+    console.log(`API Response Status: ${response.status}`);
+    console.log(`API Response Body: ${responseText}`);
+
+    if (!response.ok) {
+      throw new Error(`API call failed: ${response.status} - ${responseText}`);
+    }
+
+    const result = JSON.parse(responseText);
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(result, null, 2),
+        },
+      ],
+    };
+  } catch (apiError) {
+    logError(apiError, `Tool execution failed: ${name}`);
+    throw apiError;
   }
-
-  const result = await response.json();
-  return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(result, null, 2),
-      },
-    ],
-  };
 }

@@ -5,45 +5,100 @@
  * ============================================================================
  */
 
-import { NextRequest } from 'next/server';
-import { sseEventManager } from '@/lib/sse/event-manager';
+import { NextRequest } from "next/server";
+import { sseEventManager } from "@/lib/sse/event-manager";
+
+// ロギングユーティリティ
+function logSSERequest(method: string, headers: any, params: any) {
+  console.log("=== SSE Request Debug ===");
+  console.log("Timestamp:", new Date().toISOString());
+  console.log("Method:", method);
+  console.log("Headers:", JSON.stringify(headers, null, 2));
+  console.log("Query Params:", JSON.stringify(params, null, 2));
+  console.log("========================");
+}
+
+function logSSEConnection(connectionId: string, userId?: string) {
+  console.log("=== SSE Connection Debug ===");
+  console.log("Timestamp:", new Date().toISOString());
+  console.log("Connection ID:", connectionId);
+  console.log("User ID:", userId || "anonymous");
+  console.log("============================");
+}
 
 /**
  * SSE接続のGETハンドラー
  */
 export async function GET(request: NextRequest) {
+  const requestHeaders = Object.fromEntries(request.headers.entries());
+  const queryParams = Object.fromEntries(
+    request.nextUrl.searchParams.entries(),
+  );
+
+  // リクエストをログ
+  logSSERequest("GET", requestHeaders, queryParams);
+
   // CORS対応
   const headers = new Headers({
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cache-Control, Accept, X-Requested-With',
-    'Access-Control-Allow-Credentials': 'true',
-    'X-Accel-Buffering': 'no'
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization, Cache-Control, Accept, X-Requested-With",
+    "Access-Control-Allow-Credentials": "true",
+    "X-Accel-Buffering": "no",
   });
 
+  console.log("SSE Response Headers:", Object.fromEntries(headers.entries()));
+
   // クエリパラメータからユーザーIDを取得（オプション）
-  const userId = request.nextUrl.searchParams.get('userId') || undefined;
-  
+  const userId = request.nextUrl.searchParams.get("userId") || undefined;
+
   // 一意の接続IDを生成
-  const connectionId = `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const connectionId = `conn_${Date.now()}_${
+    Math.random().toString(36).substr(2, 9)
+  }`;
+
+  logSSEConnection(connectionId, userId);
 
   // ReadableStreamでSSE接続を作成
   const stream = new ReadableStream({
     start(controller) {
-      // 接続をイベントマネージャーに追加
-      sseEventManager.addConnection(connectionId, controller, userId);
-      
-      console.log(`New SSE connection established: ${connectionId}${userId ? ` (user: ${userId})` : ''}`);
+      try {
+        // 接続をイベントマネージャーに追加
+        sseEventManager.addConnection(connectionId, controller, userId);
+
+        console.log(
+          `✅ SSE connection established: ${connectionId}${
+            userId ? ` (user: ${userId})` : ""
+          }`,
+        );
+
+        // 初期接続確認メッセージ
+        const encoder = new TextEncoder();
+        const testMessage = `data: ${
+          JSON.stringify({
+            type: "connection",
+            connectionId,
+            timestamp: new Date().toISOString(),
+            message: "SSE connection established",
+          })
+        }\n\n`;
+        controller.enqueue(encoder.encode(testMessage));
+        console.log("Sent initial connection message");
+      } catch (error) {
+        console.error("Error in SSE start:", error);
+        controller.error(error);
+      }
     },
-    
-    cancel() {
+
+    cancel(reason) {
       // 接続が中断された場合のクリーンアップ
+      console.log(`SSE connection cancelled: ${connectionId}, reason:`, reason);
       sseEventManager.removeConnection(connectionId);
-      console.log(`SSE connection cancelled: ${connectionId}`);
-    }
+    },
   });
 
   return new Response(stream, { headers });
@@ -52,14 +107,21 @@ export async function GET(request: NextRequest) {
 /**
  * プリフライトリクエスト対応
  */
-export async function OPTIONS() {
-  return new Response(null, {
+export async function OPTIONS(request: NextRequest) {
+  const requestHeaders = Object.fromEntries(request.headers.entries());
+  logSSERequest("OPTIONS", requestHeaders, {});
+
+  const response = new Response(null, {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cache-Control, Accept, X-Requested-With',
-      'Access-Control-Allow-Credentials': 'true'
-    }
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers":
+        "Content-Type, Authorization, Cache-Control, Accept, X-Requested-With",
+      "Access-Control-Allow-Credentials": "true",
+    },
   });
+
+  console.log("SSE OPTIONS response sent");
+  return response;
 }
