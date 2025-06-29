@@ -6,6 +6,34 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
+
+// OAuth 2.0 Dynamic Client Registration のサポート
+const OAUTH_CLIENTS = new Map<string, {
+  client_id: string;
+  client_secret: string;
+  redirect_uris: string[];
+  client_name: string;
+  created_at: number;
+}>();
+
+// 認証コードの一時保存
+const AUTH_CODES = new Map<string, {
+  code: string;
+  client_id: string;
+  redirect_uri: string;
+  expires_at: number;
+  user_id: string;
+}>();
+
+// アクセストークンの管理
+const ACCESS_TOKENS = new Map<string, {
+  token: string;
+  client_id: string;
+  user_id: string;
+  scope: string[];
+  expires_at: number;
+}>();
 
 // JSON-RPCリクエストの型定義
 interface JsonRpcRequest {
@@ -178,179 +206,163 @@ function logError(error: any, context: string) {
   console.error("=================");
 }
 
-export async function POST(request: NextRequest) {
-  const requestHeaders = Object.fromEntries(request.headers.entries());
-  let body: JsonRpcRequest | null = null;
+// OAuth 2.0 Well-Known Endpoint
+async function handleWellKnownOAuth() {
+  const baseUrl = process.env.NEXTAUTH_URL || "https://biz-clone.vercel.app";
 
-  try {
-    // リクエストボディを取得
-    const rawBody = await request.text();
-    console.log("Raw request body:", rawBody);
-
-    try {
-      body = JSON.parse(rawBody);
-    } catch (parseError) {
-      logError(parseError, "JSON Parse Error");
-      return NextResponse.json(
-        {
-          jsonrpc: "2.0",
-          error: {
-            code: -32700,
-            message: "Parse error",
-            data: `Invalid JSON: ${
-              parseError instanceof Error ? parseError.message : "Unknown error"
-            }`,
-          },
-          id: null,
-        },
-        { status: 400, headers: corsHeaders },
-      );
-    }
-
-    // リクエストをログ
-    logRequest("POST", "/api", body, requestHeaders);
-
-    // JSON-RPC 2.0の検証
-    if (!body || body.jsonrpc !== "2.0") {
-      const errorResponse = {
-        jsonrpc: "2.0",
-        error: {
-          code: -32600,
-          message: 'Invalid Request: jsonrpc must be "2.0"',
-          data: { received: body?.jsonrpc || "undefined" },
-        },
-        id: body?.id || null,
-      };
-      logResponse(400, errorResponse);
-      return NextResponse.json(errorResponse, {
-        status: 400,
-        headers: corsHeaders,
-      });
-    }
-
-    // メソッドのルーティング
-    console.log(`Processing method: ${body.method}`);
-    let result;
-
-    switch (body.method) {
-      case "initialize":
-        result = await handleInitialize(body.params);
-        break;
-
-      case "list_tools":
-        result = await handleListTools();
-        break;
-
-      case "call_tool":
-        result = await handleCallTool(body.params, request);
-        break;
-
-      case "list_resources":
-        result = await handleListResources();
-        break;
-
-      case "list_prompts":
-        result = await handleListPrompts();
-        break;
-
-      default:
-        const notFoundError = {
-          jsonrpc: "2.0",
-          error: {
-            code: -32601,
-            message: `Method not found: ${body.method}`,
-            data: {
-              availableMethods: [
-                "initialize",
-                "list_tools",
-                "call_tool",
-                "list_resources",
-                "list_prompts",
-              ],
-            },
-          },
-          id: body.id,
-        };
-        logResponse(404, notFoundError);
-        return NextResponse.json(notFoundError, {
-          status: 404,
-          headers: corsHeaders,
-        });
-    }
-
-    const successResponse = {
-      jsonrpc: "2.0",
-      result,
-      id: body.id,
-    };
-
-    logResponse(200, successResponse);
-    return NextResponse.json(successResponse, { headers: corsHeaders });
-  } catch (error) {
-    logError(error, "Unhandled Error in POST handler");
-    const errorResponse = {
-      jsonrpc: "2.0",
-      error: {
-        code: -32603,
-        message: "Internal error",
-        data: {
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-      },
-      id: body?.id || null,
-    };
-    logResponse(500, errorResponse);
-    return NextResponse.json(errorResponse, {
-      status: 500,
-      headers: corsHeaders,
-    });
-  }
-}
-
-// OPTIONSメソッドのハンドラー（CORS対応）
-export async function OPTIONS(request: NextRequest) {
-  const requestHeaders = Object.fromEntries(request.headers.entries());
-  logRequest("OPTIONS", "/api", null, requestHeaders);
-
-  const response = new Response(null, {
-    status: 200,
-    headers: corsHeaders,
-  });
-
-  logResponse(200, "OPTIONS response with CORS headers");
-  return response;
-}
-
-// GETメソッドのハンドラー（デバッグ用）
-export async function GET(request: NextRequest) {
-  const requestHeaders = Object.fromEntries(request.headers.entries());
-  logRequest("GET", "/api", null, requestHeaders);
-
-  const debugInfo = {
-    status: "MCP endpoint is running",
-    timestamp: new Date().toISOString(),
-    availableMethods: [
-      "initialize",
-      "list_tools",
-      "call_tool",
-      "list_resources",
-      "list_prompts",
+  return {
+    issuer: baseUrl,
+    authorization_endpoint: `${baseUrl}/api/oauth/authorize`,
+    token_endpoint: `${baseUrl}/api/oauth/token`,
+    registration_endpoint: `${baseUrl}/api/oauth/register`,
+    scopes_supported: ["read", "write", "claudeai"],
+    response_types_supported: ["code"],
+    grant_types_supported: ["authorization_code"],
+    token_endpoint_auth_methods_supported: [
+      "client_secret_post",
+      "client_secret_basic",
     ],
-    corsEnabled: true,
-    endpoint: "/api",
-    protocol: "JSON-RPC 2.0",
+    code_challenge_methods_supported: ["S256"],
+  };
+}
+
+// OAuth 2.0 Dynamic Client Registration
+async function handleClientRegistration(body: any) {
+  console.log("Handling client registration:", body);
+
+  const client_id = `mcp_${crypto.randomBytes(16).toString("hex")}`;
+  const client_secret = crypto.randomBytes(32).toString("hex");
+
+  const client = {
+    client_id,
+    client_secret,
+    redirect_uris: body.redirect_uris || [],
+    client_name: body.client_name || "MCP Client",
+    created_at: Date.now(),
   };
 
-  logResponse(200, debugInfo);
-  return NextResponse.json(debugInfo, { headers: corsHeaders });
+  OAUTH_CLIENTS.set(client_id, client);
+
+  console.log("Client registered:", {
+    client_id,
+    client_name: client.client_name,
+  });
+
+  return {
+    client_id,
+    client_secret,
+    client_id_issued_at: Math.floor(client.created_at / 1000),
+    redirect_uris: client.redirect_uris,
+    client_name: client.client_name,
+  };
+}
+
+// OAuth 2.0 Authorization Endpoint
+async function handleOAuthAuthorize(searchParams: URLSearchParams) {
+  console.log(
+    "Handling OAuth authorize:",
+    Object.fromEntries(searchParams.entries()),
+  );
+
+  const client_id = searchParams.get("client_id");
+  const redirect_uri = searchParams.get("redirect_uri");
+  const response_type = searchParams.get("response_type");
+  const scope = searchParams.get("scope");
+  const state = searchParams.get("state");
+  const code_challenge = searchParams.get("code_challenge");
+  const code_challenge_method = searchParams.get("code_challenge_method");
+
+  if (!client_id || !redirect_uri || response_type !== "code") {
+    throw new Error("Invalid authorization request");
+  }
+
+  const client = OAUTH_CLIENTS.get(client_id);
+  if (!client) {
+    throw new Error("Invalid client_id");
+  }
+
+  if (!client.redirect_uris.includes(redirect_uri)) {
+    throw new Error("Invalid redirect_uri");
+  }
+
+  // 簡易認証（実際の実装では適切なユーザー認証が必要）
+  const user_id = "anonymous_user";
+  const code = crypto.randomBytes(32).toString("hex");
+
+  AUTH_CODES.set(code, {
+    code,
+    client_id,
+    redirect_uri,
+    expires_at: Date.now() + 600000, // 10分
+    user_id,
+  });
+
+  const redirectUrl = new URL(redirect_uri);
+  redirectUrl.searchParams.set("code", code);
+  if (state) redirectUrl.searchParams.set("state", state);
+
+  console.log(
+    "Authorization code generated, redirecting to:",
+    redirectUrl.toString(),
+  );
+
+  return redirectUrl.toString();
+}
+
+// OAuth 2.0 Token Endpoint
+async function handleOAuthToken(body: any) {
+  console.log("Handling OAuth token exchange:", body);
+
+  const { grant_type, code, redirect_uri, client_id, client_secret } = body;
+
+  if (grant_type !== "authorization_code") {
+    throw new Error("Unsupported grant_type");
+  }
+
+  const authCode = AUTH_CODES.get(code);
+  if (!authCode || authCode.expires_at < Date.now()) {
+    throw new Error("Invalid or expired authorization code");
+  }
+
+  const client = OAUTH_CLIENTS.get(client_id);
+  if (!client || client.client_secret !== client_secret) {
+    throw new Error("Invalid client credentials");
+  }
+
+  if (authCode.redirect_uri !== redirect_uri) {
+    throw new Error("Invalid redirect_uri");
+  }
+
+  // 認証コードを削除（一度だけ使用可能）
+  AUTH_CODES.delete(code);
+
+  // アクセストークンを生成
+  const access_token = crypto.randomBytes(32).toString("hex");
+  const refresh_token = crypto.randomBytes(32).toString("hex");
+
+  ACCESS_TOKENS.set(access_token, {
+    token: access_token,
+    client_id,
+    user_id: authCode.user_id,
+    scope: ["read", "write"],
+    expires_at: Date.now() + 3600000, // 1時間
+  });
+
+  console.log("Access token generated for client:", client_id);
+
+  return {
+    access_token,
+    token_type: "Bearer",
+    expires_in: 3600,
+    refresh_token,
+    scope: "read write",
+  };
 }
 
 // 初期化ハンドラー
 async function handleInitialize(params: any) {
   console.log("Handling initialize with params:", params);
 
-  // クライアントから送られてきたバージョンを尊重する
   const clientProtocolVersion = params?.protocolVersion || "2025-03-26";
 
   const result = {
@@ -367,36 +379,39 @@ async function handleInitialize(params: any) {
         listChanged: false,
       },
       logging: {},
-      // Claude Web版用の認証サポート（OAuth 2.1準拠）
+      // Claude Web版用の認証サポート
       auth: {
         oauth: true,
-        // 簡易認証として、認証なしでもアクセス可能にする
-        anonymous: true,
-        // OAuth 2.1フローのサポート
         flows: ["authorization_code"],
-        scopes: ["read", "write"],
+        scopes: ["read", "write", "claudeai"],
+        authorizationUrl: `${
+          process.env.NEXTAUTH_URL || "https://biz-clone.vercel.app"
+        }/api/oauth/authorize`,
+        tokenUrl: `${
+          process.env.NEXTAUTH_URL || "https://biz-clone.vercel.app"
+        }/api/oauth/token`,
+        registrationUrl: `${
+          process.env.NEXTAUTH_URL || "https://biz-clone.vercel.app"
+        }/api/oauth/register`,
       },
     },
     serverInfo: {
       name: "biz-clone-mcp-server",
       version: "1.0.0",
       description: "biz-clone会計システムのMCPサーバー",
+      author: "biz-clone team",
+      homepage: process.env.NEXTAUTH_URL || "https://biz-clone.vercel.app",
     },
-    // Claude Web版用の追加情報
     implementation: {
       name: "biz-clone-mcp-server",
       version: "1.0.0",
-      features: ["tools", "resources", "auth"],
-    },
-    // Claude Web版用のメタデータ
-    _meta: {
-      description: "biz-clone会計システムとの統合",
-      version: "1.0.0",
-      author: "biz-clone team",
-      homepage: "https://biz-clone.vercel.app",
-      documentation: "https://biz-clone.vercel.app/api/docs",
+      features: ["oauth2", "dynamic_client_registration"],
+      documentation: `${
+        process.env.NEXTAUTH_URL || "https://biz-clone.vercel.app"
+      }/api/docs`,
     },
   };
+
   console.log("Initialize result:", result);
   return result;
 }
@@ -407,13 +422,11 @@ async function handleListTools() {
   const result = {
     tools: MCP_TOOLS.map((tool) => ({
       ...tool,
-      // Claude Web版用の追加メタデータ
       annotations: {
         audience: ["user"],
         level: "beginner",
       },
     })),
-    // Claude Web版用のメタデータ
     _meta: {
       description: "biz-clone会計システムのMCPツール",
       version: "1.0.0",
@@ -490,22 +503,41 @@ async function handleListPrompts() {
   return result;
 }
 
+// アクセストークンの検証
+function validateAccessToken(authHeader: string | null): string | null {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return null;
+  }
+
+  const token = authHeader.substring(7);
+  const tokenData = ACCESS_TOKENS.get(token);
+
+  if (!tokenData || tokenData.expires_at < Date.now()) {
+    return null;
+  }
+
+  return tokenData.user_id;
+}
+
 // ツール実行ハンドラー
 async function handleCallTool(params: any, request: NextRequest) {
   console.log("Handling call_tool with params:", params);
-  const { name, arguments: args } = params || {};
 
-  if (!name) {
-    throw new Error("Tool name is required");
-  }
+  const { name, arguments: args } = params;
 
-  // ツールの検証
-  const tool = MCP_TOOLS.find((t) => t.name === name);
-  if (!tool) {
+  if (!name || !MCP_TOOLS.find((tool) => tool.name === name)) {
     throw new Error(`Tool not found: ${name}`);
   }
 
-  console.log(`Executing tool: ${name} with arguments:`, args);
+  // 認証チェック
+  const authHeader = request.headers.get("Authorization");
+  const userId = validateAccessToken(authHeader);
+
+  if (!userId) {
+    throw new Error("Authentication required");
+  }
+
+  console.log(`Authenticated user ${userId} calling tool: ${name}`);
 
   // 実際のAPIエンドポイントを呼び出す
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
@@ -519,17 +551,7 @@ async function handleCallTool(params: any, request: NextRequest) {
       break;
 
     case "search_journals":
-      // GETリクエストの場合はクエリパラメータを構築
-      const searchParams = new URLSearchParams();
-      if (args?.searchTerm) searchParams.append("searchTerm", args.searchTerm);
-      if (args?.fromDate) searchParams.append("fromDate", args.fromDate);
-      if (args?.toDate) searchParams.append("toDate", args.toDate);
-      if (args?.page) searchParams.append("page", args.page.toString());
-      if (args?.limit) searchParams.append("limit", args.limit.toString());
-
-      endpoint = `${baseUrl}/api/journal${
-        searchParams.toString() ? `?${searchParams.toString()}` : ""
-      }`;
+      endpoint = `${baseUrl}/api/journal`;
       method = "GET";
       break;
 
@@ -537,21 +559,17 @@ async function handleCallTool(params: any, request: NextRequest) {
       throw new Error(`Tool implementation not found: ${name}`);
   }
 
-  // 認証ヘッダーの転送
   const headers: HeadersInit = {
     "Content-Type": "application/json",
   };
 
-  const authHeader = request.headers.get("Authorization");
   if (authHeader) {
     headers["Authorization"] = authHeader;
-    console.log("Forwarding Authorization header");
   }
 
   console.log(`Calling API: ${method} ${endpoint}`);
 
   try {
-    // APIリクエストの実行
     const response = await fetch(endpoint, {
       method,
       headers,
@@ -559,24 +577,219 @@ async function handleCallTool(params: any, request: NextRequest) {
     });
 
     const responseText = await response.text();
-    console.log(`API Response Status: ${response.status}`);
-    console.log(`API Response Body: ${responseText}`);
+    console.log(`API response status: ${response.status}`);
+    console.log(`API response: ${responseText.substring(0, 500)}...`);
 
     if (!response.ok) {
-      throw new Error(`API call failed: ${response.status} - ${responseText}`);
+      throw new Error(`API call failed: ${response.status} ${responseText}`);
     }
 
-    const result = JSON.parse(responseText);
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(result, null, 2),
-        },
-      ],
-    };
-  } catch (apiError) {
-    logError(apiError, `Tool execution failed: ${name}`);
-    throw apiError;
+    const result = responseText ? JSON.parse(responseText) : {};
+    console.log("Tool execution successful");
+    return result;
+  } catch (error) {
+    console.error("Tool execution error:", error);
+    throw error;
   }
+}
+
+// メインハンドラー
+export async function GET(request: NextRequest) {
+  const { searchParams, pathname } = new URL(request.url);
+
+  console.log(`GET request to: ${pathname}`);
+  console.log("Query params:", Object.fromEntries(searchParams.entries()));
+
+  try {
+    // OAuth 2.0 Well-Known Configuration
+    if (pathname === "/api/.well-known/oauth-authorization-server") {
+      const config = await handleWellKnownOAuth();
+      return NextResponse.json(config, {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        },
+      });
+    }
+
+    // OAuth 2.0 Authorization Endpoint
+    if (pathname === "/api/oauth/authorize") {
+      const redirectUrl = await handleOAuthAuthorize(searchParams);
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // デフォルトレスポンス（MCP情報）
+    const info = {
+      status: "MCP endpoint is running",
+      timestamp: new Date().toISOString(),
+      availableMethods: [
+        "initialize",
+        "list_tools",
+        "call_tool",
+        "list_resources",
+        "list_prompts",
+      ],
+      corsEnabled: true,
+      endpoint: "/api",
+      protocol: "JSON-RPC 2.0",
+      authentication: {
+        supported: true,
+        methods: ["OAuth 2.0"],
+        wellKnown: "/.well-known/oauth-authorization-server",
+      },
+    };
+
+    return NextResponse.json(info, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    });
+  } catch (error: any) {
+    console.error("GET request error:", error);
+    return NextResponse.json(
+      { error: error.message || "Internal server error" },
+      {
+        status: 500,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        },
+      },
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const { pathname } = new URL(request.url);
+
+  console.log(`POST request to: ${pathname}`);
+
+  try {
+    // OAuth 2.0 Client Registration
+    if (pathname === "/api/oauth/register") {
+      const body = await request.json();
+      const result = await handleClientRegistration(body);
+      return NextResponse.json(result, {
+        status: 201,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        },
+      });
+    }
+
+    // OAuth 2.0 Token Exchange
+    if (pathname === "/api/oauth/token") {
+      const body = await request.json();
+      const result = await handleOAuthToken(body);
+      return NextResponse.json(result, {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        },
+      });
+    }
+
+    // JSON-RPC 2.0 処理
+    const body = await request.json();
+    console.log("Request body:", body);
+
+    if (!body.jsonrpc || body.jsonrpc !== "2.0") {
+      throw new Error("Invalid JSON-RPC version");
+    }
+
+    let result: any;
+
+    switch (body.method) {
+      case "initialize":
+        result = await handleInitialize(body.params);
+        break;
+
+      case "list_tools":
+        result = await handleListTools();
+        break;
+
+      case "call_tool":
+        result = await handleCallTool(body.params, request);
+        break;
+
+      case "list_resources":
+        result = await handleListResources();
+        break;
+
+      case "list_prompts":
+        result = await handleListPrompts();
+        break;
+
+      default:
+        throw new Error(`Unknown method: ${body.method}`);
+    }
+
+    const response = {
+      jsonrpc: "2.0",
+      id: body.id,
+      result,
+    };
+
+    console.log(
+      "Response:",
+      JSON.stringify(response).substring(0, 500) + "...",
+    );
+
+    return NextResponse.json(response, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Cache-Control": "no-cache",
+      },
+    });
+  } catch (error: any) {
+    console.error("POST request error:", error);
+    console.error("Error stack:", error.stack);
+
+    const errorResponse = {
+      jsonrpc: "2.0",
+      id: request.body ? (await request.json().catch(() => ({})))?.id : null,
+      error: {
+        code: -32603,
+        message: error.message || "Internal error",
+        data: {
+          timestamp: new Date().toISOString(),
+          path: pathname,
+        },
+      },
+    };
+
+    return NextResponse.json(errorResponse, {
+      status: 500,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    });
+  }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  console.log("OPTIONS request received");
+
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers":
+        "Content-Type, Authorization, X-Requested-With, Accept, Cache-Control",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Max-Age": "86400",
+    },
+  });
 }
