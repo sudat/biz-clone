@@ -205,7 +205,7 @@ export class JournalNumberService {
    */
   static async generateNextJournalNumberSafe(
     date: string,
-    maxRetries: number = 3,
+    _maxRetries: number = 3,
   ): Promise<{
     success: boolean;
     data?: string;
@@ -253,7 +253,7 @@ export class JournalNumberService {
    * @param date 対象日付（未指定の場合は全日付をチェック）
    * @returns Promise<{ success: boolean, data?: any[], error?: string }>
    */
-  static async validateJournalNumberIntegrity(date?: string): Promise<{
+  static async validateJournalNumberIntegrity(_date?: string): Promise<{
     success: boolean;
     data?: any[];
     error?: string;

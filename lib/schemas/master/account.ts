@@ -3,7 +3,7 @@
  */
 
 import { z } from "zod";
-import { ACCOUNT_TYPE_LIST, type AccountType } from "@/types/master-types";
+import { ACCOUNT_TYPE_LIST } from "@/types/master-types";
 
 /**
  * 勘定科目作成スキーマ

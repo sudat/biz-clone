@@ -3,7 +3,7 @@
  */
 
 import { z } from "zod";
-import { PARTNER_TYPE_LIST, type PartnerType } from "@/types/master-types";
+import { PARTNER_TYPE_LIST } from "@/types/master-types";
 
 /**
  * 取引先作成スキーマ
