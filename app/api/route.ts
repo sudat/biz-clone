@@ -31,7 +31,7 @@ const MCP_TOOLS = [
   {
     name: "save_journal",
     description: "新しい仕訳を保存します",
-    input: {
+    inputSchema: {
       type: "object",
       properties: {
         header: {
@@ -73,7 +73,7 @@ const MCP_TOOLS = [
   {
     name: "search_journals",
     description: "仕訳を検索します",
-    input: {
+    inputSchema: {
       type: "object",
       properties: {
         searchTerm: { type: "string", description: "検索キーワード" },
@@ -280,12 +280,22 @@ async function handleInitialize(params: any) {
   console.log("Handling initialize with params:", params);
 
   // クライアントから送られてきたバージョンを尊重する
-  const clientProtocolVersion = params?.protocolVersion || "0.1.0";
+  const clientProtocolVersion = params?.protocolVersion || "2024-11-05";
 
   const result = {
     protocolVersion: clientProtocolVersion,
     capabilities: {
-      tools: {},
+      tools: {
+        listChanged: true,
+      },
+      resources: {
+        subscribe: false,
+        listChanged: false,
+      },
+      prompts: {
+        listChanged: false,
+      },
+      logging: {},
     },
     serverInfo: {
       name: "biz-clone-mcp-server",
