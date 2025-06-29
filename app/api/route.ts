@@ -249,6 +249,10 @@ export async function POST(request: NextRequest) {
         result = await handleListResources();
         break;
 
+      case "list_prompts":
+        result = await handleListPrompts();
+        break;
+
       default:
         const notFoundError = {
           jsonrpc: "2.0",
@@ -261,6 +265,7 @@ export async function POST(request: NextRequest) {
                 "list_tools",
                 "call_tool",
                 "list_resources",
+                "list_prompts",
               ],
             },
           },
@@ -330,6 +335,7 @@ export async function GET(request: NextRequest) {
       "list_tools",
       "call_tool",
       "list_resources",
+      "list_prompts",
     ],
     corsEnabled: true,
     endpoint: "/api",
@@ -361,21 +367,34 @@ async function handleInitialize(params: any) {
         listChanged: false,
       },
       logging: {},
-      // Claude Web版用の認証サポート
+      // Claude Web版用の認証サポート（OAuth 2.1準拠）
       auth: {
         oauth: true,
         // 簡易認証として、認証なしでもアクセス可能にする
         anonymous: true,
+        // OAuth 2.1フローのサポート
+        flows: ["authorization_code"],
+        scopes: ["read", "write"],
       },
     },
     serverInfo: {
       name: "biz-clone-mcp-server",
       version: "1.0.0",
+      description: "biz-clone会計システムのMCPサーバー",
     },
     // Claude Web版用の追加情報
     implementation: {
       name: "biz-clone-mcp-server",
       version: "1.0.0",
+      features: ["tools", "resources", "auth"],
+    },
+    // Claude Web版用のメタデータ
+    _meta: {
+      description: "biz-clone会計システムとの統合",
+      version: "1.0.0",
+      author: "biz-clone team",
+      homepage: "https://biz-clone.vercel.app",
+      documentation: "https://biz-clone.vercel.app/api/docs",
     },
   };
   console.log("Initialize result:", result);
@@ -425,6 +444,49 @@ async function handleListResources() {
     ],
   };
   console.log("Returning resources");
+  return result;
+}
+
+// プロンプト一覧ハンドラー
+async function handleListPrompts() {
+  console.log("Handling list_prompts");
+  const result = {
+    prompts: [
+      {
+        name: "create_journal_entry",
+        description: "新しい仕訳を作成するためのガイド付きプロンプト",
+        arguments: [
+          {
+            name: "date",
+            description: "仕訳日（YYYY-MM-DD形式）",
+            required: true,
+          },
+          {
+            name: "description",
+            description: "取引の説明",
+            required: false,
+          },
+        ],
+      },
+      {
+        name: "search_transactions",
+        description: "取引を検索するためのプロンプト",
+        arguments: [
+          {
+            name: "period",
+            description: "検索期間（例：今月、先月、今年）",
+            required: false,
+          },
+          {
+            name: "keywords",
+            description: "検索キーワード",
+            required: false,
+          },
+        ],
+      },
+    ],
+  };
+  console.log("Returning prompts");
   return result;
 }
 
