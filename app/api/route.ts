@@ -26,12 +26,12 @@ interface JsonRpcResponse {
   id: string | number;
 }
 
-// MCPツール定義
+// MCPツール定義（Claude Web版MCP仕様準拠）
 const MCP_TOOLS = [
   {
     name: "save_journal",
     description: "新しい仕訳を保存します",
-    inputSchema: {
+    input: {
       type: "object",
       properties: {
         header: {
@@ -73,14 +73,18 @@ const MCP_TOOLS = [
   {
     name: "search_journals",
     description: "仕訳を検索します",
-    inputSchema: {
+    input: {
       type: "object",
       properties: {
-        searchTerm: { type: "string" },
-        fromDate: { type: "string" },
-        toDate: { type: "string" },
-        page: { type: "number", default: 1 },
-        limit: { type: "number", default: 20 },
+        searchTerm: { type: "string", description: "検索キーワード" },
+        fromDate: { type: "string", description: "開始日 (YYYY-MM-DD形式)" },
+        toDate: { type: "string", description: "終了日 (YYYY-MM-DD形式)" },
+        page: { type: "number", default: 1, description: "ページ番号" },
+        limit: {
+          type: "number",
+          default: 20,
+          description: "1ページあたりの件数",
+        },
       },
     },
   },
@@ -282,9 +286,6 @@ async function handleInitialize(params: any) {
     protocolVersion: clientProtocolVersion,
     capabilities: {
       tools: {},
-      sse: {
-        endpoint: "/sse",
-      },
     },
     serverInfo: {
       name: "biz-clone-mcp-server",
@@ -334,7 +335,17 @@ async function handleCallTool(params: any, request: NextRequest) {
       break;
 
     case "search_journals":
-      endpoint = `${baseUrl}/api/journal`;
+      // GETリクエストの場合はクエリパラメータを構築
+      const searchParams = new URLSearchParams();
+      if (args?.searchTerm) searchParams.append("searchTerm", args.searchTerm);
+      if (args?.fromDate) searchParams.append("fromDate", args.fromDate);
+      if (args?.toDate) searchParams.append("toDate", args.toDate);
+      if (args?.page) searchParams.append("page", args.page.toString());
+      if (args?.limit) searchParams.append("limit", args.limit.toString());
+
+      endpoint = `${baseUrl}/api/journal${
+        searchParams.toString() ? `?${searchParams.toString()}` : ""
+      }`;
       method = "GET";
       break;
 

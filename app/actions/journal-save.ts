@@ -15,13 +15,13 @@ import { convertToJapaneseDate } from "@/lib/utils/date-utils";
 import { getCurrentUserIdFromCookie } from "@/lib/utils/auth-utils";
 import { JournalSaveData, JournalSaveResult } from "@/types/journal";
 import type { AttachedFile } from "@/components/accounting/file-attachment";
-import { notifyJournalCreated } from "@/lib/sse/event-helpers";
 
 /**
  * UUID形式の検証
  */
 function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(uuid);
 }
 
@@ -43,7 +43,7 @@ export async function saveJournal(
 
     // 現在のユーザIDを取得（Cookieから）
     const currentUserId = await getCurrentUserIdFromCookie();
-    
+
     // UUIDのバリデーション
     console.log("取得されたユーザーID:", currentUserId);
     if (currentUserId && !isValidUUID(currentUserId)) {
@@ -103,19 +103,20 @@ export async function saveJournal(
       );
 
       // 添付ファイル保存
-      const journalAttachments = data.attachedFiles && data.attachedFiles.length > 0
-        ? await tx.journalAttachment.createMany({
-          data: data.attachedFiles.map((file) => ({
-            journalNumber,
-            fileName: file.name,
-            originalFileName: file.name,
-            fileUrl: file.url,
-            fileSize: BigInt(file.size),
-            fileExtension: file.name.split(".").pop()?.toLowerCase() || "",
-            mimeType: file.type,
-          })),
-        })
-        : [];
+      const journalAttachments =
+        data.attachedFiles && data.attachedFiles.length > 0
+          ? await tx.journalAttachment.createMany({
+            data: data.attachedFiles.map((file) => ({
+              journalNumber,
+              fileName: file.name,
+              originalFileName: file.name,
+              fileUrl: file.url,
+              fileSize: BigInt(file.size),
+              fileExtension: file.name.split(".").pop()?.toLowerCase() || "",
+              mimeType: file.type,
+            })),
+          })
+          : [];
 
       return {
         journalHeader,
@@ -127,18 +128,6 @@ export async function saveJournal(
     // キャッシュ更新
     revalidatePath("/siwake");
     revalidatePath("/siwake/new");
-
-    // SSEイベント送信（仕訳作成通知）
-    const totalDebitAmount = data.details
-      .filter(detail => detail.debitCredit === 'debit')
-      .reduce((sum, detail) => sum + detail.totalAmount, 0);
-    
-    await notifyJournalCreated({
-      journalNumber: result.journalHeader.journalNumber,
-      date: result.journalHeader.journalDate,
-      description: result.journalHeader.description,
-      totalDebitAmount
-    }, currentUserId || undefined);
 
     return {
       success: true,
@@ -252,7 +241,7 @@ export async function updateJournal(
 
     // 現在のユーザIDを取得（Cookieから）
     const currentUserId = await getCurrentUserIdFromCookie();
-    
+
     // UUIDのバリデーション
     if (currentUserId && !isValidUUID(currentUserId)) {
       console.error("無効なUUID形式:", currentUserId);

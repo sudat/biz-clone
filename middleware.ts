@@ -21,11 +21,11 @@ export async function middleware(request: NextRequest) {
   // 認証機能は削除済み - 全てのルートへのアクセスを許可
   const response = NextResponse.next();
 
-  // MCPとSSEエンドポイント用のCORS設定
+  // MCPエンドポイント用のCORS設定
   const pathname = request.nextUrl.pathname;
   let corsApplied = false;
 
-  if (pathname.startsWith("/api") || pathname.startsWith("/sse")) {
+  if (pathname.startsWith("/api")) {
     corsApplied = true;
     response.headers.set("Access-Control-Allow-Origin", "*");
     response.headers.set(

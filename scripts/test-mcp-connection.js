@@ -148,15 +148,6 @@ async function runTests() {
     );
     log(`   Response: ${invalidResponse.body}`, "yellow");
 
-    // 6. SSEエンドポイントテスト
-    log("\n6. Testing SSE endpoint...", "cyan");
-    const sseResponse = await makeRequest("/api/sse", { method: "GET" });
-    log(
-      `   Status: ${sseResponse.status}`,
-      sseResponse.status === 200 ? "green" : "red"
-    );
-    log(`   Content-Type: ${sseResponse.headers["content-type"]}`, "yellow");
-
     log("\n=== Test Complete ===\n", "bright");
   } catch (error) {
     log(`\nError: ${error.message}`, "red");
