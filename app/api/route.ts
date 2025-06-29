@@ -503,6 +503,17 @@ async function handleListPrompts() {
   return result;
 }
 
+// MCP通知ハンドラー（Claude Web版互換性）
+async function handleNotificationInitialized() {
+  console.log("Handling notifications/initialized");
+
+  // Claude Web版が初期化完了を通知してきた場合の処理
+  // 通常は何も返さない（通知は一方向）
+  console.log("Claude Web client has completed initialization");
+
+  return {}; // 空のオブジェクトを返す
+}
+
 // アクセストークンの検証
 function validateAccessToken(authHeader: string | null): string | null {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -725,6 +736,11 @@ export async function POST(request: NextRequest) {
 
       case "list_prompts":
         result = await handleListPrompts();
+        break;
+
+      // MCP 通知メソッド（Claude Web版互換性）
+      case "notifications/initialized":
+        result = await handleNotificationInitialized();
         break;
 
       default:
