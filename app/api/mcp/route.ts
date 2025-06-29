@@ -161,19 +161,31 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        // Tool execution
-        const result = await executeToolCall(toolName, toolArgs);
-        
-        return NextResponse.json({
-          jsonrpc: "2.0",
-          result: {
-            content: [{
-              type: "text",
-              text: JSON.stringify(result, null, 2)
-            }]
-          },
-          id
-        });
+        // Tool execution (anonymous access allowed for now)
+        try {
+          const result = await executeToolCall(toolName, toolArgs);
+          
+          return NextResponse.json({
+            jsonrpc: "2.0",
+            result: {
+              content: [{
+                type: "text",
+                text: JSON.stringify(result, null, 2)
+              }]
+            },
+            id
+          });
+        } catch (error) {
+          return NextResponse.json({
+            jsonrpc: "2.0",
+            error: { 
+              code: -32603, 
+              message: "Tool execution failed",
+              data: error instanceof Error ? error.message : "Unknown error"
+            },
+            id
+          });
+        }
 
       default:
         return NextResponse.json({
@@ -271,6 +283,19 @@ export async function GET() {
     server: "biz-clone-accounting",
     version: "1.0.0",
     description: "Biz Clone Accounting MCP Server for journal and master data management",
+    capabilities: {
+      auth: {
+        oauth2: {
+          authorization_endpoint: "https://biz-clone.vercel.app/api/oauth/authorize",
+          token_endpoint: "https://biz-clone.vercel.app/api/oauth/token",
+          registration_endpoint: "https://biz-clone.vercel.app/api/mcp",
+          scopes_supported: ["mcp:read", "mcp:write"],
+          response_types_supported: ["code"],
+          grant_types_supported: ["authorization_code", "client_credentials"]
+        },
+        anonymous: true  // Allow anonymous access for testing
+      }
+    },
     endpoints: {
       tools: "/api/mcp/tools",
       test: "/api/mcp/test"
@@ -279,12 +304,54 @@ export async function GET() {
   });
 }
 
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    // OAuth Dynamic Client Registration (RFC 7591)
+    // Claude Code uses PUT for DCR
+    const clientRegistration = {
+      client_id: `mcp_client_${Date.now()}`,
+      client_secret: `secret_${Math.random().toString(36).substr(2, 32)}`,
+      client_name: body.client_name || "Claude Code MCP Client",
+      client_uri: body.client_uri || "https://claude.ai",
+      redirect_uris: body.redirect_uris || ["https://claude.ai/oauth/callback"],
+      grant_types: ["authorization_code", "client_credentials"],
+      response_types: ["code"],
+      scope: "mcp:read mcp:write",
+      token_endpoint_auth_method: "client_secret_basic"
+    };
+
+    return NextResponse.json(clientRegistration, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    });
+
+  } catch (error) {
+    console.error("DCR Error:", error);
+    return NextResponse.json({
+      error: "invalid_client_metadata",
+      error_description: "Failed to register client"
+    }, { 
+      status: 400,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS", 
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      }
+    });
+  }
+}
+
 export async function OPTIONS() {
   return new Response(null, {
     status: 200,
     headers: {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
     },
   });
