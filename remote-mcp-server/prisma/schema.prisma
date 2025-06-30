@@ -5,13 +5,13 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================================================
@@ -20,20 +20,20 @@ datasource db {
 
 // 勘定科目マスタ
 model Account {
-  accountCode       String   @id @db.VarChar(10)
-  accountName       String   @db.VarChar(100)
-  accountType       String   @db.VarChar(20)
-  parentAccountCode String?  @db.VarChar(10)
-  isDetail          Boolean  @default(true)
-  isActive          Boolean  @default(true)
+  accountCode       String  @id @db.VarChar(10)
+  accountName       String  @db.VarChar(100)
+  accountType       String  @db.VarChar(20)
+  parentAccountCode String? @db.VarChar(10)
+  isDetail          Boolean @default(true)
+  isActive          Boolean @default(true)
   sortOrder         Int?
-  
+
   // 消費税関連フィールド
-  isTaxAccount      Boolean  @default(false)                      // 消費税科目フラグ
-  defaultTaxCode    String?  @db.VarChar(10)                     // デフォルト税区分コード
-  
-  createdAt         DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt         DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  isTaxAccount   Boolean @default(false) // 消費税科目フラグ
+  defaultTaxCode String? @db.VarChar(10) // デフォルト税区分コード
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
   // 自己参照関係
   parentAccount Account?  @relation("AccountParent", fields: [parentAccountCode], references: [accountCode])
@@ -91,16 +91,16 @@ model Partner {
 
 // 分析種別マスタ
 model AnalysisType {
-  typeCode   String   @id @db.VarChar(20)
-  typeName   String   @db.VarChar(50)
-  isActive   Boolean  @default(true)
-  sortOrder  Int?
-  createdAt  DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
-  
+  typeCode  String   @id @db.VarChar(20)
+  typeName  String   @db.VarChar(50)
+  isActive  Boolean  @default(true)
+  sortOrder Int?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
   // 関係
   analysisCodes AnalysisCode[]
-  
+
   @@map("analysis_types")
 }
 
@@ -178,22 +178,22 @@ model Role {
 
 // ユーザマスタ
 model User {
-  userId       String   @id @db.Uuid @default(dbgenerated("gen_random_uuid()"))
-  userCode     String   @unique @db.VarChar(20)
-  userName     String   @db.VarChar(100)
-  userKana     String?  @db.VarChar(100)
-  email        String   @unique @db.VarChar(100)
-  passwordHash String   @db.VarChar(255)
-  roleCode     String   @db.VarChar(20)
-  isActive     Boolean  @default(true)
+  userId       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userCode     String    @unique @db.VarChar(20)
+  userName     String    @db.VarChar(100)
+  userKana     String?   @db.VarChar(100)
+  email        String    @unique @db.VarChar(100)
+  passwordHash String    @db.VarChar(255)
+  roleCode     String    @db.VarChar(20)
+  isActive     Boolean   @default(true)
   lastLoginAt  DateTime? @db.Timestamptz(6)
-  createdAt    DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt    DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
 
   // 関係
-  role Role @relation(fields: [roleCode], references: [roleCode])
+  role                      Role                       @relation(fields: [roleCode], references: [roleCode])
   workflowOrganizationUsers WorkflowOrganizationUser[]
-  
+
   // 仕訳関連
   createdJournals  JournalHeader[] @relation("JournalCreatedBy")
   approvedJournals JournalHeader[] @relation("JournalApprovedBy")
@@ -240,7 +240,7 @@ model WorkflowRoute {
   routeCode      String   @id @db.VarChar(20)
   routeName      String   @db.VarChar(100)
   description    String?  @db.Text
-  flowConfigJson Json     // ReactFlowの設定データ（JSON形式）
+  flowConfigJson Json // ReactFlowの設定データ（JSON形式）
   isActive       Boolean  @default(true)
   sortOrder      Int?
   createdAt      DateTime @default(now()) @db.Timestamptz(6)
@@ -255,7 +255,7 @@ model WorkflowRoute {
 // ワークフロールート・ステップ中間テーブル（組織の順序関係）
 model WorkflowRouteStep {
   routeCode        String   @db.VarChar(20)
-  stepNumber       Int      // ステップの順序番号
+  stepNumber       Int // ステップの順序番号
   organizationCode String   @db.VarChar(20)
   stepName         String?  @db.VarChar(100)
   isRequired       Boolean  @default(true)
@@ -277,39 +277,39 @@ model WorkflowRouteStep {
 
 // 仕訳ヘッダテーブル
 model JournalHeader {
-  journalNumber    String   @id @db.VarChar(15)
-  journalDate      DateTime @db.Date
-  description      String?  @db.Text
-  totalAmount      Decimal  @default(0) @db.Decimal(15, 2)
-  createdAt        DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt        DateTime @default(now()) @updatedAt @db.Timestamptz(6)
-  
+  journalNumber String   @id @db.VarChar(15)
+  journalDate   DateTime @db.Date
+  description   String?  @db.Text
+  totalAmount   Decimal  @default(0) @db.Decimal(15, 2)
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
   // ユーザ関連
-  createdBy        String?  @db.Uuid
-  
+  createdBy String? @db.Uuid
+
   // 承認フロー関連
-  approvalStatus   String   @default("pending") @db.VarChar(20)  // pending, approved, rejected
-  approvedBy       String?  @db.Uuid
-  approvedAt       DateTime? @db.Timestamptz(6)
-  rejectedReason   String?  @db.Text
+  approvalStatus String    @default("pending") @db.VarChar(20) // pending, approved, rejected
+  approvedBy     String?   @db.Uuid
+  approvedAt     DateTime? @db.Timestamptz(6)
+  rejectedReason String?   @db.Text
 
   // 関係
-  journalDetails   JournalDetail[]
+  journalDetails     JournalDetail[]
   journalAttachments JournalAttachment[]
-  createdUser      User?    @relation("JournalCreatedBy", fields: [createdBy], references: [userId])
-  approvedUser     User?    @relation("JournalApprovedBy", fields: [approvedBy], references: [userId])
+  createdUser        User?               @relation("JournalCreatedBy", fields: [createdBy], references: [userId])
+  approvedUser       User?               @relation("JournalApprovedBy", fields: [approvedBy], references: [userId])
 
   @@map("journal_headers")
 }
 
 // 仕訳添付ファイルテーブル
 model JournalAttachment {
-  attachmentId     String   @id @db.Uuid @default(dbgenerated("gen_random_uuid()"))
+  attachmentId     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   journalNumber    String   @db.VarChar(15)
   fileName         String   @db.VarChar(255)
   originalFileName String   @db.VarChar(255)
   fileUrl          String   @db.VarChar(500)
-  fileSize         BigInt                                              // ファイルサイズ（バイト）
+  fileSize         BigInt // ファイルサイズ（バイト）
   fileExtension    String   @db.VarChar(10)
   mimeType         String   @db.VarChar(100)
   uploadedAt       DateTime @default(now()) @db.Timestamptz(6)
@@ -324,25 +324,25 @@ model JournalAttachment {
 
 // 仕訳明細テーブル（消費税対応完全リデザイン）
 model JournalDetail {
-  journalNumber   String   @db.VarChar(15)
-  lineNumber      Int
-  debitCredit     String   @db.VarChar(1)
-  accountCode     String   @db.VarChar(10)
-  subAccountCode  String?  @db.VarChar(15)
-  partnerCode     String?  @db.VarChar(15)
-  analysisCode    String?  @db.VarChar(15)
-  departmentCode  String?  @db.VarChar(10)
-  
+  journalNumber  String  @db.VarChar(15)
+  lineNumber     Int
+  debitCredit    String  @db.VarChar(1)
+  accountCode    String  @db.VarChar(10)
+  subAccountCode String? @db.VarChar(15)
+  partnerCode    String? @db.VarChar(15)
+  analysisCode   String? @db.VarChar(15)
+  departmentCode String? @db.VarChar(10)
+
   // 金額関連（完全リデザイン）
-  baseAmount      Decimal  @db.Decimal(15, 2)                      // 本体額（税抜）※必須
-  taxAmount       Decimal  @default(0) @db.Decimal(15, 2)          // 消費税額
-  totalAmount     Decimal  @db.Decimal(15, 2)                      // 合計額（本体+税）
-  
+  baseAmount  Decimal @db.Decimal(15, 2) // 本体額（税抜）※必須
+  taxAmount   Decimal @default(0) @db.Decimal(15, 2) // 消費税額
+  totalAmount Decimal @db.Decimal(15, 2) // 合計額（本体+税）
+
   // 消費税関連
-  taxCode         String?  @db.VarChar(10)                         // 税区分コード
-  isAutoGenerated Boolean  @default(false)                         // 自動生成仕訳フラグ
-  parentLineNumber Int?                                            // 親仕訳の行番号（消費税仕訳用）
-  
+  taxCode          String? @db.VarChar(10) // 税区分コード
+  isAutoGenerated  Boolean @default(false) // 自動生成仕訳フラグ
+  parentLineNumber Int? // 親仕訳の行番号（消費税仕訳用）
+
   lineDescription String?  @db.Text
   createdAt       DateTime @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime @default(now()) @updatedAt @db.Timestamptz(6)
@@ -355,10 +355,10 @@ model JournalDetail {
   analysisCodeRel AnalysisCode? @relation(fields: [analysisCode], references: [analysisCode])
   department      Department?   @relation(fields: [departmentCode], references: [departmentCode])
   taxRate         TaxRate?      @relation(fields: [taxCode], references: [taxCode])
-  
+
   // 自己参照（親仕訳との関係）
-  parentLine      JournalDetail? @relation("TaxRelation", fields: [journalNumber, parentLineNumber], references: [journalNumber, lineNumber])
-  childLines      JournalDetail[] @relation("TaxRelation")
+  parentLine JournalDetail?  @relation("TaxRelation", fields: [journalNumber, parentLineNumber], references: [journalNumber, lineNumber])
+  childLines JournalDetail[] @relation("TaxRelation")
 
   // 複合主キー
   @@id([journalNumber, lineNumber])

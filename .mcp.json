@@ -1,11 +1,3 @@
 {
-  "mcpServers": {
-    "biz-clone-remote": {
-      "command": "npx",
-      "args": [
-        "mcp-remote",
-        "https://biz-clone-remote-mcp.tetuya1201.workers.dev/sse"
-      ]
-    }
-  }
+  "mcpServers": {}
 }

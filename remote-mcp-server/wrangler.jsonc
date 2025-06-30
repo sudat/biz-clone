@@ -32,6 +32,13 @@
       "id": "b6bdf2e6c4d043d084ad6d00b3f6d21c"
     }
   ],
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "07aeae86404440ec8f82fdd3f06593dc",
+      "localConnectionString": "postgresql://postgres.slqyqfqhettptdusuiqy:BTt3kQudwIaqHIHp@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+    }
+  ],
   "ai": {
     "binding": "AI"
   },
