@@ -22,7 +22,7 @@ import type {
   WorkflowOrganizationUser,
   WorkflowRoute,
   WorkflowRouteStep,
-} from "@/lib/database/prisma";
+} from "@prisma/client";
 
 export type {
   Account,

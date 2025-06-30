@@ -56,14 +56,22 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
 
   async init() {
     try {
-      // 🔍 デバッグ: 環境変数の値を確認
+      // 🔍 デバッグ: 環境変数の値を詳細確認（安全な形式で）
       console.log("🔍 Environment Variables Debug:");
-      console.log("DATABASE_URL:", this.env.DATABASE_URL?.slice(0, 50) + "...");
+      console.log("DATABASE_URL exists:", !!this.env.DATABASE_URL);
+      console.log("DATABASE_URL length:", this.env.DATABASE_URL?.length);
+      console.log("DATABASE_URL has pgbouncer:", this.env.DATABASE_URL?.includes("pgbouncer"));
+      console.log("DATABASE_URL starts with postgresql:", this.env.DATABASE_URL?.startsWith("postgresql"));
+      console.log("DATABASE_URL ends with:", this.env.DATABASE_URL?.slice(-20));
+      
       console.log("HYPERDRIVE available:", !!this.env.HYPERDRIVE);
-      console.log(
-        "HYPERDRIVE connectionString:",
-        this.env.HYPERDRIVE?.connectionString?.slice(0, 50) + "...",
-      );
+      if (this.env.HYPERDRIVE) {
+        console.log("HYPERDRIVE connectionString exists:", !!this.env.HYPERDRIVE.connectionString);
+        console.log("HYPERDRIVE connectionString length:", this.env.HYPERDRIVE.connectionString?.length);
+        console.log("HYPERDRIVE has pgbouncer:", this.env.HYPERDRIVE.connectionString?.includes("pgbouncer"));
+        console.log("HYPERDRIVE starts with postgresql:", this.env.HYPERDRIVE.connectionString?.startsWith("postgresql"));
+      }
+      console.log("All env keys:", Object.keys(this.env));
 
       // Initialize Prisma client - try/catch for graceful fallback
       console.log("🔧 Prisma初期化を開始します...");
@@ -82,11 +90,21 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
             const url = this.env.HYPERDRIVE.connectionString;
             const adapter = new PrismaPg({ 
               connectionString: url,
+              // Hyperdriveを使用する場合は接続プール設定をHyperdriveに委任
+              // max: 1, // Hyperdriveが管理するため最小に
+              // idleTimeoutMillis: 0, // Hyperdriveが管理
+              // connectionTimeoutMillis: 30000, // Hyperdriveに合わせて長めに
             });
             
             this.prisma = new PrismaClient({
               adapter,
               log: ["warn", "error"],
+              // Cloudflare Workers最適化設定
+              datasources: {
+                db: {
+                  url: url
+                }
+              }
             });
             
             console.log("✅ HyperDriveでPrismaクライアントを初期化しました");
@@ -94,7 +112,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
             console.error("🚫 HyperDrive初期化エラー:", hyperError);
             this.prisma = null;
           }
-        } else if (this.env.DATABASE_URL?.startsWith("postgres")) {
+        } else if (this.env.DATABASE_URL && (this.env.DATABASE_URL.startsWith("postgres") || this.env.DATABASE_URL.startsWith("postgresql"))) {
           console.log("🔧 直接DATABASE_URLでPrismaクライアント初期化...");
           try {
             const { PrismaClient } = await import("@prisma/client");
@@ -103,11 +121,21 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
             const dbUrl = this.env.DATABASE_URL;
             const adapter = new PrismaPg({ 
               connectionString: dbUrl,
+              // Connection Pool設定
+              max: 2, // Cloudflare Workersでは少ない接続数
+              idleTimeoutMillis: 10000, // 10秒でアイドル接続を切断
+              connectionTimeoutMillis: 5000, // 5秒で接続タイムアウト
             });
             
             this.prisma = new PrismaClient({
               adapter,
               log: ["warn", "error"],
+              // 直接接続最適化設定
+              datasources: {
+                db: {
+                  url: dbUrl
+                }
+              }
             });
             
             console.log("✅ 直接接続でPrismaクライアントを初期化しました");
@@ -117,14 +145,22 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
           }
         } else {
           console.warn("⚠️  データベース設定が見つかりません - null設定で継続");
+          console.log("HYPERDRIVE connectionString:", this.env.HYPERDRIVE?.connectionString);
+          console.log("DATABASE_URL:", this.env.DATABASE_URL);
+          console.log("DATABASE_URL type:", typeof this.env.DATABASE_URL);
           this.prisma = null;
         }
         
         // 接続テスト（Prismaクライアントが初期化されている場合のみ）
         if (this.prisma) {
           console.log("🔍 Prisma接続テスト実行中...");
-          await this.prisma.$connect();
-          console.log("✅ Prisma接続テスト成功");
+          try {
+            // Hyperdriveを使用時は簡易なテストクエリのみ実行
+            await this.prisma.$queryRaw`SELECT 1 as test`;
+            console.log("✅ Prisma接続テスト成功（Hyperdrive経由）");
+          } catch (connectError) {
+            console.error("🚫 Prisma接続テストエラー:", connectError);
+          }
         }
         
       } catch (initError) {
@@ -272,6 +308,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               where.accountType = accountType;
             }
 
+            // Hyperdriveは接続を自動管理するため、手動での$connect/$disconnectは不要
             const accounts = await this.prisma.account.findMany({
               where,
               orderBy: { accountCode: "asc" },
@@ -295,6 +332,8 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               ],
             };
           } catch (error) {
+            // Hyperdriveを使用時は自動で接続管理されるため、手動切断は不要
+            
             return {
               content: [
                 {

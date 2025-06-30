@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/database/prisma";
-import type { ReconciliationMapping } from "@/lib/database/prisma";
+import type { ReconciliationMapping } from "@prisma/client";
 import { handleServerActionError } from "@/lib/utils/error-handler";
 import type { ActionResult } from "@/lib/types/errors";
 import { ErrorType } from "@/lib/types/errors";
