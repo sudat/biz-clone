@@ -814,7 +814,12 @@ export async function POST(request: NextRequest) {
     }
 
     // JSON-RPC 2.0 処理
-    const body = await request.json();
+    const body = await request.json() as {
+      jsonrpc?: string;
+      method?: string;
+      params?: any;
+      id?: string | number;
+    };
     console.log("Request body:", body);
 
     if (!body.jsonrpc || body.jsonrpc !== "2.0") {
@@ -878,7 +883,7 @@ export async function POST(request: NextRequest) {
 
     const errorResponse = {
       jsonrpc: "2.0",
-      id: request.body ? (await request.json().catch(() => ({})))?.id : null,
+      id: request.body ? (await request.json().catch(() => ({ id: null })) as { id?: string | number | null })?.id : null,
       error: {
         code: -32603,
         message: error.message || "Internal error",

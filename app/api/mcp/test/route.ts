@@ -1,49 +1,75 @@
 /**
- * MCP Connection Test Endpoint
+ * MCP Test Endpoint
  * ============================================================================
- * MCP接続のテスト用エンドポイント
+ * MCPプロトコルの動作確認用テストエンドポイント
  * ============================================================================
  */
 
 import { NextRequest, NextResponse } from "next/server";
 
+// JSON-RPC request type
+interface JsonRpcRequest {
+  jsonrpc?: string;
+  method?: string;
+  params?: any;
+  id?: string | number | null;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await request.json() as JsonRpcRequest;
 
-    // テスト用のJSON-RPCレスポンス
     const testResponse = {
       jsonrpc: "2.0",
       method: body.method || "test",
       params: body.params || {},
       timestamp: new Date().toISOString(),
       status: "MCP connection successful",
+      server: "biz-clone-accounting",
+      version: "1.0.0",
+      capabilities: {
+        tools: {},
+      },
+      testData: {
+        requestReceived: true,
+        parsedBody: body,
+        environment: process.env.NODE_ENV,
+      },
     };
 
-    return NextResponse.json(testResponse, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    });
+    return NextResponse.json(testResponse);
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: "Test failed",
-        message: error instanceof Error ? error.message : "Unknown error",
+    console.error("MCP Test Error:", error);
+    return NextResponse.json({
+      jsonrpc: "2.0",
+      error: {
+        code: -32603,
+        message: "Internal error",
+        data: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 },
-    );
+      id: null,
+    }, { status: 500 });
   }
 }
 
 export async function GET() {
   return NextResponse.json({
     status: "ok",
-    endpoint: "/api/mcp/test",
-    description: "MCP test endpoint is working",
+    protocol: "MCP 2024-11-30",
+    server: "biz-clone-accounting",
+    version: "1.0.0",
+    description: "MCP Test endpoint for connection validation",
     timestamp: new Date().toISOString(),
+    testInstructions: {
+      method: "POST",
+      contentType: "application/json",
+      samplePayload: {
+        jsonrpc: "2.0",
+        method: "test",
+        params: { test: true },
+        id: 1,
+      },
+    },
   });
 }
 

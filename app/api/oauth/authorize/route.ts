@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
   try {
     console.log("[OAuth Authorize] POST request received");
 
-    const body = await request.json();
+    const body = await request.json() as any;
     console.log(
       "[OAuth Authorize] Request body:",
       JSON.stringify(body, null, 2),

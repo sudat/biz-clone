@@ -10,7 +10,14 @@ export async function POST(request: NextRequest) {
   try {
     console.log("[OAuth Token] POST request received");
 
-    const body = await request.json();
+    const body = await request.json() as {
+      grant_type?: string;
+      code?: string;
+      redirect_uri?: string;
+      client_id?: string;
+      client_secret?: string;
+      refresh_token?: string;
+    };
     console.log("[OAuth Token] Request body:", JSON.stringify(body, null, 2));
 
     const {
@@ -32,16 +39,16 @@ export async function POST(request: NextRequest) {
 
     if (grant_type === "authorization_code") {
       return handleAuthorizationCodeGrant({
-        code,
-        redirect_uri,
-        client_id,
-        client_secret,
+        code: code || "",
+        redirect_uri: redirect_uri || "",
+        client_id: client_id || "",
+        client_secret: client_secret || "",
       });
     } else if (grant_type === "refresh_token") {
       return handleRefreshTokenGrant({
-        refresh_token,
-        client_id,
-        client_secret,
+        refresh_token: refresh_token || "",
+        client_id: client_id || "",
+        client_secret: client_secret || "",
       });
     } else {
       return NextResponse.json({

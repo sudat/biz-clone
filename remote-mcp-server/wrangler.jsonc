@@ -32,13 +32,6 @@
       "id": "b6bdf2e6c4d043d084ad6d00b3f6d21c"
     }
   ],
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "biz-clone-accounting",
-      "database_id": "f2e543f3-364a-46c9-9038-326a7d920551"
-    }
-  ],
   "ai": {
     "binding": "AI"
   },
