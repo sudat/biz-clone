@@ -5,8 +5,10 @@
  * ============================================================================
  */
 
-import { prisma } from "./prisma";
+import { prisma, getPrismaClient } from "./prisma";
 import { Decimal } from "@prisma/client/runtime/library";
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import type { Hyperdrive } from "@cloudflare/workers-types";
 
 // ユーティリティ関数：Decimalを数値に変換
 function convertDecimalToNumber(decimal: Decimal | null | undefined): number {
@@ -87,7 +89,7 @@ export interface UnifiedSearchResult {
   };
 }
 
-export async function performUnifiedSearch(params: UnifiedSearchParams): Promise<UnifiedSearchResult> {
+export async function performUnifiedSearch(params: UnifiedSearchParams, hyperdrive?: Hyperdrive): Promise<UnifiedSearchResult> {
   try {
     const { query, categories, dateFrom, dateTo, page = 1, limit = 10 } = params;
     const sanitizedQuery = sanitizeSearchTerm(query);
@@ -98,6 +100,7 @@ export async function performUnifiedSearch(params: UnifiedSearchParams): Promise
 
     const searchCategories = categories || ['journals', 'accounts', 'partners', 'departments', 'analysis_codes'];
     const pagination = validatePagination(page, limit);
+    const client = getPrismaClient(hyperdrive);
     const results: any = {};
 
   // 仕訳検索
@@ -116,7 +119,7 @@ export async function performUnifiedSearch(params: UnifiedSearchParams): Promise
     }
 
     const [journals, totalJournals] = await Promise.all([
-      prisma.journalHeader.findMany({
+      client.journalHeader.findMany({
         where: journalWhere,
         include: {
           journalDetails: {
@@ -132,7 +135,7 @@ export async function performUnifiedSearch(params: UnifiedSearchParams): Promise
         skip: pagination.skip,
         take: pagination.take
       }),
-      prisma.journalHeader.count({ where: journalWhere })
+      client.journalHeader.count({ where: journalWhere })
     ]);
 
     results.journals = {
@@ -162,7 +165,7 @@ export async function performUnifiedSearch(params: UnifiedSearchParams): Promise
     };
 
     const [accounts, totalAccounts] = await Promise.all([
-      prisma.account.findMany({
+      client.account.findMany({
         where: accountWhere,
         include: {
           defaultTaxRate: true
@@ -171,7 +174,7 @@ export async function performUnifiedSearch(params: UnifiedSearchParams): Promise
         skip: pagination.skip,
         take: pagination.take
       }),
-      prisma.account.count({ where: accountWhere })
+      client.account.count({ where: accountWhere })
     ]);
 
     results.accounts = {
@@ -199,13 +202,13 @@ export async function performUnifiedSearch(params: UnifiedSearchParams): Promise
     };
 
     const [partners, totalPartners] = await Promise.all([
-      prisma.partner.findMany({
+      client.partner.findMany({
         where: partnerWhere,
         orderBy: { partnerCode: 'asc' },
         skip: pagination.skip,
         take: pagination.take
       }),
-      prisma.partner.count({ where: partnerWhere })
+      client.partner.count({ where: partnerWhere })
     ]);
 
     results.partners = {
@@ -226,13 +229,13 @@ export async function performUnifiedSearch(params: UnifiedSearchParams): Promise
     };
 
     const [departments, totalDepartments] = await Promise.all([
-      prisma.department.findMany({
+      client.department.findMany({
         where: departmentWhere,
         orderBy: { departmentCode: 'asc' },
         skip: pagination.skip,
         take: pagination.take
       }),
-      prisma.department.count({ where: departmentWhere })
+      client.department.count({ where: departmentWhere })
     ]);
 
     results.departments = {
@@ -253,7 +256,7 @@ export async function performUnifiedSearch(params: UnifiedSearchParams): Promise
     };
 
     const [analysisCodes, totalAnalysisCodes] = await Promise.all([
-      prisma.analysisCode.findMany({
+      client.analysisCode.findMany({
         where: analysisCodeWhere,
         include: {
           analysisTypeRel: true
@@ -262,7 +265,7 @@ export async function performUnifiedSearch(params: UnifiedSearchParams): Promise
         skip: pagination.skip,
         take: pagination.take
       }),
-      prisma.analysisCode.count({ where: analysisCodeWhere })
+      client.analysisCode.count({ where: analysisCodeWhere })
     ]);
 
     results.analysis_codes = {
@@ -315,14 +318,15 @@ export interface TrialBalanceResult {
   itemCount: number;
 }
 
-export async function getTrialBalance(params: TrialBalanceParams): Promise<TrialBalanceResult> {
+export async function getTrialBalance(params: TrialBalanceParams, hyperdrive?: Hyperdrive): Promise<TrialBalanceResult> {
   const { dateFrom, dateTo, accountType, includeZeroBalance = false } = params;
   
   const startDate = new Date(dateFrom);
   const endDate = new Date(dateTo);
+  const client = getPrismaClient(hyperdrive);
 
   // 対象期間の仕訳明細を取得
-  const journalDetails = await prisma.journalDetail.findMany({
+  const journalDetails = await client.journalDetail.findMany({
     where: {
       journalHeader: {
         journalDate: {
@@ -427,7 +431,7 @@ export interface JournalSummaryResult {
   itemCount: number;
 }
 
-export async function getJournalSummary(params: JournalSummaryParams): Promise<JournalSummaryResult> {
+export async function getJournalSummary(params: JournalSummaryParams, hyperdrive?: Hyperdrive): Promise<JournalSummaryResult> {
   const { dateFrom, dateTo, groupBy = 'account', accountType } = params;
   
   const startDate = new Date(dateFrom);
@@ -504,8 +508,10 @@ export async function getJournalSummary(params: JournalSummaryParams): Promise<J
       orderBy = { accountCode: 'asc' };
   }
 
+  const client = getPrismaClient(hyperdrive);
+
   // 明細データ取得
-  const journalDetails = await prisma.journalDetail.findMany({
+  const journalDetails = await client.journalDetail.findMany({
     where: baseWhere,
     include: {
       ...includeQuery,

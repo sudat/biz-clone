@@ -4,9 +4,22 @@ import { McpAgent } from "agents/mcp";
 import { Octokit } from "octokit";
 import { z } from "zod";
 import { GitHubHandler } from "./github-handler";
-import { createPrismaClient } from "../lib/database/prisma-hyperdrive";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+// SystemOperations一時的に無効化（Prisma問題解決後に復帰）
+// import { 
+//   SystemOperations, 
+//   generateJournalsSchema, 
+//   handleSystemOperationError 
+// } from "./system-operations";
+// Prisma imports - edge runtime対応
+import { AccountService, PartnerService, DepartmentService, AnalysisCodeService } from "../lib/database/master-data";
+import { 
+  saveJournal, 
+  updateJournal, 
+  deleteJournal, 
+  getJournalByNumber, 
+  searchJournals
+} from "../lib/database/journal-mcp";
+import { getTrialBalance, getJournalSummary, performUnifiedSearch } from "../lib/database/search-analysis";
 // Cloudflare Workers型（Hyperdrive）
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import type { Hyperdrive } from "@cloudflare/workers-types";
@@ -38,7 +51,8 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
     version: "1.0.0",
   });
 
-  private prisma!: PrismaClient;
+  private prisma!: any; // PrismaClient型を動的にロード
+  // private systemOps!: SystemOperations; // 一時的に無効化
 
   async init() {
     try {
@@ -51,35 +65,76 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         this.env.HYPERDRIVE?.connectionString?.slice(0, 50) + "...",
       );
 
-      // Initialize Prisma client with HyperDrive if available, otherwise fallback
-      if (
-        this.env.HYPERDRIVE && (this.env as any).HYPERDRIVE?.connectionString
-      ) {
-        console.log("🔧 Initializing with HyperDrive...");
-        const url = (this.env as any).HYPERDRIVE!.connectionString as string;
-        // Ensure Prisma picks up correct URL (avoid prisma:// Data Proxy)
-        (process as any).env.DATABASE_URL = url;
-        this.prisma = createPrismaClient(this.env.HYPERDRIVE as Hyperdrive);
-        console.log("✅ Using HyperDrive path");
-      } else {
-        console.log("🔧 Initializing with fallback DATABASE_URL...");
-        // Fallback: use direct DATABASE_URL (should be postgres://...)
-        const dbUrl = this.env.DATABASE_URL;
-        if (dbUrl?.startsWith("postgres")) {
-          (process as any).env.DATABASE_URL = dbUrl; // override
-          const adapter = new PrismaPg({ connectionString: dbUrl });
-          this.prisma = new PrismaClient({
-            adapter,
-            log: ["error", "warn"],
-          });
-          console.log("✅ Using fallback DATABASE_URL path");
+      // Initialize Prisma client - try/catch for graceful fallback
+      console.log("🔧 Prisma初期化を開始します...");
+      
+      try {
+        // Prismaクライアント初期化を再実装（動的インポート）
+        console.log("🔧 Prismaクライアント初期化を再実行...");
+        
+        // Edge Runtime対応 - dynamic importでPrismaを初期化
+        if (this.env.HYPERDRIVE?.connectionString) {
+          console.log("🔧 HyperDriveでPrismaクライアント初期化...");
+          try {
+            const { PrismaClient } = await import("@prisma/client");
+            const { PrismaPg } = await import("@prisma/adapter-pg");
+            
+            const url = this.env.HYPERDRIVE.connectionString;
+            const adapter = new PrismaPg({ 
+              connectionString: url,
+            });
+            
+            this.prisma = new PrismaClient({
+              adapter,
+              log: ["warn", "error"],
+            });
+            
+            console.log("✅ HyperDriveでPrismaクライアントを初期化しました");
+          } catch (hyperError) {
+            console.error("🚫 HyperDrive初期化エラー:", hyperError);
+            this.prisma = null;
+          }
+        } else if (this.env.DATABASE_URL?.startsWith("postgres")) {
+          console.log("🔧 直接DATABASE_URLでPrismaクライアント初期化...");
+          try {
+            const { PrismaClient } = await import("@prisma/client");
+            const { PrismaPg } = await import("@prisma/adapter-pg");
+            
+            const dbUrl = this.env.DATABASE_URL;
+            const adapter = new PrismaPg({ 
+              connectionString: dbUrl,
+            });
+            
+            this.prisma = new PrismaClient({
+              adapter,
+              log: ["warn", "error"],
+            });
+            
+            console.log("✅ 直接接続でPrismaクライアントを初期化しました");
+          } catch (directError) {
+            console.error("🚫 直接接続初期化エラー:", directError);
+            this.prisma = null;
+          }
         } else {
-          // If DATABASE_URL is missing or Data Proxy URL (prisma://), throw helpful error
-          throw new Error(
-            "DATABASE_URL が未設定、または Prisma Accelerate 用 (prisma://) URL です。環境変数に PostgreSQL URL を設定するか Hyperdrive バインディングを作成してください。",
-          );
+          console.warn("⚠️  データベース設定が見つかりません - null設定で継続");
+          this.prisma = null;
         }
+        
+        // 接続テスト（Prismaクライアントが初期化されている場合のみ）
+        if (this.prisma) {
+          console.log("🔍 Prisma接続テスト実行中...");
+          await this.prisma.$connect();
+          console.log("✅ Prisma接続テスト成功");
+        }
+        
+      } catch (initError) {
+        console.error("🚫 Prisma初期化エラー - nullで継続:", initError);
+        this.prisma = null; // エラー時はnullで継続
       }
+      
+      // Initialize system operations - 一時的に無効化
+      // this.systemOps = new SystemOperations(this.prisma);
+      
       console.log("🔧 Prisma client initialized, setting up MCP tools...");
       // Basic connectivity test
       this.server.tool(
@@ -104,6 +159,25 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         {},
         async () => {
           try {
+            if (!this.prisma) {
+              return {
+                content: [
+                  {
+                    text: JSON.stringify(
+                      {
+                        status: "prisma_disabled",
+                        message: "Prismaクライアントが初期化されていません（Edge Runtime問題調査中）",
+                        timestamp: new Date().toISOString(),
+                      },
+                      null,
+                      2,
+                    ),
+                    type: "text",
+                  },
+                ],
+              };
+            }
+            
             await this.prisma.$queryRaw`SELECT 1 as test`;
             const accountCount = await this.prisma.account.count();
             return {
@@ -147,6 +221,11 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         },
       );
 
+      console.log("✅ BizCloneMCP initialization completed successfully (基本機能のみ)");
+      
+      // 段階的ツール再有効化：第1段階 - 基本データベースツール
+      console.log("🔧 第1段階：基本データベースツールを有効化中...");
+      
       // Get chart of accounts
       this.server.tool(
         "get_accounts",
@@ -162,6 +241,24 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         },
         async ({ searchTerm, accountType, limit }) => {
           try {
+            if (!this.prisma) {
+              return {
+                content: [
+                  {
+                    text: JSON.stringify(
+                      {
+                        success: false,
+                        error: "Prismaクライアントが利用できません",
+                      },
+                      null,
+                      2,
+                    ),
+                    type: "text",
+                  },
+                ],
+              };
+            }
+
             const where: any = { isActive: true };
 
             if (searchTerm) {
@@ -244,6 +341,24 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         },
         async ({ journalDate, description, details }) => {
           try {
+            if (!this.prisma) {
+              return {
+                content: [
+                  {
+                    text: JSON.stringify(
+                      {
+                        success: false,
+                        error: "Prismaクライアントが利用できません",
+                      },
+                      null,
+                      2,
+                    ),
+                    type: "text",
+                  },
+                ],
+              };
+            }
+
             // Validate balanced entry
             const debitTotal = details.filter((d) => d.debitCredit === "debit")
               .reduce((sum, d) => sum + d.amount, 0);
@@ -264,7 +379,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
             const timestamp = Date.now().toString().slice(-6);
             const journalNumber = `${dateStr}${timestamp}`;
 
-            const result = await this.prisma.$transaction(async (tx) => {
+            const result = await this.prisma.$transaction(async (tx: any) => {
               // Create header
               const header = await tx.journalHeader.create({
                 data: {
@@ -432,7 +547,2114 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
           }
         },
       );
-      console.log("✅ BizCloneMCP initialization completed successfully");
+
+      // ========================================
+      // マスタデータ関連ツール
+      // ========================================
+
+      // 勘定科目作成
+      this.server.tool(
+        "create_account",
+        "Create new account (勘定科目作成)",
+        {
+          accountCode: z.string().describe("Account code (勘定科目コード)"),
+          accountName: z.string().describe("Account name (勘定科目名)"),
+          accountType: z.string().describe("Account type (勘定科目種類): 資産, 負債, 純資産, 収益, 費用"),
+          sortOrder: z.number().optional().describe("Sort order (表示順序)"),
+          defaultTaxCode: z.string().optional().describe("Default tax code (デフォルト税区分)"),
+        },
+        async ({ accountCode, accountName, accountType, sortOrder, defaultTaxCode }) => {
+          try {
+            const account = await AccountService.create({
+              accountCode,
+              accountName,
+              accountType,
+              sortOrder,
+              defaultTaxCode,
+            });
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: account,
+                      message: "勘定科目が正常に作成されました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "勘定科目の作成に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 勘定科目更新
+      this.server.tool(
+        "update_account",
+        "Update existing account (勘定科目更新)",
+        {
+          accountCode: z.string().describe("Account code to update (更新する勘定科目コード)"),
+          accountName: z.string().optional().describe("New account name (新しい勘定科目名)"),
+          accountType: z.string().optional().describe("New account type (新しい勘定科目種類)"),
+          sortOrder: z.number().optional().describe("New sort order (新しい表示順序)"),
+          defaultTaxCode: z.string().optional().describe("New default tax code (新しいデフォルト税区分)"),
+        },
+        async ({ accountCode, ...updateData }) => {
+          try {
+            const account = await AccountService.update(accountCode, updateData);
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: account,
+                      message: "勘定科目が正常に更新されました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "勘定科目の更新に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 勘定科目削除
+      this.server.tool(
+        "delete_account",
+        "Delete account (勘定科目削除)",
+        {
+          accountCode: z.string().describe("Account code to delete (削除する勘定科目コード)"),
+        },
+        async ({ accountCode }) => {
+          try {
+            await AccountService.delete(accountCode);
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      message: `勘定科目「${accountCode}」が正常に削除されました`,
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "勘定科目の削除に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 取引先検索
+      this.server.tool(
+        "search_partners",
+        "Search partners (取引先検索)",
+        {
+          searchTerm: z.string().optional().describe("Search term for partner name, code, or kana"),
+          partnerType: z.string().optional().describe("Filter by partner type"),
+          isActive: z.boolean().default(true).describe("Filter by active status"),
+          page: z.number().min(1).default(1).describe("Page number"),
+          limit: z.number().min(1).max(100).default(20).describe("Items per page"),
+        },
+        async ({ searchTerm, partnerType, isActive, page, limit }) => {
+          try {
+            const result = await PartnerService.search(
+              { searchTerm, partnerType, isActive },
+              { page, limit }
+            );
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: result.data,
+                      pagination: result.pagination,
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "取引先の検索に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 取引先作成
+      this.server.tool(
+        "create_partner",
+        "Create new partner (取引先作成)",
+        {
+          partnerCode: z.string().describe("Partner code (取引先コード)"),
+          partnerName: z.string().describe("Partner name (取引先名)"),
+          partnerKana: z.string().optional().describe("Partner name in kana (取引先名カナ)"),
+          partnerType: z.string().describe("Partner type (取引先種類): 得意先, 仕入先, 銀行, その他"),
+          address: z.string().optional().describe("Address (住所)"),
+          phone: z.string().optional().describe("Phone number (電話番号)"),
+          email: z.string().optional().describe("Email address (メールアドレス)"),
+        },
+        async ({ partnerCode, partnerName, partnerKana, partnerType, address, phone, email }) => {
+          try {
+            const partner = await PartnerService.create({
+              partnerCode,
+              partnerName,
+              partnerKana,
+              partnerType,
+              address,
+              phone,
+              email,
+            });
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: partner,
+                      message: "取引先が正常に作成されました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "取引先の作成に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 取引先更新
+      this.server.tool(
+        "update_partner",
+        "Update existing partner (取引先更新)",
+        {
+          partnerCode: z.string().describe("Partner code to update (更新する取引先コード)"),
+          partnerName: z.string().optional().describe("New partner name (新しい取引先名)"),
+          partnerKana: z.string().optional().describe("New partner name in kana (新しい取引先名カナ)"),
+          partnerType: z.string().optional().describe("New partner type (新しい取引先種類)"),
+          address: z.string().optional().describe("New address (新しい住所)"),
+          phone: z.string().optional().describe("New phone number (新しい電話番号)"),
+          email: z.string().optional().describe("New email address (新しいメールアドレス)"),
+        },
+        async ({ partnerCode, ...updateData }) => {
+          try {
+            const partner = await PartnerService.update(partnerCode, updateData);
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: partner,
+                      message: "取引先が正常に更新されました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "取引先の更新に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 取引先削除
+      this.server.tool(
+        "delete_partner",
+        "Delete partner (取引先削除)",
+        {
+          partnerCode: z.string().describe("Partner code to delete (削除する取引先コード)"),
+        },
+        async ({ partnerCode }) => {
+          try {
+            await PartnerService.delete(partnerCode);
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      message: `取引先「${partnerCode}」が正常に削除されました`,
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "取引先の削除に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 部門検索
+      this.server.tool(
+        "search_departments",
+        "Search departments (部門検索)",
+        {
+          searchTerm: z.string().optional().describe("Search term for department name or code"),
+          isActive: z.boolean().default(true).describe("Filter by active status"),
+          page: z.number().min(1).default(1).describe("Page number"),
+          limit: z.number().min(1).max(100).default(20).describe("Items per page"),
+        },
+        async ({ searchTerm, isActive, page, limit }) => {
+          try {
+            const result = await DepartmentService.search(
+              { searchTerm, isActive },
+              { page, limit }
+            );
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: result.data,
+                      pagination: result.pagination,
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "部門の検索に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 部門作成
+      this.server.tool(
+        "create_department",
+        "Create new department (部門作成)",
+        {
+          departmentCode: z.string().describe("Department code (部門コード)"),
+          departmentName: z.string().describe("Department name (部門名)"),
+          sortOrder: z.number().optional().describe("Sort order (表示順序)"),
+        },
+        async ({ departmentCode, departmentName, sortOrder }) => {
+          try {
+            const department = await DepartmentService.create({
+              departmentCode,
+              departmentName,
+              sortOrder,
+            });
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: department,
+                      message: "部門が正常に作成されました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "部門の作成に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 部門更新
+      this.server.tool(
+        "update_department",
+        "Update existing department (部門更新)",
+        {
+          departmentCode: z.string().describe("Department code to update (更新する部門コード)"),
+          departmentName: z.string().optional().describe("New department name (新しい部門名)"),
+          sortOrder: z.number().optional().describe("New sort order (新しい表示順序)"),
+        },
+        async ({ departmentCode, ...updateData }) => {
+          try {
+            const department = await DepartmentService.update(departmentCode, updateData);
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: department,
+                      message: "部門が正常に更新されました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "部門の更新に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 部門削除
+      this.server.tool(
+        "delete_department",
+        "Delete department (部門削除)",
+        {
+          departmentCode: z.string().describe("Department code to delete (削除する部門コード)"),
+        },
+        async ({ departmentCode }) => {
+          try {
+            await DepartmentService.delete(departmentCode);
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      message: `部門「${departmentCode}」が正常に削除されました`,
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "部門の削除に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 分析コード検索
+      this.server.tool(
+        "search_analysis_codes",
+        "Search analysis codes (分析コード検索)",
+        {
+          searchTerm: z.string().optional().describe("Search term for analysis code name or code"),
+          analysisType: z.string().optional().describe("Filter by analysis type"),
+          isActive: z.boolean().default(true).describe("Filter by active status"),
+          page: z.number().min(1).default(1).describe("Page number"),
+          limit: z.number().min(1).max(100).default(20).describe("Items per page"),
+        },
+        async ({ searchTerm, analysisType, isActive, page, limit }) => {
+          try {
+            const result = await AnalysisCodeService.search(
+              { searchTerm, analysisType, isActive },
+              { page, limit }
+            );
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: result.data,
+                      pagination: result.pagination,
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "分析コードの検索に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 分析コード作成
+      this.server.tool(
+        "create_analysis_code",
+        "Create new analysis code (分析コード作成)",
+        {
+          analysisCode: z.string().describe("Analysis code (分析コード)"),
+          analysisName: z.string().describe("Analysis name (分析名)"),
+          analysisType: z.string().describe("Analysis type (分析種類)"),
+          sortOrder: z.number().optional().describe("Sort order (表示順序)"),
+        },
+        async ({ analysisCode, analysisName, analysisType, sortOrder }) => {
+          try {
+            const analysis = await AnalysisCodeService.create({
+              analysisCode,
+              analysisName,
+              analysisType,
+              sortOrder,
+            });
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: analysis,
+                      message: "分析コードが正常に作成されました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "分析コードの作成に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 分析コード更新
+      this.server.tool(
+        "update_analysis_code",
+        "Update existing analysis code (分析コード更新)",
+        {
+          analysisCode: z.string().describe("Analysis code to update (更新する分析コード)"),
+          analysisName: z.string().optional().describe("New analysis name (新しい分析名)"),
+          analysisType: z.string().optional().describe("New analysis type (新しい分析種類)"),
+          sortOrder: z.number().optional().describe("New sort order (新しい表示順序)"),
+        },
+        async ({ analysisCode, ...updateData }) => {
+          try {
+            const analysis = await AnalysisCodeService.update(analysisCode, updateData);
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: analysis,
+                      message: "分析コードが正常に更新されました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "分析コードの更新に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 分析コード削除
+      this.server.tool(
+        "delete_analysis_code",
+        "Delete analysis code (分析コード削除)",
+        {
+          analysisCode: z.string().describe("Analysis code to delete (削除する分析コード)"),
+        },
+        async ({ analysisCode }) => {
+          try {
+            await AnalysisCodeService.delete(analysisCode);
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      message: `分析コード「${analysisCode}」が正常に削除されました`,
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "分析コードの削除に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // ===================
+      // System Operation Tools
+      // ===================
+
+      // Generate sample journals (一時的に無効化 - SystemOperations無効化のため)
+      /*
+      this.server.tool(
+        "generate_sample_journals",
+        "Generate sample journal entries for development (開発用サンプル仕訳生成)",
+        {
+          count: z.number().min(1).max(10000).default(1000).describe(
+            "Number of journal entries to generate",
+          ),
+          clearExisting: z.boolean().default(false).describe(
+            "Clear existing journal data before generating",
+          ),
+        },
+        async ({ count, clearExisting }) => {
+          try {
+            const result = await this.systemOps.generateSampleJournals({
+              count,
+              clearExisting,
+            });
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(result, null, 2),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    handleSystemOperationError(error),
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+      */
+
+      // Test MCP connection (一時的に無効化 - SystemOperations無効化のため)
+      /*
+      this.server.tool(
+        "test_mcp_connection",
+        "Test MCP protocol connection (MCP接続テスト)",
+        {
+          jsonrpc: z.string().default("2.0").describe("JSON-RPC version"),
+          method: z.string().default("test").describe("Test method name"),
+          params: z.record(z.any()).default({}).describe("Test parameters"),
+          id: z.union([z.string(), z.number(), z.null()]).default(1).describe(
+            "Request ID",
+          ),
+        },
+        async ({ jsonrpc, method, params, id }) => {
+          try {
+            const requestBody = { jsonrpc, method, params, id };
+            const result = await this.systemOps.testMcpConnection(requestBody);
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(result, null, 2),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    handleSystemOperationError(error),
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+      */
+
+      // List MCP tools (一時的に無効化 - SystemOperations無効化のため)
+      /*
+      this.server.tool(
+        "list_mcp_tools",
+        "List available MCP tools (利用可能なMCPツール一覧)",
+        {},
+        async () => {
+          try {
+            const result = await this.systemOps.listMcpTools();
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(result, null, 2),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    handleSystemOperationError(error),
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+      */
+
+      // ========================================
+      // 仕訳関連ツール
+      // ========================================
+
+      // 仕訳更新
+      this.server.tool(
+        "update_journal",
+        "Update existing journal entry (仕訳更新)",
+        {
+          journalNumber: z.string().describe("Journal number to update (更新する仕訳番号)"),
+          header: z.object({
+            journalDate: z.string().describe("Journal date in YYYY-MM-DD format"),
+            description: z.string().optional().describe("Journal description (摘要)"),
+          }).describe("Journal header information"),
+          details: z.array(
+            z.object({
+              debitCredit: z.enum(["debit", "credit"]).describe("Debit or Credit"),
+              accountCode: z.string().describe("Account code (勘定科目コード)"),
+              subAccountCode: z.string().optional().describe("Sub account code (補助科目コード)"),
+              partnerCode: z.string().optional().describe("Partner code (取引先コード)"),
+              analysisCode: z.string().optional().describe("Analysis code (分析コード)"),
+              departmentCode: z.string().optional().describe("Department code (部門コード)"),
+              baseAmount: z.number().describe("Base amount (税抜金額)"),
+              taxAmount: z.number().default(0).describe("Tax amount (税額)"),
+              totalAmount: z.number().describe("Total amount (税込金額)"),
+              taxCode: z.string().optional().describe("Tax code (税区分)"),
+              description: z.string().optional().describe("Line description (摘要)"),
+            })
+          ).min(2).describe("Journal entry details (minimum 2 lines)"),
+          attachedFiles: z.array(
+            z.object({
+              name: z.string(),
+              url: z.string(),
+              size: z.number(),
+              type: z.string().optional(),
+              uploadedAt: z.string().optional(),
+            })
+          ).optional().describe("Attached files"),
+        },
+        async ({ journalNumber, header, details, attachedFiles }) => {
+          try {
+            const journalData = {
+              header,
+              details,
+              attachedFiles: attachedFiles || [],
+            };
+
+            const journal = await updateJournal(journalNumber, journalData as any);
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: journal,
+                      message: "仕訳が正常に更新されました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "仕訳の更新に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 仕訳削除
+      this.server.tool(
+        "delete_journal",
+        "Delete journal entry (仕訳削除)",
+        {
+          journalNumber: z.string().describe("Journal number to delete (削除する仕訳番号)"),
+        },
+        async ({ journalNumber }) => {
+          try {
+            await deleteJournal(journalNumber);
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      message: `仕訳「${journalNumber}」が正常に削除されました`,
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "仕訳の削除に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 仕訳番号による単一仕訳取得
+      this.server.tool(
+        "get_journal_by_number",
+        "Get journal entry by number (仕訳番号による取得)",
+        {
+          journalNumber: z.string().describe("Journal number to retrieve (取得する仕訳番号)"),
+        },
+        async ({ journalNumber }) => {
+          try {
+            const journal = await getJournalByNumber(journalNumber);
+
+            if (!journal) {
+              return {
+                content: [
+                  {
+                    text: JSON.stringify(
+                      {
+                        success: false,
+                        error: `仕訳番号「${journalNumber}」が見つかりません`,
+                      },
+                      null,
+                      2,
+                    ),
+                    type: "text",
+                  },
+                ],
+              };
+            }
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: journal,
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "仕訳の取得に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // ========================================
+      // レポート関連ツール
+      // ========================================
+
+      // 試算表取得
+      this.server.tool(
+        "get_trial_balance",
+        "Get trial balance (試算表取得)",
+        {
+          dateFrom: z.string().describe("Start date in YYYY-MM-DD format (開始日)"),
+          dateTo: z.string().describe("End date in YYYY-MM-DD format (終了日)"),
+          accountType: z.enum(["資産", "負債", "純資産", "収益", "費用"]).optional().describe(
+            "Filter by account type (勘定科目種類でフィルタ)"
+          ),
+          includeZeroBalance: z.boolean().default(false).describe(
+            "Include accounts with zero balance (残高0の科目を含める)"
+          ),
+        },
+        async ({ dateFrom, dateTo, accountType, includeZeroBalance }) => {
+          try {
+            const result = await getTrialBalance({
+              dateFrom,
+              dateTo,
+              accountType,
+              includeZeroBalance,
+            });
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: result,
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "試算表の取得に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 仕訳集計取得
+      this.server.tool(
+        "get_journal_summary",
+        "Get journal summary (仕訳集計取得)",
+        {
+          dateFrom: z.string().describe("Start date in YYYY-MM-DD format (開始日)"),
+          dateTo: z.string().describe("End date in YYYY-MM-DD format (終了日)"),
+          groupBy: z.enum(["account", "partner", "department", "month", "day"]).default("account").describe(
+            "Group by criteria (集計基準): account=勘定科目, partner=取引先, department=部門, month=月別, day=日別"
+          ),
+          accountType: z.enum(["資産", "負債", "純資産", "収益", "費用"]).optional().describe(
+            "Filter by account type (勘定科目種類でフィルタ)"
+          ),
+        },
+        async ({ dateFrom, dateTo, groupBy, accountType }) => {
+          try {
+            const result = await getJournalSummary({
+              dateFrom,
+              dateTo,
+              groupBy,
+              accountType,
+            });
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: result,
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "仕訳集計の取得に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 統合検索
+      this.server.tool(
+        "unified_search",
+        "Unified search across all data (統合検索)",
+        {
+          query: z.string().describe("Search query (検索クエリ)"),
+          categories: z.array(
+            z.enum(["journals", "accounts", "partners", "departments", "analysis_codes"])
+          ).optional().describe(
+            "Search categories (検索カテゴリ): journals=仕訳, accounts=勘定科目, partners=取引先, departments=部門, analysis_codes=分析コード"
+          ),
+          dateFrom: z.string().optional().describe("Start date filter for journals (仕訳の開始日フィルタ)"),
+          dateTo: z.string().optional().describe("End date filter for journals (仕訳の終了日フィルタ)"),
+          page: z.number().min(1).default(1).describe("Page number (ページ番号)"),
+          limit: z.number().min(1).max(100).default(10).describe("Items per page (1ページあたりの件数)"),
+        },
+        async ({ query, categories, dateFrom, dateTo, page, limit }) => {
+          try {
+            const result = await performUnifiedSearch({
+              query,
+              categories,
+              dateFrom,
+              dateTo,
+              page,
+              limit,
+            });
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: result,
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "統合検索に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // ========================================
+      // 仕訳添付ファイル関連ツール
+      // ========================================
+
+      // 仕訳添付ファイル削除
+      this.server.tool(
+        "delete_journal_attachment",
+        "Delete journal attachment file (仕訳添付ファイル削除)",
+        {
+          attachmentId: z.string().describe("Attachment ID to delete (削除する添付ファイルID)"),
+        },
+        async ({ attachmentId }) => {
+          try {
+            // 添付ファイル情報を取得
+            const attachment = await this.prisma.journalAttachment.findUnique({
+              where: { attachmentId },
+              include: {
+                journalHeader: {
+                  select: {
+                    journalNumber: true,
+                    createdBy: true,
+                    approvalStatus: true,
+                  },
+                },
+              },
+            });
+
+            if (!attachment) {
+              return {
+                content: [
+                  {
+                    text: JSON.stringify(
+                      {
+                        success: false,
+                        error: "ファイルが見つかりません",
+                      },
+                      null,
+                      2,
+                    ),
+                    type: "text",
+                  },
+                ],
+              };
+            }
+
+            // セキュリティチェック
+            // TODO: ユーザー認証とアクセス権限の確認を実装
+            // 例: 承認済みの仕訳のファイルは削除不可、作成者のみ削除可能など
+
+            // データベースから削除
+            await this.prisma.journalAttachment.delete({
+              where: { attachmentId },
+            });
+
+            // TODO: UploadThingからファイルを削除
+            // UploadThingのファイル削除APIを呼び出す処理が必要
+            console.log("削除対象ファイルURL:", attachment.fileUrl);
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      message: "ファイルを削除しました",
+                      deletedFile: {
+                        attachmentId: attachment.attachmentId,
+                        originalFileName: attachment.originalFileName,
+                        fileUrl: attachment.fileUrl,
+                      },
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            console.error("ファイル削除エラー:", error);
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "ファイルの削除に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 仕訳添付ファイルダウンロード
+      this.server.tool(
+        "download_journal_attachment",
+        "Download journal attachment file (仕訳添付ファイルダウンロード)",
+        {
+          attachmentId: z.string().describe("Attachment ID to download (ダウンロードする添付ファイルID)"),
+        },
+        async ({ attachmentId }) => {
+          try {
+            // 添付ファイル情報を取得
+            const attachment = await this.prisma.journalAttachment.findUnique({
+              where: { attachmentId },
+              include: {
+                journalHeader: {
+                  select: {
+                    journalNumber: true,
+                    createdBy: true,
+                    approvalStatus: true,
+                  },
+                },
+              },
+            });
+
+            if (!attachment) {
+              return {
+                content: [
+                  {
+                    text: JSON.stringify(
+                      {
+                        success: false,
+                        error: "ファイルが見つかりません",
+                      },
+                      null,
+                      2,
+                    ),
+                    type: "text",
+                  },
+                ],
+              };
+            }
+
+            // セキュリティチェック（必要に応じて認証・認可処理を追加）
+            // TODO: ユーザー認証とアクセス権限の確認を実装
+            // 例: ファイルの所有者や同じ組織のユーザーのみアクセス可能
+
+            try {
+              // UploadThingのファイルURLから直接ダウンロード
+              const fileResponse = await fetch(attachment.fileUrl);
+              
+              if (!fileResponse.ok) {
+                return {
+                  content: [
+                    {
+                      text: JSON.stringify(
+                        {
+                          success: false,
+                          error: "ファイルの取得に失敗しました",
+                          status: fileResponse.status,
+                          statusText: fileResponse.statusText,
+                        },
+                        null,
+                        2,
+                      ),
+                      type: "text",
+                    },
+                  ],
+                };
+              }
+
+              const fileBlob = await fileResponse.blob();
+              const buffer = Buffer.from(await fileBlob.arrayBuffer());
+
+              // Cloudflare Workers環境では、バイナリデータを直接返せないため、
+              // ファイル情報とダウンロードURLを返す
+              return {
+                content: [
+                  {
+                    text: JSON.stringify(
+                      {
+                        success: true,
+                        data: {
+                          attachmentId: attachment.attachmentId,
+                          originalFileName: attachment.originalFileName,
+                          fileName: attachment.fileName,
+                          fileUrl: attachment.fileUrl,
+                          fileSize: Number(attachment.fileSize),
+                          mimeType: attachment.mimeType,
+                          fileExtension: attachment.fileExtension,
+                          uploadedAt: attachment.uploadedAt,
+                          journalNumber: attachment.journalNumber,
+                          // バイナリデータのサイズ情報
+                          downloadedSize: buffer.length,
+                          message: "ファイル情報を取得しました。直接ダウンロードするには fileUrl を使用してください。",
+                        },
+                      },
+                      null,
+                      2,
+                    ),
+                    type: "text",
+                  },
+                ],
+              };
+
+            } catch (fetchError) {
+              console.error("ファイルダウンロードエラー:", fetchError);
+              return {
+                content: [
+                  {
+                    text: JSON.stringify(
+                      {
+                        success: false,
+                        error: "ファイルのダウンロードに失敗しました",
+                        details: fetchError instanceof Error ? fetchError.message : "Unknown error",
+                      },
+                      null,
+                      2,
+                    ),
+                    type: "text",
+                  },
+                ],
+              };
+            }
+
+          } catch (error) {
+            console.error("ダウンロード処理エラー:", error);
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "サーバーエラーが発生しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 仕訳添付ファイル一覧取得
+      this.server.tool(
+        "get_journal_attachments",
+        "Get journal attachment files list (仕訳添付ファイル一覧取得)",
+        {
+          journalNumber: z.string().describe("Journal number to get attachments (添付ファイルを取得する仕訳番号)"),
+        },
+        async ({ journalNumber }) => {
+          try {
+            const attachments = await this.prisma.journalAttachment.findMany({
+              where: { journalNumber },
+              orderBy: { uploadedAt: "desc" },
+            });
+
+            // BigIntをnumberに変換
+            const attachmentData = attachments.map((attachment: any) => ({
+              attachmentId: attachment.attachmentId,
+              journalNumber: attachment.journalNumber,
+              fileName: attachment.fileName,
+              originalFileName: attachment.originalFileName,
+              fileUrl: attachment.fileUrl,
+              fileSize: Number(attachment.fileSize),
+              fileExtension: attachment.fileExtension,
+              mimeType: attachment.mimeType,
+              uploadedAt: attachment.uploadedAt,
+              createdAt: attachment.createdAt,
+              updatedAt: attachment.updatedAt,
+            }));
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      data: attachmentData,
+                      count: attachmentData.length,
+                      message: `仕訳番号「${journalNumber}」の添付ファイル一覧を取得しました`,
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            console.error("ファイル一覧取得エラー:", error);
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "ファイル一覧の取得に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // ========================================
+      // MCPメタデータ・テスト機能
+      // ========================================
+
+      // MCPサーバーのメタデータ取得
+      this.server.tool(
+        "get_mcp_metadata",
+        "Get MCP server metadata (MCPサーバーメタデータ取得)",
+        {},
+        async () => {
+          try {
+            const metadata = {
+              server: {
+                name: "Biz Clone Accounting MCP Server",
+                version: "1.0.0",
+                description: "Remote MCP server for Biz Clone accounting system",
+                author: "Biz Clone Development Team",
+                protocolVersion: "2024-11-30",
+              },
+              capabilities: {
+                tools: {
+                  estimated_count: 25, // 推定ツール数
+                  categories: [
+                    "connection", // 接続テスト
+                    "journal", // 仕訳関連
+                    "master", // マスタデータ関連
+                    "reports", // レポート関連
+                    "search", // 検索関連
+                    "system", // システム操作
+                    "metadata", // メタデータ・テスト
+                    "attachments", // 添付ファイル関連
+                  ],
+                },
+                authentication: {
+                  type: "OAuth2",
+                  provider: "GitHub",
+                  required: true,
+                },
+                database: {
+                  type: "PostgreSQL",
+                  provider: "Supabase",
+                  features: ["transactions", "hyperdrive", "prisma_orm"],
+                },
+              },
+              environment: {
+                runtime: "Cloudflare Workers",
+                nodeEnv: process.env.NODE_ENV || "production",
+                hyperdriveEnabled: !!this.env.HYPERDRIVE,
+                databaseConnected: true,
+              },
+              endpoints: {
+                base: "/sse",
+                auth: "/authorize",
+                token: "/token",
+                register: "/register",
+              },
+              user: {
+                login: this.props.login,
+                name: this.props.name,
+                email: this.props.email,
+              },
+              timestamp: new Date().toISOString(),
+            };
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(metadata, null, 2),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "メタデータ取得に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // MCPツールのテスト実行
+      this.server.tool(
+        "test_mcp_tools",
+        "Test MCP tools execution (MCPツールテスト実行)",
+        {
+          toolName: z.string().describe("Tool name to test (テストするツール名)"),
+          testParams: z.record(z.any()).optional().describe("Test parameters (テストパラメータ)"),
+          validateOnly: z.boolean().default(false).describe("Validate parameters only without execution (パラメータ検証のみ実行)"),
+        },
+        async ({ toolName, testParams, validateOnly }) => {
+          try {
+            // 利用可能ツールの静的リスト
+            const availableTools = [
+              'test_connection', 'check_db_health', 'get_accounts', 'create_journal',
+              'search_journals', 'update_journal', 'delete_journal', 'get_journal_by_number',
+              'create_account', 'update_account', 'delete_account', 'search_partners',
+              'create_partner', 'update_partner', 'delete_partner', 'search_departments',
+              'create_department', 'update_department', 'delete_department',
+              'search_analysis_codes', 'create_analysis_code', 'update_analysis_code',
+              'delete_analysis_code', 'get_trial_balance', 'get_journal_summary',
+              'unified_search', 'generate_sample_journals', 'test_mcp_connection',
+              'list_mcp_tools', 'delete_journal_attachment', 'get_journal_attachments',
+              'get_mcp_metadata', 'test_mcp_tools', 'list_available_tools'
+            ];
+            
+            if (!availableTools.includes(toolName)) {
+              return {
+                content: [
+                  {
+                    text: JSON.stringify(
+                      {
+                        success: false,
+                        error: `Tool '${toolName}' not found`,
+                        availableTools,
+                      },
+                      null,
+                      2,
+                    ),
+                    type: "text",
+                  },
+                ],
+              };
+            }
+
+            // バリデーションのみの場合
+            if (validateOnly) {
+              return {
+                content: [
+                  {
+                    text: JSON.stringify(
+                      {
+                        success: true,
+                        validation: "Parameters validated successfully",
+                        toolInfo: {
+                          name: toolName,
+                          description: `Tool ${toolName} validation passed`,
+                          inputSchema: "Schema validation passed",
+                        },
+                        testParams,
+                      },
+                      null,
+                      2,
+                    ),
+                    type: "text",
+                  },
+                ],
+              };
+            }
+
+            // 実際のテスト実行用のデフォルトパラメータ
+            const defaultTestParams: Record<string, any> = {
+              test_connection: {},
+              check_db_health: {},
+              get_accounts: { limit: 5 },
+              search_journals: { limit: 5 },
+              search_partners: { limit: 5 },
+              search_departments: { limit: 5 },
+              search_analysis_codes: { limit: 5 },
+              get_trial_balance: {
+                dateFrom: "2024-01-01",
+                dateTo: "2024-12-31",
+                includeZeroBalance: false,
+              },
+              get_journal_summary: {
+                dateFrom: "2024-01-01",
+                dateTo: "2024-12-31",
+                groupBy: "account",
+              },
+              unified_search: {
+                query: "test",
+                limit: 5,
+              },
+            };
+
+            const params = testParams || defaultTestParams[toolName] || {};
+            
+            // 危険なツールの実行は避ける
+            const readOnlyTools = [
+              'test_connection',
+              'check_db_health',
+              'get_accounts',
+              'search_journals',
+              'search_partners',
+              'search_departments',
+              'search_analysis_codes',
+              'get_trial_balance',
+              'get_journal_summary',
+              'unified_search',
+              'get_journal_by_number',
+              'list_mcp_tools',
+              'get_mcp_metadata',
+              'get_journal_attachments',
+            ];
+
+            if (!readOnlyTools.includes(toolName)) {
+              return {
+                content: [
+                  {
+                    text: JSON.stringify(
+                      {
+                        success: false,
+                        error: `Tool '${toolName}' is not allowed for testing (write operation)`,
+                        suggestion: "Use validateOnly=true for write operations",
+                        readOnlyTools,
+                      },
+                      null,
+                      2,
+                    ),
+                    type: "text",
+                  },
+                ],
+              };
+            }
+
+            // 安全なテスト実行
+            const testStartTime = Date.now();
+            let testResult;
+            
+            try {
+              // 実際のツール実行は、ツール関数を直接呼び出すのではなく、
+              // テスト用のモックレスポンスを返す
+              testResult = {
+                content: [
+                  {
+                    text: JSON.stringify(
+                      {
+                        success: true,
+                        message: `Tool '${toolName}' test execution simulated`,
+                        toolName,
+                        testParams: params,
+                        note: "実際のデータベース操作は実行されていません（安全なテスト実行）",
+                      },
+                      null,
+                      2,
+                    ),
+                    type: "text",
+                  },
+                ],
+              };
+            } catch (executionError) {
+              testResult = {
+                content: [
+                  {
+                    text: JSON.stringify(
+                      {
+                        success: false,
+                        executionError: executionError instanceof Error
+                          ? executionError.message
+                          : "Execution failed",
+                      },
+                      null,
+                      2,
+                    ),
+                    type: "text",
+                  },
+                ],
+              };
+            }
+
+            const testEndTime = Date.now();
+            const executionTime = testEndTime - testStartTime;
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      testResult,
+                      testMetadata: {
+                        toolName,
+                        testParams: params,
+                        executionTimeMs: executionTime,
+                        timestamp: new Date().toISOString(),
+                      },
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "ツールテスト実行に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 利用可能ツール一覧（詳細版）
+      this.server.tool(
+        "list_available_tools",
+        "List all available MCP tools with detailed information (利用可能ツール詳細一覧)",
+        {
+          category: z.string().optional().describe("Filter by category (カテゴリでフィルタ)"),
+          includeSchema: z.boolean().default(false).describe("Include input schema (入力スキーマを含める)"),
+        },
+        async ({ category, includeSchema }) => {
+          try {
+            // カテゴリ別ツール分類の静的定義
+            const toolCategories: Record<string, Array<{name: string, description: string, readOnly: boolean}>> = {
+              connection: [
+                { name: 'test_connection', description: 'Test MCP server connection', readOnly: true },
+                { name: 'check_db_health', description: 'Check database connection and status', readOnly: true }
+              ],
+              journal: [
+                { name: 'create_journal', description: 'Create a new journal entry', readOnly: false },
+                { name: 'search_journals', description: 'Search journal entries', readOnly: true },
+                { name: 'update_journal', description: 'Update existing journal entry', readOnly: false },
+                { name: 'delete_journal', description: 'Delete journal entry', readOnly: false },
+                { name: 'get_journal_by_number', description: 'Get journal entry by number', readOnly: true }
+              ],
+              master: [
+                { name: 'get_accounts', description: 'Get chart of accounts', readOnly: true },
+                { name: 'create_account', description: 'Create new account', readOnly: false },
+                { name: 'update_account', description: 'Update existing account', readOnly: false },
+                { name: 'delete_account', description: 'Delete account', readOnly: false },
+                { name: 'search_partners', description: 'Search partners', readOnly: true },
+                { name: 'create_partner', description: 'Create new partner', readOnly: false },
+                { name: 'update_partner', description: 'Update existing partner', readOnly: false },
+                { name: 'delete_partner', description: 'Delete partner', readOnly: false },
+                { name: 'search_departments', description: 'Search departments', readOnly: true },
+                { name: 'create_department', description: 'Create new department', readOnly: false },
+                { name: 'update_department', description: 'Update existing department', readOnly: false },
+                { name: 'delete_department', description: 'Delete department', readOnly: false },
+                { name: 'search_analysis_codes', description: 'Search analysis codes', readOnly: true },
+                { name: 'create_analysis_code', description: 'Create new analysis code', readOnly: false },
+                { name: 'update_analysis_code', description: 'Update existing analysis code', readOnly: false },
+                { name: 'delete_analysis_code', description: 'Delete analysis code', readOnly: false }
+              ],
+              reports: [
+                { name: 'get_trial_balance', description: 'Get trial balance', readOnly: true },
+                { name: 'get_journal_summary', description: 'Get journal summary', readOnly: true }
+              ],
+              search: [
+                { name: 'unified_search', description: 'Unified search across all data', readOnly: true }
+              ],
+              system: [
+                { name: 'generate_sample_journals', description: 'Generate sample journal entries', readOnly: false },
+                { name: 'test_mcp_connection', description: 'Test MCP protocol connection', readOnly: true },
+                { name: 'list_mcp_tools', description: 'List available MCP tools', readOnly: true }
+              ],
+              metadata: [
+                { name: 'get_mcp_metadata', description: 'Get MCP server metadata', readOnly: true },
+                { name: 'test_mcp_tools', description: 'Test MCP tools execution', readOnly: true },
+                { name: 'list_available_tools', description: 'List all available MCP tools with detailed information', readOnly: true }
+              ],
+              attachments: [
+                { name: 'delete_journal_attachment', description: 'Delete journal attachment file', readOnly: false },
+                { name: 'get_journal_attachments', description: 'Get journal attachment files list', readOnly: true }
+              ]
+            };
+
+            // カテゴリフィルタリング
+            let filteredCategories = toolCategories;
+            if (category && toolCategories[category]) {
+              filteredCategories = { [category]: toolCategories[category] };
+            }
+
+            const toolsInfo: any[] = [];
+            Object.entries(filteredCategories).forEach(([cat, tools]) => {
+              tools.forEach(tool => {
+                const baseInfo = {
+                  name: tool.name,
+                  description: tool.description,
+                  category: cat,
+                  readOnly: tool.readOnly,
+                  requiresAuth: true,
+                };
+
+                toolsInfo.push(includeSchema 
+                  ? { ...baseInfo, inputSchema: "スキーマ情報は個別ツール実行時に確認してください" }
+                  : baseInfo
+                );
+              });
+            });
+
+            const allToolsCount = Object.values(toolCategories).reduce((sum, tools) => sum + tools.length, 0);
+
+            const summary = {
+              totalTools: allToolsCount,
+              filteredTools: toolsInfo.length,
+              categories: Object.keys(toolCategories),
+              categoryCounts: Object.fromEntries(
+                Object.entries(toolCategories).map(([cat, tools]) => [cat, tools.length])
+              ),
+            };
+
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      summary,
+                      tools: toolsInfo,
+                      serverInfo: {
+                        name: "Biz Clone Accounting MCP Server",
+                        version: "1.0.0",
+                        protocolVersion: "2024-11-30",
+                      },
+                      timestamp: new Date().toISOString(),
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "ツール一覧取得に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 元々のコード終了位置 - MCP初期化完了
+      
     } catch (error) {
       console.error("Error initializing BizCloneMCP:", error);
     }

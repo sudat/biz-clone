@@ -5,8 +5,10 @@
  * ============================================================================
  */
 
-import { prisma } from "./prisma";
+import { prisma, getPrismaClient } from "./prisma";
 import type { Account, AnalysisCode, Partner } from "../types/unified";
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import type { Hyperdrive } from "@cloudflare/workers-types";
 
 // ====================
 // 共通型定義
@@ -49,6 +51,7 @@ export class AccountService {
   static async search(
     filters: SearchFilters = {},
     options: PaginationOptions = {},
+    hyperdrive?: Hyperdrive,
   ): Promise<SearchResult<Account>> {
     const {
       searchTerm,
@@ -79,9 +82,10 @@ export class AccountService {
     }
 
     const offset = (page - 1) * limit;
+    const client = getPrismaClient(hyperdrive);
 
     const [accounts, total] = await Promise.all([
-      prisma.account.findMany({
+      client.account.findMany({
         where,
         include: {
           defaultTaxRate: true,
@@ -90,7 +94,7 @@ export class AccountService {
         skip: offset,
         take: limit,
       }),
-      prisma.account.count({ where }),
+      client.account.count({ where }),
     ]);
 
     return {
@@ -107,15 +111,19 @@ export class AccountService {
   /**
    * 勘定科目作成
    */
-  static async create(data: {
-    accountCode: string;
-    accountName: string;
-    accountType: string;
-    sortOrder?: number;
-    defaultTaxCode?: string;
-  }): Promise<Account> {
+  static async create(
+    data: {
+      accountCode: string;
+      accountName: string;
+      accountType: string;
+      sortOrder?: number;
+      defaultTaxCode?: string;
+    },
+    hyperdrive?: Hyperdrive,
+  ): Promise<Account> {
+    const client = getPrismaClient(hyperdrive);
     // 重複チェック
-    const existing = await prisma.account.findUnique({
+    const existing = await client.account.findUnique({
       where: { accountCode: data.accountCode },
     });
 
@@ -133,7 +141,7 @@ export class AccountService {
       }
     }
 
-    return await prisma.account.create({
+    return await client.account.create({
       data: {
         accountCode: data.accountCode,
         accountName: data.accountName,
@@ -160,8 +168,10 @@ export class AccountService {
       sortOrder: number;
       defaultTaxCode: string;
     }>,
+    hyperdrive?: Hyperdrive,
   ): Promise<Account> {
-    const existing = await prisma.account.findUnique({
+    const client = getPrismaClient(hyperdrive);
+    const existing = await client.account.findUnique({
       where: { accountCode },
     });
 
@@ -169,7 +179,7 @@ export class AccountService {
       throw new Error(`勘定科目コード「${accountCode}」が見つかりません`);
     }
 
-    return await prisma.account.update({
+    return await client.account.update({
       where: { accountCode },
       data,
       include: {
@@ -181,8 +191,9 @@ export class AccountService {
   /**
    * 勘定科目削除
    */
-  static async delete(accountCode: string): Promise<void> {
-    const existing = await prisma.account.findUnique({
+  static async delete(accountCode: string, hyperdrive?: Hyperdrive): Promise<void> {
+    const client = getPrismaClient(hyperdrive);
+    const existing = await client.account.findUnique({
       where: { accountCode },
     });
 
@@ -191,7 +202,7 @@ export class AccountService {
     }
 
     // 使用中チェック（仕訳詳細に使用されていないか）
-    const usageCount = await prisma.journalDetail.count({
+    const usageCount = await client.journalDetail.count({
       where: { accountCode },
     });
 
@@ -201,7 +212,7 @@ export class AccountService {
       );
     }
 
-    await prisma.account.delete({
+    await client.account.delete({
       where: { accountCode },
     });
   }
@@ -218,6 +229,7 @@ export class PartnerService {
   static async search(
     filters: SearchFilters = {},
     options: PaginationOptions = {},
+    hyperdrive?: Hyperdrive,
   ): Promise<SearchResult<Partner>> {
     const {
       searchTerm,
@@ -249,15 +261,16 @@ export class PartnerService {
     }
 
     const offset = (page - 1) * limit;
+    const client = getPrismaClient(hyperdrive);
 
     const [partners, total] = await Promise.all([
-      prisma.partner.findMany({
+      client.partner.findMany({
         where,
         orderBy: { [sortBy]: sortOrder },
         skip: offset,
         take: limit,
       }),
-      prisma.partner.count({ where }),
+      client.partner.count({ where }),
     ]);
 
     return {
@@ -274,17 +287,21 @@ export class PartnerService {
   /**
    * 取引先作成
    */
-  static async create(data: {
-    partnerCode: string;
-    partnerName: string;
-    partnerKana?: string;
-    partnerType: string;
-    address?: string;
-    phone?: string;
-    email?: string;
-  }): Promise<Partner> {
+  static async create(
+    data: {
+      partnerCode: string;
+      partnerName: string;
+      partnerKana?: string;
+      partnerType: string;
+      address?: string;
+      phone?: string;
+      email?: string;
+    },
+    hyperdrive?: Hyperdrive,
+  ): Promise<Partner> {
+    const client = getPrismaClient(hyperdrive);
     // 重複チェック
-    const existing = await prisma.partner.findUnique({
+    const existing = await client.partner.findUnique({
       where: { partnerCode: data.partnerCode },
     });
 
@@ -292,7 +309,7 @@ export class PartnerService {
       throw new Error(`取引先コード「${data.partnerCode}」は既に存在します`);
     }
 
-    return await prisma.partner.create({
+    return await client.partner.create({
       data: {
         partnerCode: data.partnerCode,
         partnerName: data.partnerName,
@@ -319,8 +336,10 @@ export class PartnerService {
       phone: string;
       email: string;
     }>,
+    hyperdrive?: Hyperdrive,
   ): Promise<Partner> {
-    const existing = await prisma.partner.findUnique({
+    const client = getPrismaClient(hyperdrive);
+    const existing = await client.partner.findUnique({
       where: { partnerCode },
     });
 
@@ -328,7 +347,7 @@ export class PartnerService {
       throw new Error(`取引先コード「${partnerCode}」が見つかりません`);
     }
 
-    return await prisma.partner.update({
+    return await client.partner.update({
       where: { partnerCode },
       data,
     });
@@ -337,8 +356,9 @@ export class PartnerService {
   /**
    * 取引先削除
    */
-  static async delete(partnerCode: string): Promise<void> {
-    const existing = await prisma.partner.findUnique({
+  static async delete(partnerCode: string, hyperdrive?: Hyperdrive): Promise<void> {
+    const client = getPrismaClient(hyperdrive);
+    const existing = await client.partner.findUnique({
       where: { partnerCode },
     });
 
@@ -347,7 +367,7 @@ export class PartnerService {
     }
 
     // 使用中チェック（仕訳詳細に使用されていないか）
-    const usageCount = await prisma.journalDetail.count({
+    const usageCount = await client.journalDetail.count({
       where: { partnerCode },
     });
 
@@ -357,7 +377,7 @@ export class PartnerService {
       );
     }
 
-    await prisma.partner.delete({
+    await client.partner.delete({
       where: { partnerCode },
     });
   }
@@ -374,6 +394,7 @@ export class DepartmentService {
   static async search(
     filters: SearchFilters = {},
     options: PaginationOptions = {},
+    hyperdrive?: Hyperdrive,
   ): Promise<SearchResult<any>> {
     const {
       searchTerm,
@@ -403,15 +424,16 @@ export class DepartmentService {
     const orderBy = sortBy === "sortOrder"
       ? [{ sortOrder: sortOrder }, { departmentCode: "asc" }]
       : { [sortBy]: sortOrder };
+    const client = getPrismaClient(hyperdrive);
 
     const [departments, total] = await Promise.all([
-      prisma.department.findMany({
+      client.department.findMany({
         where,
         orderBy: orderBy as any,
         skip: offset,
         take: limit,
       }),
-      prisma.department.count({ where }),
+      client.department.count({ where }),
     ]);
 
     return {
@@ -428,13 +450,17 @@ export class DepartmentService {
   /**
    * 部門作成
    */
-  static async create(data: {
-    departmentCode: string;
-    departmentName: string;
-    sortOrder?: number;
-  }): Promise<any> {
+  static async create(
+    data: {
+      departmentCode: string;
+      departmentName: string;
+      sortOrder?: number;
+    },
+    hyperdrive?: Hyperdrive,
+  ): Promise<any> {
+    const client = getPrismaClient(hyperdrive);
     // 重複チェック
-    const existing = await prisma.department.findUnique({
+    const existing = await client.department.findUnique({
       where: { departmentCode: data.departmentCode },
     });
 
@@ -442,7 +468,7 @@ export class DepartmentService {
       throw new Error(`部門コード「${data.departmentCode}」は既に存在します`);
     }
 
-    return await prisma.department.create({
+    return await client.department.create({
       data: {
         departmentCode: data.departmentCode,
         departmentName: data.departmentName,
@@ -461,8 +487,10 @@ export class DepartmentService {
       departmentName: string;
       sortOrder: number;
     }>,
+    hyperdrive?: Hyperdrive,
   ): Promise<any> {
-    const existing = await prisma.department.findUnique({
+    const client = getPrismaClient(hyperdrive);
+    const existing = await client.department.findUnique({
       where: { departmentCode },
     });
 
@@ -470,7 +498,7 @@ export class DepartmentService {
       throw new Error(`部門コード「${departmentCode}」が見つかりません`);
     }
 
-    return await prisma.department.update({
+    return await client.department.update({
       where: { departmentCode },
       data,
     });
@@ -479,8 +507,9 @@ export class DepartmentService {
   /**
    * 部門削除
    */
-  static async delete(departmentCode: string): Promise<void> {
-    const existing = await prisma.department.findUnique({
+  static async delete(departmentCode: string, hyperdrive?: Hyperdrive): Promise<void> {
+    const client = getPrismaClient(hyperdrive);
+    const existing = await client.department.findUnique({
       where: { departmentCode },
     });
 
@@ -489,7 +518,7 @@ export class DepartmentService {
     }
 
     // 使用中チェック（仕訳詳細に使用されていないか）
-    const usageCount = await prisma.journalDetail.count({
+    const usageCount = await client.journalDetail.count({
       where: { departmentCode },
     });
 
@@ -499,7 +528,7 @@ export class DepartmentService {
       );
     }
 
-    await prisma.department.delete({
+    await client.department.delete({
       where: { departmentCode },
     });
   }
@@ -516,6 +545,7 @@ export class AnalysisCodeService {
   static async search(
     filters: SearchFilters = {},
     options: PaginationOptions = {},
+    hyperdrive?: Hyperdrive,
   ): Promise<SearchResult<AnalysisCode>> {
     const {
       searchTerm,
@@ -550,9 +580,10 @@ export class AnalysisCodeService {
     const orderBy = sortBy === "sortOrder"
       ? [{ sortOrder: sortOrder }, { analysisCode: "asc" }]
       : { [sortBy]: sortOrder };
+    const client = getPrismaClient(hyperdrive);
 
     const [analysisCodes, total] = await Promise.all([
-      prisma.analysisCode.findMany({
+      client.analysisCode.findMany({
         where,
         include: {
           analysisTypeRel: true,
@@ -561,7 +592,7 @@ export class AnalysisCodeService {
         skip: offset,
         take: limit,
       }),
-      prisma.analysisCode.count({ where }),
+      client.analysisCode.count({ where }),
     ]);
 
     return {
@@ -578,14 +609,18 @@ export class AnalysisCodeService {
   /**
    * 分析コード作成
    */
-  static async create(data: {
-    analysisCode: string;
-    analysisName: string;
-    analysisType: string;
-    sortOrder?: number;
-  }): Promise<AnalysisCode> {
+  static async create(
+    data: {
+      analysisCode: string;
+      analysisName: string;
+      analysisType: string;
+      sortOrder?: number;
+    },
+    hyperdrive?: Hyperdrive,
+  ): Promise<AnalysisCode> {
+    const client = getPrismaClient(hyperdrive);
     // 重複チェック
-    const existing = await prisma.analysisCode.findUnique({
+    const existing = await client.analysisCode.findUnique({
       where: { analysisCode: data.analysisCode },
     });
 
@@ -593,7 +628,7 @@ export class AnalysisCodeService {
       throw new Error(`分析コード「${data.analysisCode}」は既に存在します`);
     }
 
-    return await prisma.analysisCode.create({
+    return await client.analysisCode.create({
       data: {
         analysisCode: data.analysisCode,
         analysisName: data.analysisName,
@@ -617,8 +652,10 @@ export class AnalysisCodeService {
       analysisType: string;
       sortOrder: number;
     }>,
+    hyperdrive?: Hyperdrive,
   ): Promise<AnalysisCode> {
-    const existing = await prisma.analysisCode.findUnique({
+    const client = getPrismaClient(hyperdrive);
+    const existing = await client.analysisCode.findUnique({
       where: { analysisCode },
     });
 
@@ -626,7 +663,7 @@ export class AnalysisCodeService {
       throw new Error(`分析コード「${analysisCode}」が見つかりません`);
     }
 
-    return await prisma.analysisCode.update({
+    return await client.analysisCode.update({
       where: { analysisCode },
       data,
       include: {
@@ -638,8 +675,9 @@ export class AnalysisCodeService {
   /**
    * 分析コード削除
    */
-  static async delete(analysisCode: string): Promise<void> {
-    const existing = await prisma.analysisCode.findUnique({
+  static async delete(analysisCode: string, hyperdrive?: Hyperdrive): Promise<void> {
+    const client = getPrismaClient(hyperdrive);
+    const existing = await client.analysisCode.findUnique({
       where: { analysisCode },
     });
 
@@ -648,7 +686,7 @@ export class AnalysisCodeService {
     }
 
     // 使用中チェック（仕訳詳細に使用されていないか）
-    const usageCount = await prisma.journalDetail.count({
+    const usageCount = await client.journalDetail.count({
       where: { analysisCode },
     });
 
@@ -658,7 +696,7 @@ export class AnalysisCodeService {
       );
     }
 
-    await prisma.analysisCode.delete({
+    await client.analysisCode.delete({
       where: { analysisCode },
     });
   }

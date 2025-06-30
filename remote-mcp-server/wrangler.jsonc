@@ -7,7 +7,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "biz-clone-remote-mcp",
   "main": "src/index.ts",
-  "compatibility_date": "2025-03-10",
+  "compatibility_date": "2024-09-23",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
     "GITHUB_CLIENT_ID": "Ov23liuG6tE9F81nZTU0"

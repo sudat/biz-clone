@@ -5,7 +5,7 @@
  * ============================================================================
  */
 
-import { prisma } from "./prisma";
+import { prisma, getPrismaClient } from "./prisma";
 import { JournalNumberService } from "./journal-number";
 import {
   ApiErrorType,
@@ -14,6 +14,8 @@ import {
   SearchOptions,
 } from "../api/types";
 import { Prisma } from "@prisma/client";
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import type { Hyperdrive } from "@cloudflare/workers-types";
 
 // ====================
 // 型定義
@@ -111,6 +113,7 @@ function validateJournalBalance(details: JournalSaveInput["details"]): void {
  */
 async function validateMasterData(
   details: JournalSaveInput["details"],
+  hyperdrive?: Hyperdrive,
 ): Promise<void> {
   const accountCodes = [...new Set(details.map((d) => d.accountCode))];
   const partnerCodes = [
@@ -123,8 +126,10 @@ async function validateMasterData(
     ...new Set(details.map((d) => d.analysisCode).filter(Boolean)),
   ] as string[];
 
+  const client = getPrismaClient(hyperdrive);
+
   // 勘定科目チェック
-  const accounts = await prisma.account.findMany({
+  const accounts = await client.account.findMany({
     where: { accountCode: { in: accountCodes } },
     select: { accountCode: true },
   });
@@ -144,7 +149,7 @@ async function validateMasterData(
 
   // 取引先チェック
   if (partnerCodes.length > 0) {
-    const partners = await prisma.partner.findMany({
+    const partners = await client.partner.findMany({
       where: { partnerCode: { in: partnerCodes } },
       select: { partnerCode: true },
     });
@@ -165,7 +170,7 @@ async function validateMasterData(
 
   // 部門チェック
   if (departmentCodes.length > 0) {
-    const departments = await prisma.department.findMany({
+    const departments = await client.department.findMany({
       where: { departmentCode: { in: departmentCodes } },
       select: { departmentCode: true },
     });
@@ -186,7 +191,7 @@ async function validateMasterData(
 
   // 分析コードチェック
   if (analysisCodes.length > 0) {
-    const analysisCodeRecords = await prisma.analysisCode.findMany({
+    const analysisCodeRecords = await client.analysisCode.findMany({
       where: { analysisCode: { in: analysisCodes } },
       select: { analysisCode: true },
     });
@@ -217,12 +222,14 @@ async function validateMasterData(
  */
 export async function saveJournal(
   data: JournalSaveInput,
+  hyperdrive?: Hyperdrive,
 ): Promise<JournalWithDetails> {
   // バリデーション
   validateJournalBalance(data.details);
-  await validateMasterData(data.details);
+  await validateMasterData(data.details, hyperdrive);
 
-  return await prisma.$transaction(async (tx) => {
+  const client = getPrismaClient(hyperdrive);
+  return await client.$transaction(async (tx) => {
     // 仕訳番号生成
     const journalDate = new Date(data.header.journalDate);
     const journalNumberResult = await JournalNumberService
@@ -338,12 +345,14 @@ export async function saveJournal(
 export async function updateJournal(
   journalNumber: string,
   data: JournalSaveInput,
+  hyperdrive?: Hyperdrive,
 ): Promise<JournalWithDetails> {
   // バリデーション
   validateJournalBalance(data.details);
-  await validateMasterData(data.details);
+  await validateMasterData(data.details, hyperdrive);
 
-  return await prisma.$transaction(async (tx) => {
+  const client = getPrismaClient(hyperdrive);
+  return await client.$transaction(async (tx) => {
     // 既存仕訳の存在確認
     const existing = await tx.journalHeader.findUnique({
       where: { journalNumber },
@@ -470,8 +479,9 @@ export async function updateJournal(
 /**
  * 仕訳削除
  */
-export async function deleteJournal(journalNumber: string): Promise<void> {
-  await prisma.$transaction(async (tx) => {
+export async function deleteJournal(journalNumber: string, hyperdrive?: Hyperdrive): Promise<void> {
+  const client = getPrismaClient(hyperdrive);
+  await client.$transaction(async (tx) => {
     // 既存仕訳の存在確認
     const existing = await tx.journalHeader.findUnique({
       where: { journalNumber },
@@ -514,8 +524,10 @@ export async function deleteJournal(journalNumber: string): Promise<void> {
  */
 export async function getJournalByNumber(
   journalNumber: string,
+  hyperdrive?: Hyperdrive,
 ): Promise<JournalWithDetails | null> {
-  const journal = await prisma.journalHeader.findUnique({
+  const client = getPrismaClient(hyperdrive);
+  const journal = await client.journalHeader.findUnique({
     where: { journalNumber },
     include: {
       journalDetails: {
@@ -566,6 +578,7 @@ export async function getJournalByNumber(
  */
 export async function searchJournals(
   params: JournalSearchParams,
+  hyperdrive?: Hyperdrive,
 ): Promise<PaginatedJournalResult> {
   const page = params.page || 1;
   const limit = Math.min(params.limit || 20, 100);
@@ -648,9 +661,11 @@ export async function searchJournals(
     orderBy.journalDate = "desc";
   }
 
+  const client = getPrismaClient(hyperdrive);
+
   // データ取得
   const [journals, total] = await Promise.all([
-    prisma.journalHeader.findMany({
+    client.journalHeader.findMany({
       where,
       include: {
         journalDetails: {
@@ -675,7 +690,7 @@ export async function searchJournals(
       skip: offset,
       take: limit,
     }),
-    prisma.journalHeader.count({ where }),
+    client.journalHeader.count({ where }),
   ]);
 
   return {

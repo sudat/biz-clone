@@ -1,4 +1,6 @@
-import { prisma } from "./prisma";
+import { prisma, getPrismaClient } from "./prisma";
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import type { Hyperdrive } from "@cloudflare/workers-types";
 
 // 簡単な型定義
 type JournalNumberSequence = {
@@ -17,7 +19,10 @@ export class JournalNumberService {
    * @param date 仕訳日付（YYYY-MM-DD形式）
    * @returns Promise<{ success: boolean, data?: string, error?: string }>
    */
-  static async generateNextJournalNumber(date: string): Promise<{
+  static async generateNextJournalNumber(
+    date: string,
+    hyperdrive?: Hyperdrive,
+  ): Promise<{
     success: boolean;
     data?: string;
     error?: string;
@@ -25,9 +30,10 @@ export class JournalNumberService {
     try {
       // 日付をYYYYMMDD形式に変換
       const datePrefix = date.replace(/-/g, "");
+      const client = getPrismaClient(hyperdrive);
 
       // 現在の最大シーケンス番号を取得
-      const lastSequence = await prisma.$queryRaw<
+      const lastSequence = await client.$queryRaw<
         [{ max_sequence: number | null }]
       >`
         SELECT COALESCE(MAX(CAST(SUBSTRING("journalNumber" FROM LENGTH("journalNumber") - 5) AS INTEGER)), 0) as max_sequence
@@ -57,13 +63,17 @@ export class JournalNumberService {
    * @param journalNumber チェックする仕訳番号
    * @returns Promise<{ success: boolean, data?: boolean, error?: string }>
    */
-  static async checkJournalNumberExists(journalNumber: string): Promise<{
+  static async checkJournalNumberExists(
+    journalNumber: string,
+    hyperdrive?: Hyperdrive,
+  ): Promise<{
     success: boolean;
     data?: boolean;
     error?: string;
   }> {
     try {
-      const existingJournal = await prisma.journalHeader.findUnique({
+      const client = getPrismaClient(hyperdrive);
+      const existingJournal = await client.journalHeader.findUnique({
         where: { journalNumber },
         select: { journalNumber: true },
       });
@@ -86,15 +96,19 @@ export class JournalNumberService {
    * @param date 取得対象日付（YYYY-MM-DD形式）
    * @returns Promise<{ success: boolean, data?: string | null, error?: string }>
    */
-  static async getLastJournalNumberForDate(date: string): Promise<{
+  static async getLastJournalNumberForDate(
+    date: string,
+    hyperdrive?: Hyperdrive,
+  ): Promise<{
     success: boolean;
     data?: string | null;
     error?: string;
   }> {
     try {
       const datePrefix = date.replace(/-/g, "");
+      const client = getPrismaClient(hyperdrive);
 
-      const lastJournal = await prisma.journalHeader.findFirst({
+      const lastJournal = await client.journalHeader.findFirst({
         where: {
           journalNumber: {
             startsWith: datePrefix,
@@ -122,7 +136,10 @@ export class JournalNumberService {
    * @param date 取得対象日付（YYYY-MM-DD形式）
    * @returns Promise<{ success: boolean, data?: JournalNumberSequence | null, error?: string }>
    */
-  static async getJournalNumberSequence(date: string): Promise<{
+  static async getJournalNumberSequence(
+    date: string,
+    hyperdrive?: Hyperdrive,
+  ): Promise<{
     success: boolean;
     data?: JournalNumberSequence | null;
     error?: string;
@@ -130,7 +147,8 @@ export class JournalNumberService {
     try {
       // Simplified version - just return basic sequence info
       const datePrefix = date.replace(/-/g, "");
-      const lastSequence = await prisma.$queryRaw<
+      const client = getPrismaClient(hyperdrive);
+      const lastSequence = await client.$queryRaw<
         [{ max_sequence: number | null }]
       >`
         SELECT COALESCE(MAX(CAST(SUBSTRING("journalNumber" FROM LENGTH("journalNumber") - 5) AS INTEGER)), 0) as max_sequence
@@ -162,7 +180,10 @@ export class JournalNumberService {
    * @param date 仕訳日付（YYYY-MM-DD形式）
    * @returns Promise<{ success: boolean, data?: string, error?: string }>
    */
-  static async previewNextJournalNumber(date: string): Promise<{
+  static async previewNextJournalNumber(
+    date: string,
+    hyperdrive?: Hyperdrive,
+  ): Promise<{
     success: boolean;
     data?: string;
     error?: string;
@@ -170,9 +191,10 @@ export class JournalNumberService {
     try {
       // 日付をYYYYMMDD形式に変換
       const datePrefix = date.replace(/-/g, "");
+      const client = getPrismaClient(hyperdrive);
 
       // 現在の最大シーケンス番号を取得
-      const lastSequence = await prisma.$queryRaw<
+      const lastSequence = await client.$queryRaw<
         [{ max_sequence: number | null }]
       >`
         SELECT COALESCE(MAX(CAST(SUBSTRING("journalNumber" FROM LENGTH("journalNumber") - 5) AS INTEGER)), 0) as max_sequence
@@ -206,13 +228,14 @@ export class JournalNumberService {
   static async generateNextJournalNumberSafe(
     date: string,
     _maxRetries: number = 3,
+    hyperdrive?: Hyperdrive,
   ): Promise<{
     success: boolean;
     data?: string;
     error?: string;
   }> {
     // Simplified version - just call the normal generation method
-    return this.generateNextJournalNumber(date);
+    return this.generateNextJournalNumber(date, hyperdrive);
   }
 
   /**
@@ -224,6 +247,7 @@ export class JournalNumberService {
   static async generateMultipleJournalNumbers(
     date: string,
     count: number,
+    hyperdrive?: Hyperdrive,
   ): Promise<{
     success: boolean;
     data?: string[];
@@ -232,7 +256,7 @@ export class JournalNumberService {
     try {
       const numbers: string[] = [];
       for (let i = 0; i < count; i++) {
-        const result = await this.generateNextJournalNumber(date);
+        const result = await this.generateNextJournalNumber(date, hyperdrive);
         if (result.success && result.data) {
           numbers.push(result.data);
         } else {
@@ -269,18 +293,20 @@ export class JournalNumberService {
 /**
  * 仕訳番号生成関数（計上日ベース）
  * @param journalDate 計上日（YYYY-MM-DD形式）または Date オブジェクト
+ * @param hyperdrive Hyperdriveインスタンス(オプション)
  * @returns Promise<string> 生成された仕訳番号（yyyymmdd + 6桁シーケンス）
  * @throws Error 生成に失敗した場合
  */
 export async function generateJournalNumber(
   journalDate: string | Date,
+  hyperdrive?: Hyperdrive,
 ): Promise<string> {
   // 日付を YYYY-MM-DD 形式の文字列に変換（ローカルタイムゾーンを使用）
   const dateStr = journalDate instanceof Date
     ? `${journalDate.getFullYear()}-${String(journalDate.getMonth() + 1).padStart(2, '0')}-${String(journalDate.getDate()).padStart(2, '0')}`
     : journalDate;
 
-  const result = await JournalNumberService.generateNextJournalNumber(dateStr);
+  const result = await JournalNumberService.generateNextJournalNumber(dateStr, hyperdrive);
 
   if (!result.success || !result.data) {
     throw new Error(result.error || "仕訳番号の生成に失敗しました");

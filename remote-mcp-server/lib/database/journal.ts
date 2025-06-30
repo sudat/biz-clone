@@ -1,8 +1,10 @@
-import { prisma } from "./prisma";
+import { prisma, getPrismaClient } from "./prisma";
 import type {
   JournalHeader,
   JournalDetail,
 } from "./prisma";
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import type { Hyperdrive } from "@cloudflare/workers-types";
 
 // 簡単な型定義
 type JournalWithDetails = any;

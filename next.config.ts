@@ -8,11 +8,11 @@ const nextConfig: NextConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
     };
-    
+
     // remote-mcp-serverディレクトリを除外
     config.externals = config.externals || [];
     config.externals.push(/^remote-mcp-server\//);
-    
+
     return config;
   },
 
@@ -20,6 +20,8 @@ const nextConfig: NextConfig = {
   experimental: {
     serverMinification: false, // デバッグのためminificationを無効化
   },
+  // mastraのパッケージ
+  serverExternalPackages: ["@mastra/*"],
 
   // 環境変数
   env: {
