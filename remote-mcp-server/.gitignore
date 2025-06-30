@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.dev.vars
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Wrangler
+.wrangler/
+
+# TypeScript
+*.tsbuildinfo
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Secret files
+secrets.txt
+private-key.pem
+
+# Backup files
+*.backup
+*.bak 

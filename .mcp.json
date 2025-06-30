@@ -1,7 +1,11 @@
 {
   "mcpServers": {
-    "biz-clone-accounting": {
-      "url": "https://biz-clone.vercel.app/api/mcp"
+    "biz-clone-remote": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://biz-clone-remote-mcp.tetuya1201.workers.dev/sse"
+      ]
     }
   }
 }
