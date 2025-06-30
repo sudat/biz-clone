@@ -3,6 +3,19 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
 
+  // remote-mcp-serverディレクトリを除外
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+    };
+    
+    // remote-mcp-serverディレクトリを除外
+    config.externals = config.externals || [];
+    config.externals.push(/^remote-mcp-server\//);
+    
+    return config;
+  },
+
   // サーバーサイドのログ出力を有効化
   experimental: {
     serverMinification: false, // デバッグのためminificationを無効化
