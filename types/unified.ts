@@ -13,6 +13,7 @@ import type {
   JournalDetail,
   JournalHeader,
   Partner,
+  ReconciliationMapping,
   Role,
   SubAccount,
   TaxRate,
@@ -29,6 +30,7 @@ export type {
   JournalDetail,
   JournalHeader,
   Partner,
+  ReconciliationMapping,
   Role,
   SubAccount,
   TaxRate,
@@ -90,6 +92,14 @@ export interface RoleFilter {
 
 export interface UserFilter {
   roleCode?: string;
+  isActive?: boolean;
+}
+
+export interface ReconciliationMappingFilter {
+  departmentCode?: string;
+  accountCode?: string;
+  counterDepartmentCode?: string;
+  counterAccountCode?: string;
   isActive?: boolean;
 }
 

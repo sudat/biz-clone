@@ -160,6 +160,30 @@ model Department {
   @@map("departments")
 }
 
+// 勘定照合マスタ
+model ReconciliationMapping {
+  mappingId               String   @id @db.Uuid @default(dbgenerated("gen_random_uuid()"))
+  departmentCode          String   @db.VarChar(10)
+  accountCode             String   @db.VarChar(10)
+  counterDepartmentCode   String   @db.VarChar(10)
+  counterAccountCode      String   @db.VarChar(10)
+  isActive                Boolean  @default(true)
+  sortOrder               Int?
+  description             String?  @db.Text
+  createdAt               DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt               DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // 関係（外部キー制約なし - 柔軟性のため）
+  // department         Department @relation(fields: [departmentCode], references: [departmentCode])
+  // account            Account    @relation(fields: [accountCode], references: [accountCode])
+  // counterDepartment  Department @relation(fields: [counterDepartmentCode], references: [departmentCode])
+  // counterAccount     Account    @relation(fields: [counterAccountCode], references: [accountCode])
+
+  // 一意制約（同じ組み合わせは1つだけ）
+  @@unique([departmentCode, accountCode, counterDepartmentCode, counterAccountCode])
+  @@map("reconciliation_mappings")
+}
+
 // ロールマスタ
 model Role {
   roleCode    String   @id @db.VarChar(20)

@@ -158,6 +158,14 @@ export function Header() {
                         ワークフロールート
                       </Link>
                     </MenubarItem>
+                    <MenubarItem asChild>
+                      <Link
+                        href="/master/reconciliation-mappings"
+                        className="px-4 py-3 text-base"
+                      >
+                        勘定照合マスタ
+                      </Link>
+                    </MenubarItem>
                   </MenubarSubContent>
                 </MenubarPortal>
               </MenubarSub>
@@ -355,6 +363,13 @@ export function Header() {
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     ワークフロールート
+                  </Link>
+                  <Link
+                    href="/master/reconciliation-mappings"
+                    className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors ml-4"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    勘定照合マスタ
                   </Link>
                 </div>
 

@@ -80,3 +80,15 @@ export {
   type CreateDepartmentInput,
   type UpdateDepartmentInput
 } from "./department";
+
+// 勘定照合マスタスキーマ
+export {
+  createReconciliationMappingSchema,
+  updateReconciliationMappingSchema,
+  reconciliationMappingFormSchema,
+  reconciliationMappingFilterSchema,
+  type CreateReconciliationMappingInput,
+  type UpdateReconciliationMappingInput,
+  type ReconciliationMappingFormInput,
+  type ReconciliationMappingFilter
+} from "./reconciliation-mapping";
