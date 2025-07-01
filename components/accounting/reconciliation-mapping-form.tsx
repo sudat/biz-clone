@@ -264,11 +264,11 @@ export function ReconciliationMappingForm({
                     ))}
                   </SelectContent>
                 </Select>
-                <FormDescription>
-                  {departmentsLoading 
-                    ? "部門一覧を読み込み中..." 
-                    : "計上する部門を選択してください"}
-                </FormDescription>
+                {departmentsLoading && (
+                  <FormDescription>
+                    部門一覧を読み込み中...
+                  </FormDescription>
+                )}
                 <FormMessage />
               </FormItem>
             )}
@@ -298,11 +298,11 @@ export function ReconciliationMappingForm({
                     ))}
                   </SelectContent>
                 </Select>
-                <FormDescription>
-                  {accountsLoading 
-                    ? "勘定科目一覧を読み込み中..." 
-                    : "計上する勘定科目を選択してください"}
-                </FormDescription>
+                {accountsLoading && (
+                  <FormDescription>
+                    勘定科目一覧を読み込み中...
+                  </FormDescription>
+                )}
                 <FormMessage />
               </FormItem>
             )}
@@ -334,11 +334,11 @@ export function ReconciliationMappingForm({
                     ))}
                   </SelectContent>
                 </Select>
-                <FormDescription>
-                  {departmentsLoading 
-                    ? "部門一覧を読み込み中..." 
-                    : "相手計上部門を選択してください"}
-                </FormDescription>
+                {departmentsLoading && (
+                  <FormDescription>
+                    部門一覧を読み込み中...
+                  </FormDescription>
+                )}
                 <FormMessage />
               </FormItem>
             )}
@@ -368,11 +368,11 @@ export function ReconciliationMappingForm({
                     ))}
                   </SelectContent>
                 </Select>
-                <FormDescription>
-                  {accountsLoading 
-                    ? "勘定科目一覧を読み込み中..." 
-                    : "相手勘定科目を選択してください"}
-                </FormDescription>
+                {accountsLoading && (
+                  <FormDescription>
+                    勘定科目一覧を読み込み中...
+                  </FormDescription>
+                )}
                 <FormMessage />
               </FormItem>
             )}
