@@ -641,6 +641,123 @@ export async function getUserCreatedPendingJournals(params: {
 }
 
 /**
+ * 承認権限チェック関数
+ * 仕訳作成者と承認者の関係をワークフローステップで検証
+ */
+async function validateApprovalPermission(
+  createdBy: string, 
+  approvedBy: string,
+  tx: any
+): Promise<boolean> {
+  try {
+    // 1. 仕訳作成者の所属ワークフロー組織を取得
+    const creatorOrgUsers = await tx.workflowOrganizationUser.findMany({
+      where: {
+        userId: createdBy,
+      },
+      include: {
+        workflowOrganization: true,
+      },
+    });
+
+    if (creatorOrgUsers.length === 0) {
+      return false; // 作成者がワークフロー組織に所属していない
+    }
+
+    // 2. 承認者の所属ワークフロー組織を取得
+    const approverOrgUsers = await tx.workflowOrganizationUser.findMany({
+      where: {
+        userId: approvedBy,
+      },
+      include: {
+        workflowOrganization: true,
+      },
+    });
+
+    if (approverOrgUsers.length === 0) {
+      return false; // 承認者がワークフロー組織に所属していない
+    }
+
+    // 3. 各作成者組織に対して、承認者が次ステップの組織に所属しているかチェック
+    for (const creatorOrgUser of creatorOrgUsers) {
+      const creatorOrgCode = creatorOrgUser.workflowOrganization.organizationCode;
+
+      // 作成者組織が含まれるワークフローステップを取得
+      const creatorSteps = await tx.workflowRouteStep.findMany({
+        where: {
+          organizationCode: creatorOrgCode,
+        },
+        include: {
+          workflowRoute: {
+            include: {
+              workflowRouteSteps: {
+                orderBy: {
+                  stepNumber: 'asc',
+                },
+              },
+            },
+          },
+        },
+      });
+
+      for (const creatorStep of creatorSteps) {
+        const currentStepNumber = creatorStep.stepNumber;
+        const nextStepNumber = currentStepNumber + 1;
+
+        // 次のステップを取得
+        const nextStep = creatorStep.workflowRoute.workflowRouteSteps.find(
+          (step: { stepNumber: number }) => step.stepNumber === nextStepNumber
+        );
+
+        if (nextStep) {
+          // 承認者が次ステップの組織に所属しているかチェック
+          const approverInNextStep = approverOrgUsers.some(
+            (approverOrgUser: { workflowOrganization: { organizationCode: string } }) => 
+              approverOrgUser.workflowOrganization.organizationCode === nextStep.organizationCode
+          );
+
+          if (approverInNextStep) {
+            return true; // 承認権限あり
+          }
+        }
+      }
+    }
+
+    return false; // 承認権限なし
+  } catch (error) {
+    console.error("承認権限チェックエラー:", error);
+    return false;
+  }
+}
+
+/**
+ * UI用承認権限チェック関数
+ * 仕訳作成者と承認者の関係をワークフローステップで検証（UI表示制御用）
+ */
+export async function checkApprovalPermission(params: {
+  createdBy: string;
+  approvedBy: string;
+}): Promise<{ hasPermission: boolean; error?: string }> {
+  try {
+    const hasPermission = await prisma.$transaction(async (tx) => {
+      return await validateApprovalPermission(
+        params.createdBy, 
+        params.approvedBy,
+        tx
+      );
+    });
+
+    return { hasPermission };
+  } catch (error) {
+    console.error("承認権限チェックエラー:", error);
+    return { 
+      hasPermission: false, 
+      error: error instanceof Error ? error.message : "権限チェックに失敗しました" 
+    };
+  }
+}
+
+/**
  * 仕訳承認処理
  */
 export async function approveJournal(params: {
@@ -654,6 +771,11 @@ export async function approveJournal(params: {
       // 仕訳存在確認
       const journal = await tx.journalHeader.findUnique({
         where: { journalNumber: params.journalNumber },
+        select: { 
+          journalNumber: true,
+          approvalStatus: true,
+          createdBy: true,
+        },
       });
 
       if (!journal) {
@@ -662,6 +784,21 @@ export async function approveJournal(params: {
 
       if (journal.approvalStatus !== "pending") {
         throw new Error("承認中ではない仕訳は承認できません");
+      }
+
+      if (!journal.createdBy) {
+        throw new Error("仕訳の作成者が特定できません");
+      }
+
+      // 承認権限チェック
+      const hasPermission = await validateApprovalPermission(
+        journal.createdBy, 
+        params.approvedBy,
+        tx
+      );
+
+      if (!hasPermission) {
+        throw new Error("この仕訳を承認する権限がありません");
       }
 
       // 承認処理

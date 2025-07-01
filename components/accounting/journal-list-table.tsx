@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
@@ -37,7 +37,7 @@ import {
 import { JournalDeleteButton } from "@/components/accounting/journal-delete-button";
 
 import type { JournalInquiryData } from "@/app/actions/journal-inquiry";
-import { approveJournal } from "@/app/actions/journal-inquiry";
+import { approveJournal, checkApprovalPermission } from "@/app/actions/journal-inquiry";
 import { toast } from "sonner";
 import { useUser } from "@/lib/contexts/user-context";
 
@@ -62,6 +62,8 @@ export function JournalListTable({
 }: JournalListTableProps) {
   const { currentUser } = useUser();
   const [isApproving, setIsApproving] = useState<string | null>(null);
+  const [approvalPermissions, setApprovalPermissions] = useState<Record<string, boolean>>({});
+  const [permissionCheckLoading, setPermissionCheckLoading] = useState(false);
   const totalPages = Math.ceil(totalCount / pageSize);
   const hasNextPage = currentPage < totalPages;
   const hasPrevPage = currentPage > 1;
@@ -134,6 +136,43 @@ export function JournalListTable({
       </div>
     );
   };
+
+  // 承認権限チェック用useEffect
+  useEffect(() => {
+    const checkPermissions = async () => {
+      if (!currentUser?.userId || journals.length === 0) {
+        return;
+      }
+
+      setPermissionCheckLoading(true);
+      const newPermissions: Record<string, boolean> = {};
+
+      try {
+        // pending状態の仕訳に対してのみ権限チェックを実行
+        const pendingJournals = journals.filter(journal => 
+          journal.approvalStatus === "pending" && journal.createdBy
+        );
+
+        for (const journal of pendingJournals) {
+          if (journal.createdBy) {
+            const result = await checkApprovalPermission({
+              createdBy: journal.createdBy,
+              approvedBy: currentUser.userId,
+            });
+            newPermissions[journal.journalNumber] = result.hasPermission;
+          }
+        }
+
+        setApprovalPermissions(newPermissions);
+      } catch (error) {
+        console.error("権限チェックエラー:", error);
+      } finally {
+        setPermissionCheckLoading(false);
+      }
+    };
+
+    checkPermissions();
+  }, [journals, currentUser?.userId]);
 
   const handleApproval = async (journalNumber: string) => {
     if (!currentUser?.userId) {
@@ -260,7 +299,8 @@ export function JournalListTable({
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">
-                      {journal.approvalStatus === "pending" && (
+                      {journal.approvalStatus === "pending" && 
+                       approvalPermissions[journal.journalNumber] === true && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
@@ -268,7 +308,7 @@ export function JournalListTable({
                               size="sm"
                               className="cursor-pointer text-green-600 hover:text-green-700 hover:bg-green-50"
                               title="承認"
-                              disabled={isApproving === journal.journalNumber}
+                              disabled={isApproving === journal.journalNumber || permissionCheckLoading}
                             >
                               <Check className="h-4 w-4" />
                             </Button>
@@ -383,7 +423,8 @@ export function JournalListTable({
                     className="flex gap-1 justify-end"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {journal.approvalStatus === "pending" && (
+                    {journal.approvalStatus === "pending" && 
+                     approvalPermissions[journal.journalNumber] === true && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
@@ -391,7 +432,7 @@ export function JournalListTable({
                             size="sm"
                             className="text-green-600 hover:text-green-700 hover:bg-green-50"
                             title="承認"
-                            disabled={isApproving === journal.journalNumber}
+                            disabled={isApproving === journal.journalNumber || permissionCheckLoading}
                           >
                             <Check className="h-4 w-4" />
                           </Button>
