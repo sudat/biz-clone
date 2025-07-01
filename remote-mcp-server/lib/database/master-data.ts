@@ -5,7 +5,7 @@
  * ============================================================================
  */
 
-import { prisma, getPrismaClient } from "./prisma";
+import { getPrismaClient, prisma } from "./prisma";
 import type { Account, AnalysisCode, Partner } from "../types/unified";
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import type { Hyperdrive } from "@cloudflare/workers-types";
@@ -52,6 +52,7 @@ export class AccountService {
     filters: SearchFilters = {},
     options: PaginationOptions = {},
     hyperdrive?: Hyperdrive,
+    databaseUrl?: string,
   ): Promise<SearchResult<Account>> {
     const {
       searchTerm,
@@ -120,8 +121,9 @@ export class AccountService {
       defaultTaxCode?: string;
     },
     hyperdrive?: Hyperdrive,
+    databaseUrl?: string,
   ): Promise<Account> {
-    const client = getPrismaClient(hyperdrive);
+    const client = getPrismaClient(hyperdrive, databaseUrl);
     // 重複チェック
     const existing = await client.account.findUnique({
       where: { accountCode: data.accountCode },
@@ -169,8 +171,9 @@ export class AccountService {
       defaultTaxCode: string;
     }>,
     hyperdrive?: Hyperdrive,
+    databaseUrl?: string,
   ): Promise<Account> {
-    const client = getPrismaClient(hyperdrive);
+    const client = getPrismaClient(hyperdrive, databaseUrl);
     const existing = await client.account.findUnique({
       where: { accountCode },
     });
@@ -191,8 +194,12 @@ export class AccountService {
   /**
    * 勘定科目削除
    */
-  static async delete(accountCode: string, hyperdrive?: Hyperdrive): Promise<void> {
-    const client = getPrismaClient(hyperdrive);
+  static async delete(
+    accountCode: string,
+    hyperdrive?: Hyperdrive,
+    databaseUrl?: string,
+  ): Promise<void> {
+    const client = getPrismaClient(hyperdrive, databaseUrl);
     const existing = await client.account.findUnique({
       where: { accountCode },
     });
@@ -356,7 +363,10 @@ export class PartnerService {
   /**
    * 取引先削除
    */
-  static async delete(partnerCode: string, hyperdrive?: Hyperdrive): Promise<void> {
+  static async delete(
+    partnerCode: string,
+    hyperdrive?: Hyperdrive,
+  ): Promise<void> {
     const client = getPrismaClient(hyperdrive);
     const existing = await client.partner.findUnique({
       where: { partnerCode },
@@ -507,7 +517,10 @@ export class DepartmentService {
   /**
    * 部門削除
    */
-  static async delete(departmentCode: string, hyperdrive?: Hyperdrive): Promise<void> {
+  static async delete(
+    departmentCode: string,
+    hyperdrive?: Hyperdrive,
+  ): Promise<void> {
     const client = getPrismaClient(hyperdrive);
     const existing = await client.department.findUnique({
       where: { departmentCode },
@@ -675,7 +688,10 @@ export class AnalysisCodeService {
   /**
    * 分析コード削除
    */
-  static async delete(analysisCode: string, hyperdrive?: Hyperdrive): Promise<void> {
+  static async delete(
+    analysisCode: string,
+    hyperdrive?: Hyperdrive,
+  ): Promise<void> {
     const client = getPrismaClient(hyperdrive);
     const existing = await client.analysisCode.findUnique({
       where: { analysisCode },

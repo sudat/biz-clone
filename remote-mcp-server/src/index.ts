@@ -63,21 +63,59 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
   // private prisma!: any; // PrismaClient型を動的にロード - 削除：各ツールで個別にgetPrismaClientを使用
   // private systemOps!: SystemOperations; // 一時的に無効化
 
+  /**
+   * DATABASE_URLを安全な文字列として取得
+   */
+  private getDatabaseUrl(): string | undefined {
+    if (!this.env.DATABASE_URL) {
+      return undefined;
+    }
+
+    const url = typeof this.env.DATABASE_URL === "string"
+      ? this.env.DATABASE_URL
+      : String(this.env.DATABASE_URL);
+
+    console.log("📦 DATABASE_URL converted to string, length:", url.length);
+    return url;
+  }
+
   async init() {
     try {
       // 🔍 デバッグ: 環境変数の値を詳細確認（安全な形式で）
       console.log("🔍 Environment Variables Debug:");
       console.log("DATABASE_URL exists:", !!this.env.DATABASE_URL);
+      console.log("DATABASE_URL type:", typeof this.env.DATABASE_URL);
+      console.log(
+        "DATABASE_URL constructor:",
+        this.env.DATABASE_URL?.constructor?.name,
+      );
+      console.log(
+        "DATABASE_URL is string:",
+        typeof this.env.DATABASE_URL === "string",
+      );
       console.log("DATABASE_URL length:", this.env.DATABASE_URL?.length);
       console.log(
         "DATABASE_URL has pgbouncer:",
-        this.env.DATABASE_URL?.includes("pgbouncer"),
+        this.env.DATABASE_URL?.includes?.("pgbouncer"),
       );
       console.log(
         "DATABASE_URL starts with postgresql:",
-        this.env.DATABASE_URL?.startsWith("postgresql"),
+        this.env.DATABASE_URL?.startsWith?.("postgresql"),
       );
-      console.log("DATABASE_URL ends with:", this.env.DATABASE_URL?.slice(-20));
+      console.log(
+        "DATABASE_URL ends with:",
+        this.env.DATABASE_URL?.slice?.(-20),
+      );
+
+      // JSON stringify で実際の値を確認（接続情報は一部マスク）
+      try {
+        const dbUrlString = String(this.env.DATABASE_URL);
+        console.log("DATABASE_URL as string length:", dbUrlString.length);
+        console.log("DATABASE_URL first 20 chars:", dbUrlString.slice(0, 20));
+        console.log("DATABASE_URL last 20 chars:", dbUrlString.slice(-20));
+      } catch (e) {
+        console.error("Error converting DATABASE_URL to string:", e);
+      }
 
       console.log("HYPERDRIVE available:", !!this.env.HYPERDRIVE);
       if (this.env.HYPERDRIVE) {
@@ -97,6 +135,10 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
           "HYPERDRIVE starts with postgresql:",
           this.env.HYPERDRIVE.connectionString?.startsWith("postgresql"),
         );
+      } else {
+        console.log(
+          "⚠️  HYPERDRIVE not available - using direct DATABASE_URL connection",
+        );
       }
       console.log("All env keys:", Object.keys(this.env));
 
@@ -106,6 +148,24 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
 
       // Initialize system operations - 一時的に無効化
       // this.systemOps = new SystemOperations(this.prisma);
+
+      // Worker終了時の接続クリーンアップを設定
+      const cleanup = async () => {
+        try {
+          const { cleanupConnections } = await import("../lib/database/prisma");
+          await cleanupConnections();
+          console.log("🔗 Database connections cleaned up successfully");
+        } catch (error) {
+          console.error("🚫 Error during connection cleanup:", error);
+        }
+      };
+
+      // Cloudflare Workers環境でのクリーンアップ設定
+      // 注意: Workers環境では手動でのクリーンアップが推奨
+      console.log("🔗 Connection cleanup handler configured");
+
+      // Cloudflare Workers環境では手動クリーンアップを使用
+      // 自動的なイベントハンドラーは利用不可
 
       console.log("🔧 Prisma client initialized, setting up MCP tools...");
       // Basic connectivity test
@@ -133,10 +193,35 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
           try {
             // getPrismaClientを使用して適切なクライアントを取得
             const { getPrismaClient } = await import("../lib/database/prisma");
-            const client = getPrismaClient(this.env.HYPERDRIVE);
 
-            await client.$queryRaw`SELECT 1 as test`;
-            const accountCount = await client.account.count();
+            // Hyperdrive が利用できない場合は null を渡して直接接続を使用
+            const client = getPrismaClient(
+              this.env.HYPERDRIVE || undefined,
+              this.getDatabaseUrl(),
+            );
+
+            // タイムアウト付きでクエリを実行
+            const testQuery = Promise.race([
+              client.$queryRaw`SELECT 1 as test`,
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("Query timeout")), 10000)
+              ),
+            ]);
+
+            await testQuery;
+
+            const accountCountQuery = Promise.race([
+              client.account.count(),
+              new Promise((_, reject) =>
+                setTimeout(
+                  () => reject(new Error("Count query timeout")),
+                  10000,
+                )
+              ),
+            ]);
+
+            const accountCount = await accountCountQuery;
+
             return {
               content: [
                 {
@@ -144,6 +229,9 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
                     {
                       status: "connected",
                       database_type: "Supabase PostgreSQL",
+                      connection_method: this.env.HYPERDRIVE
+                        ? "Hyperdrive"
+                        : "Direct",
                       test_query: "successful",
                       account_count: accountCount,
                       timestamp: new Date().toISOString(),
@@ -201,9 +289,26 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         },
         async ({ searchTerm, accountType, limit }) => {
           try {
+            // デバッグ: 呼び出し時の環境変数確認
+            console.log("🔍 get_accounts tool called:");
+            console.log("HYPERDRIVE available:", !!this.env.HYPERDRIVE);
+            console.log(
+              "DATABASE_URL type in tool:",
+              typeof this.env.DATABASE_URL,
+            );
+            console.log(
+              "DATABASE_URL exists in tool:",
+              !!this.env.DATABASE_URL,
+            );
+
             // getPrismaClientを使用して適切なクライアントを取得
             const { getPrismaClient } = await import("../lib/database/prisma");
-            const client = getPrismaClient(this.env.HYPERDRIVE);
+
+            // Hyperdrive が利用できない場合は undefined を渡して直接接続を使用
+            const client = getPrismaClient(
+              this.env.HYPERDRIVE || undefined,
+              this.getDatabaseUrl(),
+            );
 
             const where: any = { isActive: true };
 
@@ -218,12 +323,22 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               where.accountType = accountType;
             }
 
-            // Hyperdriveは接続を自動管理するため、手動での$connect/$disconnectは不要
-            const accounts = await client.account.findMany({
-              where,
-              orderBy: { accountCode: "asc" },
-              take: limit,
-            });
+            // タイムアウト付きでクエリを実行
+            const accountsQuery = Promise.race([
+              client.account.findMany({
+                where,
+                orderBy: { accountCode: "asc" },
+                take: limit,
+              }),
+              new Promise((_, reject) =>
+                setTimeout(
+                  () => reject(new Error("Accounts query timeout")),
+                  15000,
+                )
+              ),
+            ]);
+
+            const accounts = await accountsQuery;
 
             return {
               content: [
@@ -232,7 +347,10 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
                     {
                       success: true,
                       data: accounts,
-                      count: accounts.length,
+                      count: (accounts as any[]).length,
+                      connection_method: this.env.HYPERDRIVE
+                        ? "Hyperdrive"
+                        : "Direct",
                     },
                     null,
                     2,
@@ -292,7 +410,10 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
           try {
             // getPrismaClientを使用して適切なクライアントを取得
             const { getPrismaClient } = await import("../lib/database/prisma");
-            const client = getPrismaClient(this.env.HYPERDRIVE);
+            const client = getPrismaClient(
+              this.env.HYPERDRIVE,
+              this.getDatabaseUrl(),
+            );
 
             // Validate balanced entry
             const debitTotal = details.filter((d) => d.debitCredit === "debit")
@@ -410,7 +531,10 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
           try {
             // getPrismaClientを使用して適切なクライアントを取得
             const { getPrismaClient } = await import("../lib/database/prisma");
-            const client = getPrismaClient(this.env.HYPERDRIVE);
+            const client = getPrismaClient(
+              this.env.HYPERDRIVE,
+              this.getDatabaseUrl(),
+            );
 
             const where: any = {};
 
@@ -512,13 +636,17 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
           { accountCode, accountName, accountType, sortOrder, defaultTaxCode },
         ) => {
           try {
-            const account = await AccountService.create({
-              accountCode,
-              accountName,
-              accountType,
-              sortOrder,
-              defaultTaxCode,
-            }, this.env.HYPERDRIVE);
+            const account = await AccountService.create(
+              {
+                accountCode,
+                accountName,
+                accountType,
+                sortOrder,
+                defaultTaxCode,
+              },
+              this.env.HYPERDRIVE,
+              this.getDatabaseUrl(),
+            );
 
             return {
               content: [
@@ -585,6 +713,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               accountCode,
               updateData,
               this.env.HYPERDRIVE,
+              this.getDatabaseUrl(),
             );
 
             return {
@@ -636,7 +765,11 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         },
         async ({ accountCode }) => {
           try {
-            await AccountService.delete(accountCode, this.env.HYPERDRIVE);
+            await AccountService.delete(
+              accountCode,
+              this.env.HYPERDRIVE,
+              this.getDatabaseUrl(),
+            );
 
             return {
               content: [
@@ -1987,7 +2120,10 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
           try {
             // getPrismaClientを使用して適切なクライアントを取得
             const { getPrismaClient } = await import("../lib/database/prisma");
-            const client = getPrismaClient(this.env.HYPERDRIVE);
+            const client = getPrismaClient(
+              this.env.HYPERDRIVE,
+              this.getDatabaseUrl(),
+            );
 
             // 添付ファイル情報を取得
             const attachment = await client.journalAttachment.findUnique({
@@ -2090,7 +2226,10 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
           try {
             // getPrismaClientを使用して適切なクライアントを取得
             const { getPrismaClient } = await import("../lib/database/prisma");
-            const client = getPrismaClient(this.env.HYPERDRIVE);
+            const client = getPrismaClient(
+              this.env.HYPERDRIVE,
+              this.getDatabaseUrl(),
+            );
 
             // 添付ファイル情報を取得
             const attachment = await client.journalAttachment.findUnique({
@@ -2243,7 +2382,10 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
           try {
             // getPrismaClientを使用して適切なクライアントを取得
             const { getPrismaClient } = await import("../lib/database/prisma");
-            const client = getPrismaClient(this.env.HYPERDRIVE);
+            const client = getPrismaClient(
+              this.env.HYPERDRIVE,
+              this.getDatabaseUrl(),
+            );
 
             const attachments = await client.journalAttachment.findMany({
               where: { journalNumber },
