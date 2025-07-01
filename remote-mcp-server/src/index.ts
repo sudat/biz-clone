@@ -5,21 +5,30 @@ import { Octokit } from "octokit";
 import { z } from "zod";
 import { GitHubHandler } from "./github-handler";
 // SystemOperations一時的に無効化（Prisma問題解決後に復帰）
-// import { 
-//   SystemOperations, 
-//   generateJournalsSchema, 
-//   handleSystemOperationError 
+// import {
+//   SystemOperations,
+//   generateJournalsSchema,
+//   handleSystemOperationError
 // } from "./system-operations";
 // Prisma imports - edge runtime対応
-import { AccountService, PartnerService, DepartmentService, AnalysisCodeService } from "../lib/database/master-data";
-import { 
-  saveJournal, 
-  updateJournal, 
-  deleteJournal, 
-  getJournalByNumber, 
-  searchJournals
+import {
+  AccountService,
+  AnalysisCodeService,
+  DepartmentService,
+  PartnerService,
+} from "../lib/database/master-data";
+import {
+  deleteJournal,
+  getJournalByNumber,
+  saveJournal,
+  searchJournals,
+  updateJournal,
 } from "../lib/database/journal-mcp";
-import { getTrialBalance, getJournalSummary, performUnifiedSearch } from "../lib/database/search-analysis";
+import {
+  getJournalSummary,
+  getTrialBalance,
+  performUnifiedSearch,
+} from "../lib/database/search-analysis";
 // Cloudflare Workers型（Hyperdrive）
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import type { Hyperdrive } from "@cloudflare/workers-types";
@@ -51,7 +60,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
     version: "1.0.0",
   });
 
-  private prisma!: any; // PrismaClient型を動的にロード
+  // private prisma!: any; // PrismaClient型を動的にロード - 削除：各ツールで個別にgetPrismaClientを使用
   // private systemOps!: SystemOperations; // 一時的に無効化
 
   async init() {
@@ -60,117 +69,44 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
       console.log("🔍 Environment Variables Debug:");
       console.log("DATABASE_URL exists:", !!this.env.DATABASE_URL);
       console.log("DATABASE_URL length:", this.env.DATABASE_URL?.length);
-      console.log("DATABASE_URL has pgbouncer:", this.env.DATABASE_URL?.includes("pgbouncer"));
-      console.log("DATABASE_URL starts with postgresql:", this.env.DATABASE_URL?.startsWith("postgresql"));
+      console.log(
+        "DATABASE_URL has pgbouncer:",
+        this.env.DATABASE_URL?.includes("pgbouncer"),
+      );
+      console.log(
+        "DATABASE_URL starts with postgresql:",
+        this.env.DATABASE_URL?.startsWith("postgresql"),
+      );
       console.log("DATABASE_URL ends with:", this.env.DATABASE_URL?.slice(-20));
-      
+
       console.log("HYPERDRIVE available:", !!this.env.HYPERDRIVE);
       if (this.env.HYPERDRIVE) {
-        console.log("HYPERDRIVE connectionString exists:", !!this.env.HYPERDRIVE.connectionString);
-        console.log("HYPERDRIVE connectionString length:", this.env.HYPERDRIVE.connectionString?.length);
-        console.log("HYPERDRIVE has pgbouncer:", this.env.HYPERDRIVE.connectionString?.includes("pgbouncer"));
-        console.log("HYPERDRIVE starts with postgresql:", this.env.HYPERDRIVE.connectionString?.startsWith("postgresql"));
+        console.log(
+          "HYPERDRIVE connectionString exists:",
+          !!this.env.HYPERDRIVE.connectionString,
+        );
+        console.log(
+          "HYPERDRIVE connectionString length:",
+          this.env.HYPERDRIVE.connectionString?.length,
+        );
+        console.log(
+          "HYPERDRIVE has pgbouncer:",
+          this.env.HYPERDRIVE.connectionString?.includes("pgbouncer"),
+        );
+        console.log(
+          "HYPERDRIVE starts with postgresql:",
+          this.env.HYPERDRIVE.connectionString?.startsWith("postgresql"),
+        );
       }
       console.log("All env keys:", Object.keys(this.env));
 
-      // Initialize Prisma client - try/catch for graceful fallback
-      console.log("🔧 Prisma初期化を開始します...");
-      
-      try {
-        // Prismaクライアント初期化を再実装（動的インポート）
-        console.log("🔧 Prismaクライアント初期化を再実行...");
-        
-        // Edge Runtime対応 - dynamic importでPrismaを初期化
-        if (this.env.HYPERDRIVE?.connectionString) {
-          console.log("🔧 HyperDriveでPrismaクライアント初期化...");
-          try {
-            const { PrismaClient } = await import("@prisma/client");
-            const { PrismaPg } = await import("@prisma/adapter-pg");
-            
-            const url = this.env.HYPERDRIVE.connectionString;
-            const adapter = new PrismaPg({ 
-              connectionString: url,
-              // Hyperdriveを使用する場合は接続プール設定をHyperdriveに委任
-              // max: 1, // Hyperdriveが管理するため最小に
-              // idleTimeoutMillis: 0, // Hyperdriveが管理
-              // connectionTimeoutMillis: 30000, // Hyperdriveに合わせて長めに
-            });
-            
-            this.prisma = new PrismaClient({
-              adapter,
-              log: ["warn", "error"],
-              // Cloudflare Workers最適化設定
-              datasources: {
-                db: {
-                  url: url
-                }
-              }
-            });
-            
-            console.log("✅ HyperDriveでPrismaクライアントを初期化しました");
-          } catch (hyperError) {
-            console.error("🚫 HyperDrive初期化エラー:", hyperError);
-            this.prisma = null;
-          }
-        } else if (this.env.DATABASE_URL && (this.env.DATABASE_URL.startsWith("postgres") || this.env.DATABASE_URL.startsWith("postgresql"))) {
-          console.log("🔧 直接DATABASE_URLでPrismaクライアント初期化...");
-          try {
-            const { PrismaClient } = await import("@prisma/client");
-            const { PrismaPg } = await import("@prisma/adapter-pg");
-            
-            const dbUrl = this.env.DATABASE_URL;
-            const adapter = new PrismaPg({ 
-              connectionString: dbUrl,
-              // Connection Pool設定
-              max: 2, // Cloudflare Workersでは少ない接続数
-              idleTimeoutMillis: 10000, // 10秒でアイドル接続を切断
-              connectionTimeoutMillis: 5000, // 5秒で接続タイムアウト
-            });
-            
-            this.prisma = new PrismaClient({
-              adapter,
-              log: ["warn", "error"],
-              // 直接接続最適化設定
-              datasources: {
-                db: {
-                  url: dbUrl
-                }
-              }
-            });
-            
-            console.log("✅ 直接接続でPrismaクライアントを初期化しました");
-          } catch (directError) {
-            console.error("🚫 直接接続初期化エラー:", directError);
-            this.prisma = null;
-          }
-        } else {
-          console.warn("⚠️  データベース設定が見つかりません - null設定で継続");
-          console.log("HYPERDRIVE connectionString:", this.env.HYPERDRIVE?.connectionString);
-          console.log("DATABASE_URL:", this.env.DATABASE_URL);
-          console.log("DATABASE_URL type:", typeof this.env.DATABASE_URL);
-          this.prisma = null;
-        }
-        
-        // 接続テスト（Prismaクライアントが初期化されている場合のみ）
-        if (this.prisma) {
-          console.log("🔍 Prisma接続テスト実行中...");
-          try {
-            // Hyperdriveを使用時は簡易なテストクエリのみ実行
-            await this.prisma.$queryRaw`SELECT 1 as test`;
-            console.log("✅ Prisma接続テスト成功（Hyperdrive経由）");
-          } catch (connectError) {
-            console.error("🚫 Prisma接続テストエラー:", connectError);
-          }
-        }
-        
-      } catch (initError) {
-        console.error("🚫 Prisma初期化エラー - nullで継続:", initError);
-        this.prisma = null; // エラー時はnullで継続
-      }
-      
+      // Initialize Prisma client - 不要になったため削除
+      // 各ツールで個別にgetPrismaClientを使用するため、ここでの初期化は不要
+      console.log("🔧 Prisma初期化をスキップ - 各ツールで個別に初期化します");
+
       // Initialize system operations - 一時的に無効化
       // this.systemOps = new SystemOperations(this.prisma);
-      
+
       console.log("🔧 Prisma client initialized, setting up MCP tools...");
       // Basic connectivity test
       this.server.tool(
@@ -195,27 +131,12 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         {},
         async () => {
           try {
-            if (!this.prisma) {
-              return {
-                content: [
-                  {
-                    text: JSON.stringify(
-                      {
-                        status: "prisma_disabled",
-                        message: "Prismaクライアントが初期化されていません（Edge Runtime問題調査中）",
-                        timestamp: new Date().toISOString(),
-                      },
-                      null,
-                      2,
-                    ),
-                    type: "text",
-                  },
-                ],
-              };
-            }
-            
-            await this.prisma.$queryRaw`SELECT 1 as test`;
-            const accountCount = await this.prisma.account.count();
+            // getPrismaClientを使用して適切なクライアントを取得
+            const { getPrismaClient } = await import("../lib/database/prisma");
+            const client = getPrismaClient(this.env.HYPERDRIVE);
+
+            await client.$queryRaw`SELECT 1 as test`;
+            const accountCount = await client.account.count();
             return {
               content: [
                 {
@@ -235,6 +156,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               ],
             };
           } catch (error) {
+            console.error("🚫 check_db_health error:", error);
             return {
               content: [
                 {
@@ -257,11 +179,13 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         },
       );
 
-      console.log("✅ BizCloneMCP initialization completed successfully (基本機能のみ)");
-      
+      console.log(
+        "✅ BizCloneMCP initialization completed successfully (基本機能のみ)",
+      );
+
       // 段階的ツール再有効化：第1段階 - 基本データベースツール
       console.log("🔧 第1段階：基本データベースツールを有効化中...");
-      
+
       // Get chart of accounts
       this.server.tool(
         "get_accounts",
@@ -277,23 +201,9 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         },
         async ({ searchTerm, accountType, limit }) => {
           try {
-            if (!this.prisma) {
-              return {
-                content: [
-                  {
-                    text: JSON.stringify(
-                      {
-                        success: false,
-                        error: "Prismaクライアントが利用できません",
-                      },
-                      null,
-                      2,
-                    ),
-                    type: "text",
-                  },
-                ],
-              };
-            }
+            // getPrismaClientを使用して適切なクライアントを取得
+            const { getPrismaClient } = await import("../lib/database/prisma");
+            const client = getPrismaClient(this.env.HYPERDRIVE);
 
             const where: any = { isActive: true };
 
@@ -309,7 +219,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
             }
 
             // Hyperdriveは接続を自動管理するため、手動での$connect/$disconnectは不要
-            const accounts = await this.prisma.account.findMany({
+            const accounts = await client.account.findMany({
               where,
               orderBy: { accountCode: "asc" },
               take: limit,
@@ -332,8 +242,8 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               ],
             };
           } catch (error) {
-            // Hyperdriveを使用時は自動で接続管理されるため、手動切断は不要
-            
+            console.error("🚫 get_accounts error:", error);
+
             return {
               content: [
                 {
@@ -380,23 +290,9 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         },
         async ({ journalDate, description, details }) => {
           try {
-            if (!this.prisma) {
-              return {
-                content: [
-                  {
-                    text: JSON.stringify(
-                      {
-                        success: false,
-                        error: "Prismaクライアントが利用できません",
-                      },
-                      null,
-                      2,
-                    ),
-                    type: "text",
-                  },
-                ],
-              };
-            }
+            // getPrismaClientを使用して適切なクライアントを取得
+            const { getPrismaClient } = await import("../lib/database/prisma");
+            const client = getPrismaClient(this.env.HYPERDRIVE);
 
             // Validate balanced entry
             const debitTotal = details.filter((d) => d.debitCredit === "debit")
@@ -418,7 +314,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
             const timestamp = Date.now().toString().slice(-6);
             const journalNumber = `${dateStr}${timestamp}`;
 
-            const result = await this.prisma.$transaction(async (tx: any) => {
+            const result = await client.$transaction(async (tx: any) => {
               // Create header
               const header = await tx.journalHeader.create({
                 data: {
@@ -470,6 +366,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               ],
             };
           } catch (error) {
+            console.error("🚫 create_journal error:", error);
             return {
               content: [
                 {
@@ -511,6 +408,10 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
           { journalNumber, dateFrom, dateTo, accountCode, description, limit },
         ) => {
           try {
+            // getPrismaClientを使用して適切なクライアントを取得
+            const { getPrismaClient } = await import("../lib/database/prisma");
+            const client = getPrismaClient(this.env.HYPERDRIVE);
+
             const where: any = {};
 
             if (journalNumber) {
@@ -533,7 +434,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               };
             }
 
-            const journals = await this.prisma.journalHeader.findMany({
+            const journals = await client.journalHeader.findMany({
               where,
               include: {
                 journalDetails: {
@@ -566,6 +467,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               ],
             };
           } catch (error) {
+            console.error("🚫 search_journals error:", error);
             return {
               content: [
                 {
@@ -598,11 +500,17 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         {
           accountCode: z.string().describe("Account code (勘定科目コード)"),
           accountName: z.string().describe("Account name (勘定科目名)"),
-          accountType: z.string().describe("Account type (勘定科目種類): 資産, 負債, 純資産, 収益, 費用"),
+          accountType: z.string().describe(
+            "Account type (勘定科目種類): 資産, 負債, 純資産, 収益, 費用",
+          ),
           sortOrder: z.number().optional().describe("Sort order (表示順序)"),
-          defaultTaxCode: z.string().optional().describe("Default tax code (デフォルト税区分)"),
+          defaultTaxCode: z.string().optional().describe(
+            "Default tax code (デフォルト税区分)",
+          ),
         },
-        async ({ accountCode, accountName, accountType, sortOrder, defaultTaxCode }) => {
+        async (
+          { accountCode, accountName, accountType, sortOrder, defaultTaxCode },
+        ) => {
           try {
             const account = await AccountService.create({
               accountCode,
@@ -610,7 +518,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               accountType,
               sortOrder,
               defaultTaxCode,
-            });
+            }, this.env.HYPERDRIVE);
 
             return {
               content: [
@@ -655,15 +563,29 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "update_account",
         "Update existing account (勘定科目更新)",
         {
-          accountCode: z.string().describe("Account code to update (更新する勘定科目コード)"),
-          accountName: z.string().optional().describe("New account name (新しい勘定科目名)"),
-          accountType: z.string().optional().describe("New account type (新しい勘定科目種類)"),
-          sortOrder: z.number().optional().describe("New sort order (新しい表示順序)"),
-          defaultTaxCode: z.string().optional().describe("New default tax code (新しいデフォルト税区分)"),
+          accountCode: z.string().describe(
+            "Account code to update (更新する勘定科目コード)",
+          ),
+          accountName: z.string().optional().describe(
+            "New account name (新しい勘定科目名)",
+          ),
+          accountType: z.string().optional().describe(
+            "New account type (新しい勘定科目種類)",
+          ),
+          sortOrder: z.number().optional().describe(
+            "New sort order (新しい表示順序)",
+          ),
+          defaultTaxCode: z.string().optional().describe(
+            "New default tax code (新しいデフォルト税区分)",
+          ),
         },
         async ({ accountCode, ...updateData }) => {
           try {
-            const account = await AccountService.update(accountCode, updateData);
+            const account = await AccountService.update(
+              accountCode,
+              updateData,
+              this.env.HYPERDRIVE,
+            );
 
             return {
               content: [
@@ -708,11 +630,13 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "delete_account",
         "Delete account (勘定科目削除)",
         {
-          accountCode: z.string().describe("Account code to delete (削除する勘定科目コード)"),
+          accountCode: z.string().describe(
+            "Account code to delete (削除する勘定科目コード)",
+          ),
         },
         async ({ accountCode }) => {
           try {
-            await AccountService.delete(accountCode);
+            await AccountService.delete(accountCode, this.env.HYPERDRIVE);
 
             return {
               content: [
@@ -720,7 +644,8 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
                   text: JSON.stringify(
                     {
                       success: true,
-                      message: `勘定科目「${accountCode}」が正常に削除されました`,
+                      message:
+                        `勘定科目「${accountCode}」が正常に削除されました`,
                     },
                     null,
                     2,
@@ -756,17 +681,24 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "search_partners",
         "Search partners (取引先検索)",
         {
-          searchTerm: z.string().optional().describe("Search term for partner name, code, or kana"),
+          searchTerm: z.string().optional().describe(
+            "Search term for partner name, code, or kana",
+          ),
           partnerType: z.string().optional().describe("Filter by partner type"),
-          isActive: z.boolean().default(true).describe("Filter by active status"),
+          isActive: z.boolean().default(true).describe(
+            "Filter by active status",
+          ),
           page: z.number().min(1).default(1).describe("Page number"),
-          limit: z.number().min(1).max(100).default(20).describe("Items per page"),
+          limit: z.number().min(1).max(100).default(20).describe(
+            "Items per page",
+          ),
         },
         async ({ searchTerm, partnerType, isActive, page, limit }) => {
           try {
             const result = await PartnerService.search(
               { searchTerm, partnerType, isActive },
-              { page, limit }
+              { page, limit },
+              this.env.HYPERDRIVE,
             );
 
             return {
@@ -814,13 +746,29 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         {
           partnerCode: z.string().describe("Partner code (取引先コード)"),
           partnerName: z.string().describe("Partner name (取引先名)"),
-          partnerKana: z.string().optional().describe("Partner name in kana (取引先名カナ)"),
-          partnerType: z.string().describe("Partner type (取引先種類): 得意先, 仕入先, 銀行, その他"),
+          partnerKana: z.string().optional().describe(
+            "Partner name in kana (取引先名カナ)",
+          ),
+          partnerType: z.string().describe(
+            "Partner type (取引先種類): 得意先, 仕入先, 銀行, その他",
+          ),
           address: z.string().optional().describe("Address (住所)"),
           phone: z.string().optional().describe("Phone number (電話番号)"),
-          email: z.string().optional().describe("Email address (メールアドレス)"),
+          email: z.string().optional().describe(
+            "Email address (メールアドレス)",
+          ),
         },
-        async ({ partnerCode, partnerName, partnerKana, partnerType, address, phone, email }) => {
+        async (
+          {
+            partnerCode,
+            partnerName,
+            partnerKana,
+            partnerType,
+            address,
+            phone,
+            email,
+          },
+        ) => {
           try {
             const partner = await PartnerService.create({
               partnerCode,
@@ -830,7 +778,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               address,
               phone,
               email,
-            });
+            }, this.env.HYPERDRIVE);
 
             return {
               content: [
@@ -875,17 +823,33 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "update_partner",
         "Update existing partner (取引先更新)",
         {
-          partnerCode: z.string().describe("Partner code to update (更新する取引先コード)"),
-          partnerName: z.string().optional().describe("New partner name (新しい取引先名)"),
-          partnerKana: z.string().optional().describe("New partner name in kana (新しい取引先名カナ)"),
-          partnerType: z.string().optional().describe("New partner type (新しい取引先種類)"),
+          partnerCode: z.string().describe(
+            "Partner code to update (更新する取引先コード)",
+          ),
+          partnerName: z.string().optional().describe(
+            "New partner name (新しい取引先名)",
+          ),
+          partnerKana: z.string().optional().describe(
+            "New partner name in kana (新しい取引先名カナ)",
+          ),
+          partnerType: z.string().optional().describe(
+            "New partner type (新しい取引先種類)",
+          ),
           address: z.string().optional().describe("New address (新しい住所)"),
-          phone: z.string().optional().describe("New phone number (新しい電話番号)"),
-          email: z.string().optional().describe("New email address (新しいメールアドレス)"),
+          phone: z.string().optional().describe(
+            "New phone number (新しい電話番号)",
+          ),
+          email: z.string().optional().describe(
+            "New email address (新しいメールアドレス)",
+          ),
         },
         async ({ partnerCode, ...updateData }) => {
           try {
-            const partner = await PartnerService.update(partnerCode, updateData);
+            const partner = await PartnerService.update(
+              partnerCode,
+              updateData,
+              this.env.HYPERDRIVE,
+            );
 
             return {
               content: [
@@ -930,11 +894,13 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "delete_partner",
         "Delete partner (取引先削除)",
         {
-          partnerCode: z.string().describe("Partner code to delete (削除する取引先コード)"),
+          partnerCode: z.string().describe(
+            "Partner code to delete (削除する取引先コード)",
+          ),
         },
         async ({ partnerCode }) => {
           try {
-            await PartnerService.delete(partnerCode);
+            await PartnerService.delete(partnerCode, this.env.HYPERDRIVE);
 
             return {
               content: [
@@ -978,16 +944,23 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "search_departments",
         "Search departments (部門検索)",
         {
-          searchTerm: z.string().optional().describe("Search term for department name or code"),
-          isActive: z.boolean().default(true).describe("Filter by active status"),
+          searchTerm: z.string().optional().describe(
+            "Search term for department name or code",
+          ),
+          isActive: z.boolean().default(true).describe(
+            "Filter by active status",
+          ),
           page: z.number().min(1).default(1).describe("Page number"),
-          limit: z.number().min(1).max(100).default(20).describe("Items per page"),
+          limit: z.number().min(1).max(100).default(20).describe(
+            "Items per page",
+          ),
         },
         async ({ searchTerm, isActive, page, limit }) => {
           try {
             const result = await DepartmentService.search(
               { searchTerm, isActive },
-              { page, limit }
+              { page, limit },
+              this.env.HYPERDRIVE,
             );
 
             return {
@@ -1043,7 +1016,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               departmentCode,
               departmentName,
               sortOrder,
-            });
+            }, this.env.HYPERDRIVE);
 
             return {
               content: [
@@ -1088,13 +1061,23 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "update_department",
         "Update existing department (部門更新)",
         {
-          departmentCode: z.string().describe("Department code to update (更新する部門コード)"),
-          departmentName: z.string().optional().describe("New department name (新しい部門名)"),
-          sortOrder: z.number().optional().describe("New sort order (新しい表示順序)"),
+          departmentCode: z.string().describe(
+            "Department code to update (更新する部門コード)",
+          ),
+          departmentName: z.string().optional().describe(
+            "New department name (新しい部門名)",
+          ),
+          sortOrder: z.number().optional().describe(
+            "New sort order (新しい表示順序)",
+          ),
         },
         async ({ departmentCode, ...updateData }) => {
           try {
-            const department = await DepartmentService.update(departmentCode, updateData);
+            const department = await DepartmentService.update(
+              departmentCode,
+              updateData,
+              this.env.HYPERDRIVE,
+            );
 
             return {
               content: [
@@ -1139,11 +1122,13 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "delete_department",
         "Delete department (部門削除)",
         {
-          departmentCode: z.string().describe("Department code to delete (削除する部門コード)"),
+          departmentCode: z.string().describe(
+            "Department code to delete (削除する部門コード)",
+          ),
         },
         async ({ departmentCode }) => {
           try {
-            await DepartmentService.delete(departmentCode);
+            await DepartmentService.delete(departmentCode, this.env.HYPERDRIVE);
 
             return {
               content: [
@@ -1151,7 +1136,8 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
                   text: JSON.stringify(
                     {
                       success: true,
-                      message: `部門「${departmentCode}」が正常に削除されました`,
+                      message:
+                        `部門「${departmentCode}」が正常に削除されました`,
                     },
                     null,
                     2,
@@ -1187,17 +1173,26 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "search_analysis_codes",
         "Search analysis codes (分析コード検索)",
         {
-          searchTerm: z.string().optional().describe("Search term for analysis code name or code"),
-          analysisType: z.string().optional().describe("Filter by analysis type"),
-          isActive: z.boolean().default(true).describe("Filter by active status"),
+          searchTerm: z.string().optional().describe(
+            "Search term for analysis code name or code",
+          ),
+          analysisType: z.string().optional().describe(
+            "Filter by analysis type",
+          ),
+          isActive: z.boolean().default(true).describe(
+            "Filter by active status",
+          ),
           page: z.number().min(1).default(1).describe("Page number"),
-          limit: z.number().min(1).max(100).default(20).describe("Items per page"),
+          limit: z.number().min(1).max(100).default(20).describe(
+            "Items per page",
+          ),
         },
         async ({ searchTerm, analysisType, isActive, page, limit }) => {
           try {
             const result = await AnalysisCodeService.search(
               { searchTerm, analysisType, isActive },
-              { page, limit }
+              { page, limit },
+              this.env.HYPERDRIVE,
             );
 
             return {
@@ -1255,7 +1250,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               analysisName,
               analysisType,
               sortOrder,
-            });
+            }, this.env.HYPERDRIVE);
 
             return {
               content: [
@@ -1300,14 +1295,26 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "update_analysis_code",
         "Update existing analysis code (分析コード更新)",
         {
-          analysisCode: z.string().describe("Analysis code to update (更新する分析コード)"),
-          analysisName: z.string().optional().describe("New analysis name (新しい分析名)"),
-          analysisType: z.string().optional().describe("New analysis type (新しい分析種類)"),
-          sortOrder: z.number().optional().describe("New sort order (新しい表示順序)"),
+          analysisCode: z.string().describe(
+            "Analysis code to update (更新する分析コード)",
+          ),
+          analysisName: z.string().optional().describe(
+            "New analysis name (新しい分析名)",
+          ),
+          analysisType: z.string().optional().describe(
+            "New analysis type (新しい分析種類)",
+          ),
+          sortOrder: z.number().optional().describe(
+            "New sort order (新しい表示順序)",
+          ),
         },
         async ({ analysisCode, ...updateData }) => {
           try {
-            const analysis = await AnalysisCodeService.update(analysisCode, updateData);
+            const analysis = await AnalysisCodeService.update(
+              analysisCode,
+              updateData,
+              this.env.HYPERDRIVE,
+            );
 
             return {
               content: [
@@ -1352,11 +1359,13 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "delete_analysis_code",
         "Delete analysis code (分析コード削除)",
         {
-          analysisCode: z.string().describe("Analysis code to delete (削除する分析コード)"),
+          analysisCode: z.string().describe(
+            "Analysis code to delete (削除する分析コード)",
+          ),
         },
         async ({ analysisCode }) => {
           try {
-            await AnalysisCodeService.delete(analysisCode);
+            await AnalysisCodeService.delete(analysisCode, this.env.HYPERDRIVE);
 
             return {
               content: [
@@ -1364,7 +1373,8 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
                   text: JSON.stringify(
                     {
                       success: true,
-                      message: `分析コード「${analysisCode}」が正常に削除されました`,
+                      message:
+                        `分析コード「${analysisCode}」が正常に削除されました`,
                     },
                     null,
                     2,
@@ -1534,25 +1544,43 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "update_journal",
         "Update existing journal entry (仕訳更新)",
         {
-          journalNumber: z.string().describe("Journal number to update (更新する仕訳番号)"),
+          journalNumber: z.string().describe(
+            "Journal number to update (更新する仕訳番号)",
+          ),
           header: z.object({
-            journalDate: z.string().describe("Journal date in YYYY-MM-DD format"),
-            description: z.string().optional().describe("Journal description (摘要)"),
+            journalDate: z.string().describe(
+              "Journal date in YYYY-MM-DD format",
+            ),
+            description: z.string().optional().describe(
+              "Journal description (摘要)",
+            ),
           }).describe("Journal header information"),
           details: z.array(
             z.object({
-              debitCredit: z.enum(["debit", "credit"]).describe("Debit or Credit"),
+              debitCredit: z.enum(["debit", "credit"]).describe(
+                "Debit or Credit",
+              ),
               accountCode: z.string().describe("Account code (勘定科目コード)"),
-              subAccountCode: z.string().optional().describe("Sub account code (補助科目コード)"),
-              partnerCode: z.string().optional().describe("Partner code (取引先コード)"),
-              analysisCode: z.string().optional().describe("Analysis code (分析コード)"),
-              departmentCode: z.string().optional().describe("Department code (部門コード)"),
+              subAccountCode: z.string().optional().describe(
+                "Sub account code (補助科目コード)",
+              ),
+              partnerCode: z.string().optional().describe(
+                "Partner code (取引先コード)",
+              ),
+              analysisCode: z.string().optional().describe(
+                "Analysis code (分析コード)",
+              ),
+              departmentCode: z.string().optional().describe(
+                "Department code (部門コード)",
+              ),
               baseAmount: z.number().describe("Base amount (税抜金額)"),
               taxAmount: z.number().default(0).describe("Tax amount (税額)"),
               totalAmount: z.number().describe("Total amount (税込金額)"),
               taxCode: z.string().optional().describe("Tax code (税区分)"),
-              description: z.string().optional().describe("Line description (摘要)"),
-            })
+              description: z.string().optional().describe(
+                "Line description (摘要)",
+              ),
+            }),
           ).min(2).describe("Journal entry details (minimum 2 lines)"),
           attachedFiles: z.array(
             z.object({
@@ -1561,7 +1589,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               size: z.number(),
               type: z.string().optional(),
               uploadedAt: z.string().optional(),
-            })
+            }),
           ).optional().describe("Attached files"),
         },
         async ({ journalNumber, header, details, attachedFiles }) => {
@@ -1572,7 +1600,10 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               attachedFiles: attachedFiles || [],
             };
 
-            const journal = await updateJournal(journalNumber, journalData as any);
+            const journal = await updateJournal(
+              journalNumber,
+              journalData as any,
+            );
 
             return {
               content: [
@@ -1617,7 +1648,9 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "delete_journal",
         "Delete journal entry (仕訳削除)",
         {
-          journalNumber: z.string().describe("Journal number to delete (削除する仕訳番号)"),
+          journalNumber: z.string().describe(
+            "Journal number to delete (削除する仕訳番号)",
+          ),
         },
         async ({ journalNumber }) => {
           try {
@@ -1665,7 +1698,9 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "get_journal_by_number",
         "Get journal entry by number (仕訳番号による取得)",
         {
-          journalNumber: z.string().describe("Journal number to retrieve (取得する仕訳番号)"),
+          journalNumber: z.string().describe(
+            "Journal number to retrieve (取得する仕訳番号)",
+          ),
         },
         async ({ journalNumber }) => {
           try {
@@ -1735,13 +1770,16 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "get_trial_balance",
         "Get trial balance (試算表取得)",
         {
-          dateFrom: z.string().describe("Start date in YYYY-MM-DD format (開始日)"),
-          dateTo: z.string().describe("End date in YYYY-MM-DD format (終了日)"),
-          accountType: z.enum(["資産", "負債", "純資産", "収益", "費用"]).optional().describe(
-            "Filter by account type (勘定科目種類でフィルタ)"
+          dateFrom: z.string().describe(
+            "Start date in YYYY-MM-DD format (開始日)",
           ),
+          dateTo: z.string().describe("End date in YYYY-MM-DD format (終了日)"),
+          accountType: z.enum(["資産", "負債", "純資産", "収益", "費用"])
+            .optional().describe(
+              "Filter by account type (勘定科目種類でフィルタ)",
+            ),
           includeZeroBalance: z.boolean().default(false).describe(
-            "Include accounts with zero balance (残高0の科目を含める)"
+            "Include accounts with zero balance (残高0の科目を含める)",
           ),
         },
         async ({ dateFrom, dateTo, accountType, includeZeroBalance }) => {
@@ -1795,14 +1833,18 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "get_journal_summary",
         "Get journal summary (仕訳集計取得)",
         {
-          dateFrom: z.string().describe("Start date in YYYY-MM-DD format (開始日)"),
+          dateFrom: z.string().describe(
+            "Start date in YYYY-MM-DD format (開始日)",
+          ),
           dateTo: z.string().describe("End date in YYYY-MM-DD format (終了日)"),
-          groupBy: z.enum(["account", "partner", "department", "month", "day"]).default("account").describe(
-            "Group by criteria (集計基準): account=勘定科目, partner=取引先, department=部門, month=月別, day=日別"
-          ),
-          accountType: z.enum(["資産", "負債", "純資産", "収益", "費用"]).optional().describe(
-            "Filter by account type (勘定科目種類でフィルタ)"
-          ),
+          groupBy: z.enum(["account", "partner", "department", "month", "day"])
+            .default("account").describe(
+              "Group by criteria (集計基準): account=勘定科目, partner=取引先, department=部門, month=月別, day=日別",
+            ),
+          accountType: z.enum(["資産", "負債", "純資産", "収益", "費用"])
+            .optional().describe(
+              "Filter by account type (勘定科目種類でフィルタ)",
+            ),
         },
         async ({ dateFrom, dateTo, groupBy, accountType }) => {
           try {
@@ -1857,14 +1899,28 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         {
           query: z.string().describe("Search query (検索クエリ)"),
           categories: z.array(
-            z.enum(["journals", "accounts", "partners", "departments", "analysis_codes"])
+            z.enum([
+              "journals",
+              "accounts",
+              "partners",
+              "departments",
+              "analysis_codes",
+            ]),
           ).optional().describe(
-            "Search categories (検索カテゴリ): journals=仕訳, accounts=勘定科目, partners=取引先, departments=部門, analysis_codes=分析コード"
+            "Search categories (検索カテゴリ): journals=仕訳, accounts=勘定科目, partners=取引先, departments=部門, analysis_codes=分析コード",
           ),
-          dateFrom: z.string().optional().describe("Start date filter for journals (仕訳の開始日フィルタ)"),
-          dateTo: z.string().optional().describe("End date filter for journals (仕訳の終了日フィルタ)"),
-          page: z.number().min(1).default(1).describe("Page number (ページ番号)"),
-          limit: z.number().min(1).max(100).default(10).describe("Items per page (1ページあたりの件数)"),
+          dateFrom: z.string().optional().describe(
+            "Start date filter for journals (仕訳の開始日フィルタ)",
+          ),
+          dateTo: z.string().optional().describe(
+            "End date filter for journals (仕訳の終了日フィルタ)",
+          ),
+          page: z.number().min(1).default(1).describe(
+            "Page number (ページ番号)",
+          ),
+          limit: z.number().min(1).max(100).default(10).describe(
+            "Items per page (1ページあたりの件数)",
+          ),
         },
         async ({ query, categories, dateFrom, dateTo, page, limit }) => {
           try {
@@ -1923,12 +1979,18 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "delete_journal_attachment",
         "Delete journal attachment file (仕訳添付ファイル削除)",
         {
-          attachmentId: z.string().describe("Attachment ID to delete (削除する添付ファイルID)"),
+          attachmentId: z.string().describe(
+            "Attachment ID to delete (削除する添付ファイルID)",
+          ),
         },
         async ({ attachmentId }) => {
           try {
+            // getPrismaClientを使用して適切なクライアントを取得
+            const { getPrismaClient } = await import("../lib/database/prisma");
+            const client = getPrismaClient(this.env.HYPERDRIVE);
+
             // 添付ファイル情報を取得
-            const attachment = await this.prisma.journalAttachment.findUnique({
+            const attachment = await client.journalAttachment.findUnique({
               where: { attachmentId },
               include: {
                 journalHeader: {
@@ -1964,7 +2026,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
             // 例: 承認済みの仕訳のファイルは削除不可、作成者のみ削除可能など
 
             // データベースから削除
-            await this.prisma.journalAttachment.delete({
+            await client.journalAttachment.delete({
               where: { attachmentId },
             });
 
@@ -2020,12 +2082,18 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "download_journal_attachment",
         "Download journal attachment file (仕訳添付ファイルダウンロード)",
         {
-          attachmentId: z.string().describe("Attachment ID to download (ダウンロードする添付ファイルID)"),
+          attachmentId: z.string().describe(
+            "Attachment ID to download (ダウンロードする添付ファイルID)",
+          ),
         },
         async ({ attachmentId }) => {
           try {
+            // getPrismaClientを使用して適切なクライアントを取得
+            const { getPrismaClient } = await import("../lib/database/prisma");
+            const client = getPrismaClient(this.env.HYPERDRIVE);
+
             // 添付ファイル情報を取得
-            const attachment = await this.prisma.journalAttachment.findUnique({
+            const attachment = await client.journalAttachment.findUnique({
               where: { attachmentId },
               include: {
                 journalHeader: {
@@ -2063,7 +2131,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
             try {
               // UploadThingのファイルURLから直接ダウンロード
               const fileResponse = await fetch(attachment.fileUrl);
-              
+
               if (!fileResponse.ok) {
                 return {
                   content: [
@@ -2107,7 +2175,8 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
                           journalNumber: attachment.journalNumber,
                           // バイナリデータのサイズ情報
                           downloadedSize: buffer.length,
-                          message: "ファイル情報を取得しました。直接ダウンロードするには fileUrl を使用してください。",
+                          message:
+                            "ファイル情報を取得しました。直接ダウンロードするには fileUrl を使用してください。",
                         },
                       },
                       null,
@@ -2117,7 +2186,6 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
                   },
                 ],
               };
-
             } catch (fetchError) {
               console.error("ファイルダウンロードエラー:", fetchError);
               return {
@@ -2127,7 +2195,9 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
                       {
                         success: false,
                         error: "ファイルのダウンロードに失敗しました",
-                        details: fetchError instanceof Error ? fetchError.message : "Unknown error",
+                        details: fetchError instanceof Error
+                          ? fetchError.message
+                          : "Unknown error",
                       },
                       null,
                       2,
@@ -2137,7 +2207,6 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
                 ],
               };
             }
-
           } catch (error) {
             console.error("ダウンロード処理エラー:", error);
             return {
@@ -2166,11 +2235,17 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "get_journal_attachments",
         "Get journal attachment files list (仕訳添付ファイル一覧取得)",
         {
-          journalNumber: z.string().describe("Journal number to get attachments (添付ファイルを取得する仕訳番号)"),
+          journalNumber: z.string().describe(
+            "Journal number to get attachments (添付ファイルを取得する仕訳番号)",
+          ),
         },
         async ({ journalNumber }) => {
           try {
-            const attachments = await this.prisma.journalAttachment.findMany({
+            // getPrismaClientを使用して適切なクライアントを取得
+            const { getPrismaClient } = await import("../lib/database/prisma");
+            const client = getPrismaClient(this.env.HYPERDRIVE);
+
+            const attachments = await client.journalAttachment.findMany({
               where: { journalNumber },
               orderBy: { uploadedAt: "desc" },
             });
@@ -2198,7 +2273,8 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
                       success: true,
                       data: attachmentData,
                       count: attachmentData.length,
-                      message: `仕訳番号「${journalNumber}」の添付ファイル一覧を取得しました`,
+                      message:
+                        `仕訳番号「${journalNumber}」の添付ファイル一覧を取得しました`,
                     },
                     null,
                     2,
@@ -2245,7 +2321,8 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               server: {
                 name: "Biz Clone Accounting MCP Server",
                 version: "1.0.0",
-                description: "Remote MCP server for Biz Clone accounting system",
+                description:
+                  "Remote MCP server for Biz Clone accounting system",
                 author: "Biz Clone Development Team",
                 protocolVersion: "2024-11-30",
               },
@@ -2329,26 +2406,56 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "test_mcp_tools",
         "Test MCP tools execution (MCPツールテスト実行)",
         {
-          toolName: z.string().describe("Tool name to test (テストするツール名)"),
-          testParams: z.record(z.any()).optional().describe("Test parameters (テストパラメータ)"),
-          validateOnly: z.boolean().default(false).describe("Validate parameters only without execution (パラメータ検証のみ実行)"),
+          toolName: z.string().describe(
+            "Tool name to test (テストするツール名)",
+          ),
+          testParams: z.record(z.any()).optional().describe(
+            "Test parameters (テストパラメータ)",
+          ),
+          validateOnly: z.boolean().default(false).describe(
+            "Validate parameters only without execution (パラメータ検証のみ実行)",
+          ),
         },
         async ({ toolName, testParams, validateOnly }) => {
           try {
             // 利用可能ツールの静的リスト
             const availableTools = [
-              'test_connection', 'check_db_health', 'get_accounts', 'create_journal',
-              'search_journals', 'update_journal', 'delete_journal', 'get_journal_by_number',
-              'create_account', 'update_account', 'delete_account', 'search_partners',
-              'create_partner', 'update_partner', 'delete_partner', 'search_departments',
-              'create_department', 'update_department', 'delete_department',
-              'search_analysis_codes', 'create_analysis_code', 'update_analysis_code',
-              'delete_analysis_code', 'get_trial_balance', 'get_journal_summary',
-              'unified_search', 'generate_sample_journals', 'test_mcp_connection',
-              'list_mcp_tools', 'delete_journal_attachment', 'get_journal_attachments',
-              'get_mcp_metadata', 'test_mcp_tools', 'list_available_tools'
+              "test_connection",
+              "check_db_health",
+              "get_accounts",
+              "create_journal",
+              "search_journals",
+              "update_journal",
+              "delete_journal",
+              "get_journal_by_number",
+              "create_account",
+              "update_account",
+              "delete_account",
+              "search_partners",
+              "create_partner",
+              "update_partner",
+              "delete_partner",
+              "search_departments",
+              "create_department",
+              "update_department",
+              "delete_department",
+              "search_analysis_codes",
+              "create_analysis_code",
+              "update_analysis_code",
+              "delete_analysis_code",
+              "get_trial_balance",
+              "get_journal_summary",
+              "unified_search",
+              "generate_sample_journals",
+              "test_mcp_connection",
+              "list_mcp_tools",
+              "delete_journal_attachment",
+              "get_journal_attachments",
+              "get_mcp_metadata",
+              "test_mcp_tools",
+              "list_available_tools",
             ];
-            
+
             if (!availableTools.includes(toolName)) {
               return {
                 content: [
@@ -2419,23 +2526,23 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
             };
 
             const params = testParams || defaultTestParams[toolName] || {};
-            
+
             // 危険なツールの実行は避ける
             const readOnlyTools = [
-              'test_connection',
-              'check_db_health',
-              'get_accounts',
-              'search_journals',
-              'search_partners',
-              'search_departments',
-              'search_analysis_codes',
-              'get_trial_balance',
-              'get_journal_summary',
-              'unified_search',
-              'get_journal_by_number',
-              'list_mcp_tools',
-              'get_mcp_metadata',
-              'get_journal_attachments',
+              "test_connection",
+              "check_db_health",
+              "get_accounts",
+              "search_journals",
+              "search_partners",
+              "search_departments",
+              "search_analysis_codes",
+              "get_trial_balance",
+              "get_journal_summary",
+              "unified_search",
+              "get_journal_by_number",
+              "list_mcp_tools",
+              "get_mcp_metadata",
+              "get_journal_attachments",
             ];
 
             if (!readOnlyTools.includes(toolName)) {
@@ -2445,8 +2552,10 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
                     text: JSON.stringify(
                       {
                         success: false,
-                        error: `Tool '${toolName}' is not allowed for testing (write operation)`,
-                        suggestion: "Use validateOnly=true for write operations",
+                        error:
+                          `Tool '${toolName}' is not allowed for testing (write operation)`,
+                        suggestion:
+                          "Use validateOnly=true for write operations",
                         readOnlyTools,
                       },
                       null,
@@ -2461,7 +2570,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
             // 安全なテスト実行
             const testStartTime = Date.now();
             let testResult;
-            
+
             try {
               // 実際のツール実行は、ツール関数を直接呼び出すのではなく、
               // テスト用のモックレスポンスを返す
@@ -2474,7 +2583,8 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
                         message: `Tool '${toolName}' test execution simulated`,
                         toolName,
                         testParams: params,
-                        note: "実際のデータベース操作は実行されていません（安全なテスト実行）",
+                        note:
+                          "実際のデータベース操作は実行されていません（安全なテスト実行）",
                       },
                       null,
                       2,
@@ -2554,63 +2664,207 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         "list_available_tools",
         "List all available MCP tools with detailed information (利用可能ツール詳細一覧)",
         {
-          category: z.string().optional().describe("Filter by category (カテゴリでフィルタ)"),
-          includeSchema: z.boolean().default(false).describe("Include input schema (入力スキーマを含める)"),
+          category: z.string().optional().describe(
+            "Filter by category (カテゴリでフィルタ)",
+          ),
+          includeSchema: z.boolean().default(false).describe(
+            "Include input schema (入力スキーマを含める)",
+          ),
         },
         async ({ category, includeSchema }) => {
           try {
             // カテゴリ別ツール分類の静的定義
-            const toolCategories: Record<string, Array<{name: string, description: string, readOnly: boolean}>> = {
+            const toolCategories: Record<
+              string,
+              Array<{ name: string; description: string; readOnly: boolean }>
+            > = {
               connection: [
-                { name: 'test_connection', description: 'Test MCP server connection', readOnly: true },
-                { name: 'check_db_health', description: 'Check database connection and status', readOnly: true }
+                {
+                  name: "test_connection",
+                  description: "Test MCP server connection",
+                  readOnly: true,
+                },
+                {
+                  name: "check_db_health",
+                  description: "Check database connection and status",
+                  readOnly: true,
+                },
               ],
               journal: [
-                { name: 'create_journal', description: 'Create a new journal entry', readOnly: false },
-                { name: 'search_journals', description: 'Search journal entries', readOnly: true },
-                { name: 'update_journal', description: 'Update existing journal entry', readOnly: false },
-                { name: 'delete_journal', description: 'Delete journal entry', readOnly: false },
-                { name: 'get_journal_by_number', description: 'Get journal entry by number', readOnly: true }
+                {
+                  name: "create_journal",
+                  description: "Create a new journal entry",
+                  readOnly: false,
+                },
+                {
+                  name: "search_journals",
+                  description: "Search journal entries",
+                  readOnly: true,
+                },
+                {
+                  name: "update_journal",
+                  description: "Update existing journal entry",
+                  readOnly: false,
+                },
+                {
+                  name: "delete_journal",
+                  description: "Delete journal entry",
+                  readOnly: false,
+                },
+                {
+                  name: "get_journal_by_number",
+                  description: "Get journal entry by number",
+                  readOnly: true,
+                },
               ],
               master: [
-                { name: 'get_accounts', description: 'Get chart of accounts', readOnly: true },
-                { name: 'create_account', description: 'Create new account', readOnly: false },
-                { name: 'update_account', description: 'Update existing account', readOnly: false },
-                { name: 'delete_account', description: 'Delete account', readOnly: false },
-                { name: 'search_partners', description: 'Search partners', readOnly: true },
-                { name: 'create_partner', description: 'Create new partner', readOnly: false },
-                { name: 'update_partner', description: 'Update existing partner', readOnly: false },
-                { name: 'delete_partner', description: 'Delete partner', readOnly: false },
-                { name: 'search_departments', description: 'Search departments', readOnly: true },
-                { name: 'create_department', description: 'Create new department', readOnly: false },
-                { name: 'update_department', description: 'Update existing department', readOnly: false },
-                { name: 'delete_department', description: 'Delete department', readOnly: false },
-                { name: 'search_analysis_codes', description: 'Search analysis codes', readOnly: true },
-                { name: 'create_analysis_code', description: 'Create new analysis code', readOnly: false },
-                { name: 'update_analysis_code', description: 'Update existing analysis code', readOnly: false },
-                { name: 'delete_analysis_code', description: 'Delete analysis code', readOnly: false }
+                {
+                  name: "get_accounts",
+                  description: "Get chart of accounts",
+                  readOnly: true,
+                },
+                {
+                  name: "create_account",
+                  description: "Create new account",
+                  readOnly: false,
+                },
+                {
+                  name: "update_account",
+                  description: "Update existing account",
+                  readOnly: false,
+                },
+                {
+                  name: "delete_account",
+                  description: "Delete account",
+                  readOnly: false,
+                },
+                {
+                  name: "search_partners",
+                  description: "Search partners",
+                  readOnly: true,
+                },
+                {
+                  name: "create_partner",
+                  description: "Create new partner",
+                  readOnly: false,
+                },
+                {
+                  name: "update_partner",
+                  description: "Update existing partner",
+                  readOnly: false,
+                },
+                {
+                  name: "delete_partner",
+                  description: "Delete partner",
+                  readOnly: false,
+                },
+                {
+                  name: "search_departments",
+                  description: "Search departments",
+                  readOnly: true,
+                },
+                {
+                  name: "create_department",
+                  description: "Create new department",
+                  readOnly: false,
+                },
+                {
+                  name: "update_department",
+                  description: "Update existing department",
+                  readOnly: false,
+                },
+                {
+                  name: "delete_department",
+                  description: "Delete department",
+                  readOnly: false,
+                },
+                {
+                  name: "search_analysis_codes",
+                  description: "Search analysis codes",
+                  readOnly: true,
+                },
+                {
+                  name: "create_analysis_code",
+                  description: "Create new analysis code",
+                  readOnly: false,
+                },
+                {
+                  name: "update_analysis_code",
+                  description: "Update existing analysis code",
+                  readOnly: false,
+                },
+                {
+                  name: "delete_analysis_code",
+                  description: "Delete analysis code",
+                  readOnly: false,
+                },
               ],
               reports: [
-                { name: 'get_trial_balance', description: 'Get trial balance', readOnly: true },
-                { name: 'get_journal_summary', description: 'Get journal summary', readOnly: true }
+                {
+                  name: "get_trial_balance",
+                  description: "Get trial balance",
+                  readOnly: true,
+                },
+                {
+                  name: "get_journal_summary",
+                  description: "Get journal summary",
+                  readOnly: true,
+                },
               ],
               search: [
-                { name: 'unified_search', description: 'Unified search across all data', readOnly: true }
+                {
+                  name: "unified_search",
+                  description: "Unified search across all data",
+                  readOnly: true,
+                },
               ],
               system: [
-                { name: 'generate_sample_journals', description: 'Generate sample journal entries', readOnly: false },
-                { name: 'test_mcp_connection', description: 'Test MCP protocol connection', readOnly: true },
-                { name: 'list_mcp_tools', description: 'List available MCP tools', readOnly: true }
+                {
+                  name: "generate_sample_journals",
+                  description: "Generate sample journal entries",
+                  readOnly: false,
+                },
+                {
+                  name: "test_mcp_connection",
+                  description: "Test MCP protocol connection",
+                  readOnly: true,
+                },
+                {
+                  name: "list_mcp_tools",
+                  description: "List available MCP tools",
+                  readOnly: true,
+                },
               ],
               metadata: [
-                { name: 'get_mcp_metadata', description: 'Get MCP server metadata', readOnly: true },
-                { name: 'test_mcp_tools', description: 'Test MCP tools execution', readOnly: true },
-                { name: 'list_available_tools', description: 'List all available MCP tools with detailed information', readOnly: true }
+                {
+                  name: "get_mcp_metadata",
+                  description: "Get MCP server metadata",
+                  readOnly: true,
+                },
+                {
+                  name: "test_mcp_tools",
+                  description: "Test MCP tools execution",
+                  readOnly: true,
+                },
+                {
+                  name: "list_available_tools",
+                  description:
+                    "List all available MCP tools with detailed information",
+                  readOnly: true,
+                },
               ],
               attachments: [
-                { name: 'delete_journal_attachment', description: 'Delete journal attachment file', readOnly: false },
-                { name: 'get_journal_attachments', description: 'Get journal attachment files list', readOnly: true }
-              ]
+                {
+                  name: "delete_journal_attachment",
+                  description: "Delete journal attachment file",
+                  readOnly: false,
+                },
+                {
+                  name: "get_journal_attachments",
+                  description: "Get journal attachment files list",
+                  readOnly: true,
+                },
+              ],
             };
 
             // カテゴリフィルタリング
@@ -2621,7 +2875,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
 
             const toolsInfo: any[] = [];
             Object.entries(filteredCategories).forEach(([cat, tools]) => {
-              tools.forEach(tool => {
+              tools.forEach((tool) => {
                 const baseInfo = {
                   name: tool.name,
                   description: tool.description,
@@ -2630,21 +2884,31 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
                   requiresAuth: true,
                 };
 
-                toolsInfo.push(includeSchema 
-                  ? { ...baseInfo, inputSchema: "スキーマ情報は個別ツール実行時に確認してください" }
-                  : baseInfo
+                toolsInfo.push(
+                  includeSchema
+                    ? {
+                      ...baseInfo,
+                      inputSchema:
+                        "スキーマ情報は個別ツール実行時に確認してください",
+                    }
+                    : baseInfo,
                 );
               });
             });
 
-            const allToolsCount = Object.values(toolCategories).reduce((sum, tools) => sum + tools.length, 0);
+            const allToolsCount = Object.values(toolCategories).reduce(
+              (sum, tools) => sum + tools.length,
+              0,
+            );
 
             const summary = {
               totalTools: allToolsCount,
               filteredTools: toolsInfo.length,
               categories: Object.keys(toolCategories),
               categoryCounts: Object.fromEntries(
-                Object.entries(toolCategories).map(([cat, tools]) => [cat, tools.length])
+                Object.entries(toolCategories).map((
+                  [cat, tools],
+                ) => [cat, tools.length]),
               ),
             };
 
@@ -2693,7 +2957,7 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
       );
 
       // 元々のコード終了位置 - MCP初期化完了
-      
+      console.log("✅ BizCloneMCP initialization completed successfully");
     } catch (error) {
       console.error("Error initializing BizCloneMCP:", error);
     }
