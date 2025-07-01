@@ -10,6 +10,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,26 +30,34 @@ interface JournalDeleteButtonProps {
   journalNumber: string;
   journalDescription?: string;
   onDelete?: () => void;
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | null | undefined;
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link"
+    | null
+    | undefined;
   size?: "default" | "sm" | "lg" | "icon" | null | undefined;
 }
 
-export function JournalDeleteButton({ 
-  journalNumber, 
+export function JournalDeleteButton({
+  journalNumber,
   journalDescription,
   onDelete,
   variant = "destructive",
-  size = "default"
+  size = "default",
 }: JournalDeleteButtonProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
 
   const handleDelete = async () => {
     setIsDeleting(true);
-    
+
     try {
       const result = await deleteJournalFromInquiry(journalNumber);
-      
+
       if (result.success) {
         // 削除成功時は onDelete コールバックを実行、または仕訳一覧ページにリダイレクト
         if (onDelete) {
@@ -70,7 +79,15 @@ export function JournalDeleteButton({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant={variant} size={size} className="cursor-pointer" disabled={isDeleting}>
+        <Button
+          variant={variant}
+          size={size}
+          className={cn(
+            "cursor-pointer",
+            variant === "destructive" && "text-white"
+          )}
+          disabled={isDeleting}
+        >
           <Trash2 className="h-4 w-4" />
           {isDeleting ? "削除中..." : "削除"}
         </Button>
@@ -80,23 +97,20 @@ export function JournalDeleteButton({
           <AlertDialogTitle>仕訳の削除</AlertDialogTitle>
           <AlertDialogDescription>
             以下の仕訳を削除しますか？この操作は取り消せません。
-            <div className="mt-4 p-3 bg-muted rounded-md">
-              <div className="font-mono text-sm">
-                仕訳番号: {journalNumber}
-              </div>
-              {journalDescription && (
-                <div className="text-sm mt-1">
-                  摘要: {journalDescription}
-                </div>
-              )}
-            </div>
           </AlertDialogDescription>
+
+          <div className="mt-4 p-3 bg-muted rounded-md">
+            <div className="font-mono text-sm">仕訳番号: {journalNumber}</div>
+            {journalDescription && (
+              <div className="text-sm mt-1">摘要: {journalDescription}</div>
+            )}
+          </div>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>キャンセル</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className="bg-destructive text-white hover:bg-destructive/90"
             disabled={isDeleting}
           >
             {isDeleting ? "削除中..." : "削除する"}

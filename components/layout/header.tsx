@@ -24,6 +24,7 @@ import {
   Database,
   BarChart3,
   GitBranch,
+  Settings,
 } from "lucide-react";
 import { UserAvatarMenu } from "./user-avatar-menu";
 
@@ -144,22 +145,6 @@ export function Header() {
                     </MenubarItem>
                     <MenubarItem asChild>
                       <Link
-                        href="/master/workflow-organizations"
-                        className="px-4 py-3 text-base"
-                      >
-                        ワークフロー組織
-                      </Link>
-                    </MenubarItem>
-                    <MenubarItem asChild>
-                      <Link
-                        href="/master/workflow-routes"
-                        className="px-4 py-3 text-base"
-                      >
-                        ワークフロールート
-                      </Link>
-                    </MenubarItem>
-                    <MenubarItem asChild>
-                      <Link
                         href="/master/reconciliation-mappings"
                         className="px-4 py-3 text-base"
                       >
@@ -201,6 +186,14 @@ export function Header() {
                         総勘定元帳
                       </Link>
                     </MenubarItem>
+                    <MenubarItem asChild>
+                      <Link
+                        href="/reports/reconciliation"
+                        className="px-4 py-3 text-base"
+                      >
+                        勘定照合レポート
+                      </Link>
+                    </MenubarItem>
                   </MenubarSubContent>
                 </MenubarPortal>
               </MenubarSub>
@@ -214,12 +207,67 @@ export function Header() {
               ワークフロー
             </MenubarTrigger>
             <MenubarContent className="shadow-xl border-0 bg-card/95 backdrop-blur-md">
+              <MenubarSub>
+                <MenubarSubTrigger className="px-4 py-3 text-base flex items-center gap-2">
+                  <Edit3 className="h-4 w-4" />
+                  承認
+                </MenubarSubTrigger>
+                <MenubarPortal>
+                  <MenubarSubContent className="shadow-xl border-0 bg-card/95 backdrop-blur-md">
+                    <MenubarItem asChild>
+                      <Link
+                        href="/workflow/approval-list"
+                        className="px-4 py-3 text-base"
+                      >
+                        承認対象一覧
+                      </Link>
+                    </MenubarItem>
+                  </MenubarSubContent>
+                </MenubarPortal>
+              </MenubarSub>
+
+              <MenubarSub>
+                <MenubarSubTrigger className="px-4 py-3 text-base flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  マスタ
+                </MenubarSubTrigger>
+                <MenubarPortal>
+                  <MenubarSubContent className="shadow-xl border-0 bg-card/95 backdrop-blur-md">
+                    <MenubarItem asChild>
+                      <Link
+                        href="/master/workflow-organizations"
+                        className="px-4 py-3 text-base"
+                      >
+                        ワークフロー組織
+                      </Link>
+                    </MenubarItem>
+                    <MenubarItem asChild>
+                      <Link
+                        href="/master/workflow-routes"
+                        className="px-4 py-3 text-base"
+                      >
+                        ワークフロールート
+                      </Link>
+                    </MenubarItem>
+                  </MenubarSubContent>
+                </MenubarPortal>
+              </MenubarSub>
+            </MenubarContent>
+          </MenubarMenu>
+
+          {/* 管理者メニュー */}
+          <MenubarMenu>
+            <MenubarTrigger className="px-4 py-2 text-base font-medium hover:bg-accent/50 data-[state=open]:bg-accent/50 transition-colors flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              管理者
+            </MenubarTrigger>
+            <MenubarContent className="shadow-xl border-0 bg-card/95 backdrop-blur-md">
               <MenubarItem asChild>
                 <Link
-                  href="/workflow/approval-list"
+                  href="/admin/test-journal-generator"
                   className="px-4 py-3 text-base"
                 >
-                  承認対象一覧
+                  テスト仕訳生成
                 </Link>
               </MenubarItem>
             </MenubarContent>
@@ -351,20 +399,6 @@ export function Header() {
                     ユーザ
                   </Link>
                   <Link
-                    href="/master/workflow-organizations"
-                    className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors ml-4"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    ワークフロー組織
-                  </Link>
-                  <Link
-                    href="/master/workflow-routes"
-                    className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors ml-4"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    ワークフロールート
-                  </Link>
-                  <Link
                     href="/master/reconciliation-mappings"
                     className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors ml-4"
                     onClick={() => setIsMobileMenuOpen(false)}
@@ -411,12 +445,57 @@ export function Header() {
               </p>
 
               <div className="space-y-4 ml-4">
+                <div className="space-y-3">
+                  <p className="text-base font-semibold text-foreground px-3 flex items-center gap-2">
+                    <Edit3 className="h-4 w-4" />
+                    承認
+                  </p>
+                  <Link
+                    href="/workflow/approval-list"
+                    className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors ml-4"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    承認対象一覧
+                  </Link>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-base font-semibold text-foreground px-3 flex items-center gap-2">
+                    <Database className="h-4 w-4" />
+                    マスタ
+                  </p>
+                  <Link
+                    href="/master/workflow-organizations"
+                    className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors ml-4"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    ワークフロー組織
+                  </Link>
+                  <Link
+                    href="/master/workflow-routes"
+                    className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors ml-4"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    ワークフロールート
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* 管理者セクション */}
+            <div className="space-y-3">
+              <p className="text-lg font-bold text-foreground px-3 flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                管理者
+              </p>
+
+              <div className="space-y-4 ml-4">
                 <Link
-                  href="/workflow/approval-list"
+                  href="/admin/test-journal-generator"
                   className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  承認対象一覧
+                  テスト仕訳生成
                 </Link>
               </div>
             </div>
