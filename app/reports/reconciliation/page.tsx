@@ -188,7 +188,7 @@ export default function ReconciliationReportPage() {
     const fromStr = dateFrom ? format(dateFrom, "yyyy-MM-dd") : "";
     const toStr = dateTo ? format(dateTo, "yyyy-MM-dd") : "";
     router.push(
-      `/reports/reconciliation/details?mappingId=${mappingId}&from=${fromStr}&to=${toStr}`
+      `/reports/reconciliation/detail?mappingId=${mappingId}&dateFrom=${fromStr}&dateTo=${toStr}`
     );
   };
 

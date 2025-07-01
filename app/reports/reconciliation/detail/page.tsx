@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ interface CombinedDetailData {
   journalNumber: string;
   journalDate: Date;
   description: string | null;
-  
+
   // 計上部門・勘定科目側
   primaryJournalNumber: string;
   primaryLineNumber: number;
@@ -43,7 +43,7 @@ interface CombinedDetailData {
   primaryAccountCode: string;
   primaryAccountName: string;
   primaryAmount: number; // 借方はプラス、貸方はマイナス
-  
+
   // 相手計上部門・相手勘定科目側
   counterJournalNumber: string;
   counterLineNumber: number;
@@ -52,29 +52,29 @@ interface CombinedDetailData {
   counterAccountCode: string;
   counterAccountName: string;
   counterAmount: number; // 借方はプラス、貸方はマイナス
-  
+
   // 差額
   difference: number;
 }
 
-export default function ReconciliationDetailPage() {
+function ReconciliationDetailPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [mapping, setMapping] = useState<ReconciliationMapping | null>(null);
-  const [primaryData, setPrimaryData] = useState<ReconciliationDetailData[]>([]);
-  const [counterData, setCounterData] = useState<ReconciliationDetailData[]>([]);
+  const [primaryData, setPrimaryData] = useState<ReconciliationDetailData[]>(
+    []
+  );
+  const [counterData, setCounterData] = useState<ReconciliationDetailData[]>(
+    []
+  );
   const [combinedData, setCombinedData] = useState<CombinedDetailData[]>([]);
 
   // URLパラメータの取得
   const mappingId = searchParams.get("mappingId");
   const dateFrom = searchParams.get("dateFrom");
   const dateTo = searchParams.get("dateTo");
-  const departmentCode = searchParams.get("departmentCode") || "";
-  const accountCode = searchParams.get("accountCode") || "";
-  const counterDepartmentCode = searchParams.get("counterDepartmentCode") || "";
-  const counterAccountCode = searchParams.get("counterAccountCode") || "";
 
   useEffect(() => {
     const loadDetailData = async () => {
@@ -94,7 +94,8 @@ export default function ReconciliationDetailPage() {
           mappingId,
           fromDate,
           toDate,
-          "primary"
+          "primary",
+          ["pending", "approved"]
         );
 
         // 相手計上部門・相手勘定科目の明細データを取得
@@ -102,14 +103,15 @@ export default function ReconciliationDetailPage() {
           mappingId,
           fromDate,
           toDate,
-          "counter"
+          "counter",
+          ["pending", "approved"]
         );
 
         if (primaryResult.success && counterResult.success) {
           setMapping(primaryResult.mapping || null);
           setPrimaryData(primaryResult.data || []);
           setCounterData(counterResult.data || []);
-          
+
           // データ結合処理
           combineDetailData(primaryResult.data || [], counterResult.data || []);
         } else {
@@ -133,125 +135,115 @@ export default function ReconciliationDetailPage() {
     primary: ReconciliationDetailData[],
     counter: ReconciliationDetailData[]
   ) => {
-    // 全ての仕訳番号を取得
-    const allJournalNumbers = [
-      ...new Set([
-        ...primary.map(d => d.journalNumber),
-        ...counter.map(d => d.journalNumber)
-      ])
-    ].sort();
+    // 金額を借方=プラス、貸方=マイナスで計算
+    const calculateAmount = (detail: ReconciliationDetailData) => {
+      return detail.debitCredit === "D"
+        ? detail.totalAmount
+        : -detail.totalAmount;
+    };
+
+    // 伝票摘要でグループ化
+    const groupByDescription = new Map<
+      string,
+      {
+        journalDate: Date;
+        description: string;
+        primaryDetails: ReconciliationDetailData[];
+        counterDetails: ReconciliationDetailData[];
+      }
+    >();
+
+    // Primary側のデータをグループ化
+    primary.forEach((detail) => {
+      const key = detail.description || "";
+      if (!groupByDescription.has(key)) {
+        groupByDescription.set(key, {
+          journalDate: detail.journalDate,
+          description: detail.description || "",
+          primaryDetails: [],
+          counterDetails: [],
+        });
+      }
+      groupByDescription.get(key)!.primaryDetails.push(detail);
+    });
+
+    // Counter側のデータをグループ化
+    counter.forEach((detail) => {
+      const key = detail.description || "";
+      if (!groupByDescription.has(key)) {
+        groupByDescription.set(key, {
+          journalDate: detail.journalDate,
+          description: detail.description || "",
+          primaryDetails: [],
+          counterDetails: [],
+        });
+      }
+      groupByDescription.get(key)!.counterDetails.push(detail);
+    });
 
     const combined: CombinedDetailData[] = [];
 
-    allJournalNumbers.forEach(journalNumber => {
-      const primaryDetails = primary.filter(d => d.journalNumber === journalNumber);
-      const counterDetails = counter.filter(d => d.journalNumber === journalNumber);
+    // 各グループを処理
+    groupByDescription.forEach((group) => {
+      // Primary側の合計金額を計算
+      const primaryTotalAmount = group.primaryDetails.reduce((sum, detail) => {
+        return sum + calculateAmount(detail);
+      }, 0);
 
-      // 主たる仕訳データ（計上部門・勘定科目または相手計上部門・相手勘定科目のいずれか）
-      const mainDetails = primaryDetails.length > 0 ? primaryDetails : counterDetails;
-      
-      mainDetails.forEach(mainDetail => {
-        // 対応する相手側明細を検索
-        const correspondingDetail = primaryDetails.length > 0 
-          ? counterDetails.find(d => d.journalNumber === journalNumber)
-          : primaryDetails.find(d => d.journalNumber === journalNumber);
+      // Counter側の合計金額を計算
+      const counterTotalAmount = group.counterDetails.reduce((sum, detail) => {
+        return sum + calculateAmount(detail);
+      }, 0);
 
-        // 金額を借方=プラス、貸方=マイナスで計算
-        const calculateAmount = (detail: ReconciliationDetailData) => {
-          return detail.debitCredit === "D" ? detail.totalAmount : -detail.totalAmount;
-        };
+      // 仕訳番号を取得（複数ある場合は最初のもの）
+      const primaryJournalNumber =
+        group.primaryDetails.length > 0
+          ? group.primaryDetails[0].journalNumber
+          : "";
+      const counterJournalNumber =
+        group.counterDetails.length > 0
+          ? group.counterDetails[0].journalNumber
+          : "";
 
-        const primaryDetail = primaryDetails.length > 0 ? mainDetail : correspondingDetail;
-        const counterDetail = primaryDetails.length > 0 ? correspondingDetail : mainDetail;
+      // 部門・科目情報を取得（複数ある場合は最初のもの）
+      const primaryDetail =
+        group.primaryDetails.length > 0 ? group.primaryDetails[0] : null;
+      const counterDetail =
+        group.counterDetails.length > 0 ? group.counterDetails[0] : null;
 
-        if (primaryDetail && counterDetail) {
-          const primaryAmount = calculateAmount(primaryDetail);
-          const counterAmount = calculateAmount(counterDetail);
-          
-          combined.push({
-            journalNumber: journalNumber,
-            journalDate: mainDetail.journalDate,
-            description: mainDetail.description,
-            
-            primaryJournalNumber: primaryDetail.journalNumber,
-            primaryLineNumber: primaryDetail.lineNumber,
-            primaryDepartmentCode: primaryDetail.departmentCode,
-            primaryDepartmentName: primaryDetail.departmentName,
-            primaryAccountCode: primaryDetail.accountCode,
-            primaryAccountName: primaryDetail.accountName,
-            primaryAmount: primaryAmount,
-            
-            counterJournalNumber: counterDetail.journalNumber,
-            counterLineNumber: counterDetail.lineNumber,
-            counterDepartmentCode: counterDetail.departmentCode,
-            counterDepartmentName: counterDetail.departmentName,
-            counterAccountCode: counterDetail.accountCode,
-            counterAccountName: counterDetail.accountName,
-            counterAmount: counterAmount,
-            
-            difference: Math.abs(Math.abs(primaryAmount) - Math.abs(counterAmount)),
-          });
-        } else if (primaryDetails.length > 0) {
-          // 計上部門・勘定科目のみの場合
-          const primaryAmount = calculateAmount(mainDetail);
-          combined.push({
-            journalNumber: journalNumber,
-            journalDate: mainDetail.journalDate,
-            description: mainDetail.description,
-            
-            primaryJournalNumber: mainDetail.journalNumber,
-            primaryLineNumber: mainDetail.lineNumber,
-            primaryDepartmentCode: mainDetail.departmentCode,
-            primaryDepartmentName: mainDetail.departmentName,
-            primaryAccountCode: mainDetail.accountCode,
-            primaryAccountName: mainDetail.accountName,
-            primaryAmount: primaryAmount,
-            
-            counterJournalNumber: "",
-            counterLineNumber: 0,
-            counterDepartmentCode: null,
-            counterDepartmentName: null,
-            counterAccountCode: "",
-            counterAccountName: "",
-            counterAmount: 0,
-            
-            difference: Math.abs(primaryAmount),
-          });
-        } else {
-          // 相手計上部門・相手勘定科目のみの場合
-          const counterAmount = calculateAmount(mainDetail);
-          combined.push({
-            journalNumber: journalNumber,
-            journalDate: mainDetail.journalDate,
-            description: mainDetail.description,
-            
-            primaryJournalNumber: "",
-            primaryLineNumber: 0,
-            primaryDepartmentCode: null,
-            primaryDepartmentName: null,
-            primaryAccountCode: "",
-            primaryAccountName: "",
-            primaryAmount: 0,
-            
-            counterJournalNumber: mainDetail.journalNumber,
-            counterLineNumber: mainDetail.lineNumber,
-            counterDepartmentCode: mainDetail.departmentCode,
-            counterDepartmentName: mainDetail.departmentName,
-            counterAccountCode: mainDetail.accountCode,
-            counterAccountName: mainDetail.accountName,
-            counterAmount: counterAmount,
-            
-            difference: Math.abs(counterAmount),
-          });
-        }
+      // 差額を計算（primary + counter = 0 が理想）
+      const difference = primaryTotalAmount + counterTotalAmount;
+
+      combined.push({
+        journalNumber: primaryJournalNumber || counterJournalNumber,
+        journalDate: group.journalDate,
+        description: group.description,
+
+        primaryJournalNumber: primaryJournalNumber,
+        primaryLineNumber: primaryDetail?.lineNumber || 0,
+        primaryDepartmentCode: primaryDetail?.departmentCode || null,
+        primaryDepartmentName: primaryDetail?.departmentName || null,
+        primaryAccountCode: primaryDetail?.accountCode || "",
+        primaryAccountName: primaryDetail?.accountName || "",
+        primaryAmount: primaryTotalAmount,
+
+        counterJournalNumber: counterJournalNumber,
+        counterLineNumber: counterDetail?.lineNumber || 0,
+        counterDepartmentCode: counterDetail?.departmentCode || null,
+        counterDepartmentName: counterDetail?.departmentName || null,
+        counterAccountCode: counterDetail?.accountCode || "",
+        counterAccountName: counterDetail?.accountName || "",
+        counterAmount: counterTotalAmount,
+
+        difference: Math.abs(difference),
       });
     });
 
-    // 日付・仕訳番号でソート
+    // 日付・伝票摘要でソート
     combined.sort((a, b) => {
       const dateCompare = a.journalDate.getTime() - b.journalDate.getTime();
       if (dateCompare !== 0) return dateCompare;
-      return a.journalNumber.localeCompare(b.journalNumber);
+      return (a.description || "").localeCompare(b.description || "");
     });
 
     setCombinedData(combined);
@@ -274,7 +266,9 @@ export default function ReconciliationDetailPage() {
         <Card>
           <CardContent className="p-6">
             <div className="text-center py-8">
-              <span className="text-primary animate-pulse">データを読み込み中...</span>
+              <span className="text-primary animate-pulse">
+                データを読み込み中...
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -306,25 +300,48 @@ export default function ReconciliationDetailPage() {
           {mapping && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div className="space-y-2">
-                <div className="font-medium text-muted-foreground">計上部門・勘定科目</div>
+                <div className="font-medium text-muted-foreground">
+                  計上部門・勘定科目
+                </div>
                 <div className="pl-4">
-                  <div>部門: {departmentCode}</div>
-                  <div>科目: {accountCode}</div>
+                  <div>
+                    部門: {mapping.departmentCode}
+                    {primaryData[0]?.departmentName &&
+                      ` （${primaryData[0].departmentName}）`}
+                  </div>
+                  <div>
+                    科目: {mapping.accountCode}
+                    {primaryData[0]?.accountName &&
+                      ` （${primaryData[0].accountName}）`}
+                  </div>
                 </div>
               </div>
               <div className="space-y-2">
-                <div className="font-medium text-muted-foreground">相手計上部門・相手勘定科目</div>
+                <div className="font-medium text-muted-foreground">
+                  相手計上部門・相手勘定科目
+                </div>
                 <div className="pl-4">
-                  <div>部門: {counterDepartmentCode}</div>
-                  <div>科目: {counterAccountCode}</div>
+                  <div>
+                    部門: {mapping.counterDepartmentCode}
+                    {counterData[0]?.departmentName &&
+                      ` （${counterData[0].departmentName}）`}
+                  </div>
+                  <div>
+                    科目: {mapping.counterAccountCode}
+                    {counterData[0]?.accountName &&
+                      ` （${counterData[0].accountName}）`}
+                  </div>
                 </div>
               </div>
               <div className="col-span-1 md:col-span-2">
-                <div className="font-medium text-muted-foreground">対象期間</div>
+                <div className="font-medium text-muted-foreground">
+                  対象期間
+                </div>
                 <div className="pl-4">
                   {dateFrom && dateTo && (
                     <span>
-                      {format(new Date(dateFrom), "yyyy/MM/dd", { locale: ja })} ～{" "}
+                      {format(new Date(dateFrom), "yyyy/MM/dd", { locale: ja })}{" "}
+                      ～{" "}
                       {format(new Date(dateTo), "yyyy/MM/dd", { locale: ja })}
                     </span>
                   )}
@@ -348,7 +365,10 @@ export default function ReconciliationDetailPage() {
                 期間:{" "}
                 {dateFrom && dateTo && (
                   <>
-                    {format(new Date(dateFrom), "yyyy年MM月dd日", { locale: ja })} ～{" "}
+                    {format(new Date(dateFrom), "yyyy年MM月dd日", {
+                      locale: ja,
+                    })}{" "}
+                    ～{" "}
                     {format(new Date(dateTo), "yyyy年MM月dd日", { locale: ja })}
                   </>
                 )}
@@ -426,7 +446,9 @@ export default function ReconciliationDetailPage() {
                           {detail.primaryAccountCode}
                         </TableCell>
                         <TableCell className="text-right border-r">
-                          {detail.primaryAmount !== 0 ? `¥${formatAmount(detail.primaryAmount)}` : ""}
+                          {detail.primaryAmount !== 0
+                            ? `¥${formatAmount(detail.primaryAmount)}`
+                            : ""}
                         </TableCell>
                         <TableCell className="text-center border-r text-xs">
                           {detail.counterJournalNumber}
@@ -438,9 +460,17 @@ export default function ReconciliationDetailPage() {
                           {detail.counterAccountCode}
                         </TableCell>
                         <TableCell className="text-right border-r">
-                          {detail.counterAmount !== 0 ? `¥${formatAmount(detail.counterAmount)}` : ""}
+                          {detail.counterAmount !== 0
+                            ? `¥${formatAmount(detail.counterAmount)}`
+                            : ""}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell
+                          className={`text-right font-medium ${
+                            detail.difference === 0
+                              ? "text-green-600 bg-green-50"
+                              : "text-red-600 bg-red-50"
+                          }`}
+                        >
                           ¥{formatAmount(detail.difference)}
                         </TableCell>
                       </TableRow>
@@ -461,5 +491,31 @@ export default function ReconciliationDetailPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ローディング表示用コンポーネント
+function LoadingFallback() {
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center py-8">
+            <span className="text-primary animate-pulse">
+              ページを読み込み中...
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Suspenseで囲んだデフォルトエクスポート
+export default function ReconciliationDetailPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <ReconciliationDetailPageContent />
+    </Suspense>
   );
 }

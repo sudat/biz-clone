@@ -322,6 +322,7 @@ export async function getReconciliationDetailData(
   dateFrom: Date,
   dateTo: Date,
   side: "primary" | "counter" = "primary",
+  approvalStatuses: ("pending" | "approved")[] = ["pending", "approved"],
 ): Promise<{
   success: boolean;
   data?: ReconciliationDetailData[];
@@ -359,7 +360,9 @@ export async function getReconciliationDetailData(
             gte: dateFrom,
             lte: dateTo,
           },
-          approvalStatus: "approved", // 承認済のみ
+          approvalStatus: {
+            in: approvalStatuses,
+          },
         },
       },
       include: {
