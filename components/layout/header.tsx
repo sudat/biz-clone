@@ -163,7 +163,7 @@ export function Header() {
                         href="/master/reconciliation-mappings"
                         className="px-4 py-3 text-base"
                       >
-                        勘定照合マスタ
+                        勘定照合
                       </Link>
                     </MenubarItem>
                   </MenubarSubContent>
@@ -369,7 +369,7 @@ export function Header() {
                     className="block px-3 py-3 text-base hover:bg-accent/50 rounded-lg transition-colors ml-4"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    勘定照合マスタ
+                    勘定照合
                   </Link>
                 </div>
 

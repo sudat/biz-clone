@@ -60,8 +60,10 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
     version: "1.0.0",
   });
 
-  // private prisma!: any; // PrismaClient型を動的にロード - 削除：各ツールで個別にgetPrismaClientを使用
-  // private systemOps!: SystemOperations; // 一時的に無効化
+  // 事前初期化されたPrismaクライアントとモジュール
+  private prismaClient: any = null;
+  private prismaModule: any = null;
+  private dbInitialized = false;
 
   /**
    * DATABASE_URLを安全な文字列として取得
@@ -77,6 +79,27 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
 
     console.log("📦 DATABASE_URL converted to string, length:", url.length);
     return url;
+  }
+
+  /**
+   * 事前初期化済みまたはフォールバックのPrismaクライアントを取得
+   */
+  private async getPrismaClientOptimized(): Promise<any> {
+    if (this.dbInitialized && this.prismaClient) {
+      console.log("🚀 事前初期化済みPrismaクライアント使用");
+      return this.prismaClient;
+    }
+
+    console.log("⚡ フォールバック: 動的Prismaクライアント初期化");
+    // フォールバック: 動的初期化
+    if (!this.prismaModule) {
+      this.prismaModule = await import("../lib/database/prisma");
+    }
+
+    return this.prismaModule.getPrismaClient(
+      this.env.HYPERDRIVE || undefined,
+      this.getDatabaseUrl(),
+    );
   }
 
   async init() {
@@ -142,9 +165,45 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
       }
       console.log("All env keys:", Object.keys(this.env));
 
-      // Initialize Prisma client - 不要になったため削除
-      // 各ツールで個別にgetPrismaClientを使用するため、ここでの初期化は不要
-      console.log("🔧 Prisma初期化をスキップ - 各ツールで個別に初期化します");
+      // 🚀 事前初期化: Prismaクライアントとモジュールを初期化
+      console.log("🔧 Prismaクライアント事前初期化開始...");
+      try {
+        // Prismaモジュールを事前インポート
+        this.prismaModule = await import("../lib/database/prisma");
+        console.log("✅ Prismaモジュール読み込み完了");
+
+        // Prismaクライアントを事前初期化
+        this.prismaClient = this.prismaModule.getPrismaClient(
+          this.env.HYPERDRIVE || undefined,
+          this.getDatabaseUrl(),
+        );
+        console.log("✅ Prismaクライアント初期化完了");
+
+        // 🌡️ ウォームアップ: 接続テストとキャッシュ構築
+        console.log("🌡️ データベース接続ウォームアップ中...");
+
+        // タイムアウト付きでウォームアップクエリを実行
+        const warmupStart = Date.now();
+        await Promise.race([
+          this.prismaClient.$queryRaw`SELECT 1 as warmup`,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Warmup timeout")), 10000)
+          ),
+        ]);
+
+        const warmupTime = Date.now() - warmupStart;
+        console.log(`✅ データベースウォームアップ完了 (${warmupTime}ms)`);
+
+        this.dbInitialized = true;
+        console.log("🚀 事前初期化プロセス完了");
+      } catch (error) {
+        console.error(
+          "⚠️ 事前初期化エラー (フォールバックモードで続行):",
+          error,
+        );
+        // エラーが発生してもフォールバックとして各ツールでの動的初期化を使用
+        this.dbInitialized = false;
+      }
 
       // Initialize system operations - 一時的に無効化
       // this.systemOps = new SystemOperations(this.prisma);
@@ -191,14 +250,11 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         {},
         async () => {
           try {
-            // getPrismaClientを使用して適切なクライアントを取得
-            const { getPrismaClient } = await import("../lib/database/prisma");
-
-            // Hyperdrive が利用できない場合は null を渡して直接接続を使用
-            const client = getPrismaClient(
-              this.env.HYPERDRIVE || undefined,
-              this.getDatabaseUrl(),
+            console.log(
+              "🔍 check_db_health tool called - using optimized client",
             );
+            // 最適化されたPrismaクライアントを取得
+            const client = await this.getPrismaClientOptimized();
 
             // タイムアウト付きでクエリを実行
             const testQuery = Promise.race([
@@ -301,14 +357,8 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
               !!this.env.DATABASE_URL,
             );
 
-            // getPrismaClientを使用して適切なクライアントを取得
-            const { getPrismaClient } = await import("../lib/database/prisma");
-
-            // Hyperdrive が利用できない場合は undefined を渡して直接接続を使用
-            const client = getPrismaClient(
-              this.env.HYPERDRIVE || undefined,
-              this.getDatabaseUrl(),
-            );
+            // 最適化されたPrismaクライアントを取得
+            const client = await this.getPrismaClientOptimized();
 
             const where: any = { isActive: true };
 
@@ -408,12 +458,8 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
         },
         async ({ journalDate, description, details }) => {
           try {
-            // getPrismaClientを使用して適切なクライアントを取得
-            const { getPrismaClient } = await import("../lib/database/prisma");
-            const client = getPrismaClient(
-              this.env.HYPERDRIVE,
-              this.getDatabaseUrl(),
-            );
+            // 最適化されたPrismaクライアントを取得
+            const client = await this.getPrismaClientOptimized();
 
             // Validate balanced entry
             const debitTotal = details.filter((d) => d.debitCredit === "debit")
@@ -529,12 +575,8 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
           { journalNumber, dateFrom, dateTo, accountCode, description, limit },
         ) => {
           try {
-            // getPrismaClientを使用して適切なクライアントを取得
-            const { getPrismaClient } = await import("../lib/database/prisma");
-            const client = getPrismaClient(
-              this.env.HYPERDRIVE,
-              this.getDatabaseUrl(),
-            );
+            // 最適化されたPrismaクライアントを取得
+            const client = await this.getPrismaClientOptimized();
 
             const where: any = {};
 

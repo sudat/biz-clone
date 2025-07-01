@@ -165,9 +165,14 @@ export function ReconciliationMappingForm({
     }
   };
 
-  // フォームの値変更時に重複チェック
+  // フォームの値変更時に重複チェック（摘要欄は除外）
   useEffect(() => {
-    const subscription = form.watch((value) => {
+    const subscription = form.watch((value, { name }) => {
+      // 摘要欄（description）の変更時は重複チェックをしない
+      if (name === "description") {
+        return;
+      }
+      
       if (value.departmentCode && value.accountCode && value.counterDepartmentCode && value.counterAccountCode) {
         checkDuplicate(
           value.departmentCode,
