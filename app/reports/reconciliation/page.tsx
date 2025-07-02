@@ -154,7 +154,7 @@ export default function ReconciliationReportPage() {
           if (result.data.length === 0) {
             return "検索条件に該当するデータがありませんでした";
           } else {
-            return `${result.data.length}件のデータを取得しました`;
+            return `${result.data.length}パターンの照合結果を取得しました`;
           }
         }
         return "データを取得しました";
@@ -411,18 +411,18 @@ export default function ReconciliationReportPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div className="space-y-1">
                 <div className="text-muted-foreground">照合対象</div>
-                <div className="font-semibold">{summary.totalMappings}件</div>
+                <div className="font-semibold">{summary.totalMappings}パターン</div>
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">照合一致</div>
                 <div className="font-semibold text-green-600">
-                  {summary.matchedMappings}件
+                  {summary.matchedMappings}パターン
                 </div>
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">照合不一致</div>
                 <div className="font-semibold text-red-600">
-                  {summary.unmatchedMappings}件
+                  {summary.unmatchedMappings}パターン
                 </div>
               </div>
               <div className="space-y-1">
@@ -457,13 +457,13 @@ export default function ReconciliationReportPage() {
                 {dateTo ? format(dateTo, "yyyy年MM月dd日", { locale: ja }) : ""}
               </p>
               <p className="text-xs print:text-xs mt-1">
-                検索結果: {reconciliationData.length}件
+                検索結果: {reconciliationData.length}パターン
               </p>
             </div>
 
             {/* データ件数表示 */}
             <div className="mb-4 text-sm text-muted-foreground print:hidden">
-              <span>検索結果: {reconciliationData.length}件</span>
+              <span>検索結果: {reconciliationData.length}パターン</span>
             </div>
 
             {/* 勘定照合テーブル */}
