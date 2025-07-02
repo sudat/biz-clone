@@ -29,6 +29,10 @@ import {
   getTrialBalance,
   performUnifiedSearch,
 } from "../lib/database/search-analysis";
+import {
+  getReconciliationDetail,
+  getReconciliationSummary,
+} from "../lib/database/reconciliation-report";
 // Cloudflare Workers型（Hyperdrive）
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import type { Hyperdrive } from "@cloudflare/workers-types";
@@ -2133,6 +2137,122 @@ export class BizCloneMCP extends McpAgent<Env, Record<string, never>, Props> {
                       error: error instanceof Error
                         ? error.message
                         : "統合検索に失敗しました",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // ========================================
+      // 勘定照合レポート関連ツール
+      // ========================================
+
+      // 勘定照合サマリ取得
+      this.server.tool(
+        "get_reconciliation_summary",
+        "Get reconciliation summary (勘定照合サマリ取得)",
+        {
+          dateFrom: z.string().describe("Start date YYYY-MM-DD"),
+          dateTo: z.string().describe("End date YYYY-MM-DD"),
+          departmentCode: z.string().optional().describe("部門コード"),
+          accountCode: z.string().optional().describe("勘定科目コード"),
+          counterDepartmentCode: z.string().optional().describe(
+            "相手部門コード",
+          ),
+          counterAccountCode: z.string().optional().describe(
+            "相手勘定科目コード",
+          ),
+          includeMatched: z.boolean().default(true).describe("一致分を含むか"),
+          includeUnmatched: z.boolean().default(true).describe(
+            "不一致分を含むか",
+          ),
+          approvalStatuses: z
+            .array(z.enum(["pending", "approved"]))
+            .optional()
+            .describe("承認ステータスの配列: pending, approved"),
+        },
+        async (args) => {
+          try {
+            const result = await getReconciliationSummary(
+              args,
+              this.env.HYPERDRIVE,
+            );
+            return {
+              content: [
+                {
+                  text: JSON.stringify(result, null, 2),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "サマリ取得失敗",
+                    },
+                    null,
+                    2,
+                  ),
+                  type: "text",
+                },
+              ],
+            };
+          }
+        },
+      );
+
+      // 勘定照合明細取得
+      this.server.tool(
+        "get_reconciliation_detail",
+        "Get reconciliation detail (勘定照合明細取得)",
+        {
+          mappingId: z.string().describe("照合マッピングID"),
+          dateFrom: z.string().describe("Start date YYYY-MM-DD"),
+          dateTo: z.string().describe("End date YYYY-MM-DD"),
+          side: z.enum(["primary", "counter"]).default("primary").describe(
+            "primary=計上側, counter=相手側",
+          ),
+        },
+        async ({ mappingId, dateFrom, dateTo, side }) => {
+          try {
+            const result = await getReconciliationDetail(
+              mappingId,
+              dateFrom,
+              dateTo,
+              side,
+              ["pending", "approved"],
+              this.env.HYPERDRIVE,
+            );
+            return {
+              content: [
+                {
+                  text: JSON.stringify(result, null, 2),
+                  type: "text",
+                },
+              ],
+            };
+          } catch (error) {
+            return {
+              content: [
+                {
+                  text: JSON.stringify(
+                    {
+                      success: false,
+                      error: error instanceof Error
+                        ? error.message
+                        : "明細取得失敗",
                     },
                     null,
                     2,
