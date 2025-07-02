@@ -9,7 +9,7 @@ generator client {
   previewFeatures = ["driverAdapters"]
   binaryTargets   = ["native", "rhel-openssl-1.0.x"]
   engineType      = "library"
-  output          = "../node_modules/@prisma/client"
+  output          = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -46,8 +46,10 @@ model Account {
   defaultTaxRate TaxRate? @relation(fields: [defaultTaxCode], references: [taxCode])
 
   // 他テーブルとの関係
-  subAccounts    SubAccount[]
-  journalDetails JournalDetail[]
+  subAccounts                   SubAccount[]
+  journalDetails                JournalDetail[]
+  reconciliationMappings        ReconciliationMapping[]
+  counterReconciliationMappings ReconciliationMapping[] @relation("CounterAccount")
 
   @@map("accounts")
 }
@@ -158,7 +160,9 @@ model Department {
   updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
   // 他テーブルとの関係
-  journalDetails JournalDetail[]
+  journalDetails                JournalDetail[]
+  reconciliationMappings        ReconciliationMapping[]
+  counterReconciliationMappings ReconciliationMapping[] @relation("CounterDepartment")
 
   @@map("departments")
 }
@@ -366,4 +370,29 @@ model JournalDetail {
   // 複合主キー
   @@id([journalNumber, lineNumber])
   @@map("journal_details")
+}
+
+// ============================================================================
+// 勘定照合関連テーブル
+// ============================================================================
+
+// 勘定照合マッピングテーブル
+model ReconciliationMapping {
+  mappingId             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  departmentCode        String   @db.VarChar(10)
+  accountCode           String   @db.VarChar(10)
+  counterDepartmentCode String   @db.VarChar(10)
+  counterAccountCode    String   @db.VarChar(10)
+  description           String?  @db.Text
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // 関係
+  department        Department @relation(fields: [departmentCode], references: [departmentCode])
+  account           Account    @relation(fields: [accountCode], references: [accountCode])
+  counterDepartment Department @relation("CounterDepartment", fields: [counterDepartmentCode], references: [departmentCode])
+  counterAccount    Account    @relation("CounterAccount", fields: [counterAccountCode], references: [accountCode])
+
+  @@map("reconciliation_mappings")
 }

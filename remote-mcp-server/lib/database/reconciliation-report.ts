@@ -11,12 +11,13 @@
  * いずれも Hyperdrive / 直接接続を透過的に扱う `getPrismaClient` を使用する。
  */
 
-import {
-  Decimal,
-  PrismaClientKnownRequestError,
-} from "@prisma/client/runtime/library";
 import type { Hyperdrive } from "@cloudflare/workers-types";
+import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "./prisma";
+
+// Cloudflare Workers対応の型定義
+type Decimal = Prisma.Decimal;
+type PrismaClientKnownRequestError = Prisma.PrismaClientKnownRequestError;
 
 // ===============================
 // 型定義 (app/actions から移植)
@@ -279,10 +280,12 @@ export async function getReconciliationSummary(
     }
 
     return { success: true, data: filtered };
-  } catch (err) {
+  } catch (err: any) {
     // Prisma テーブル未作成の場合は空データを返却
     if (
-      err instanceof PrismaClientKnownRequestError &&
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
       (err.code === "P2021" || err.code === "P2022")
     ) {
       console.warn(
@@ -379,9 +382,11 @@ export async function getReconciliationDetail(
     }));
 
     return { success: true, data };
-  } catch (err) {
+  } catch (err: any) {
     if (
-      err instanceof PrismaClientKnownRequestError &&
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
       (err.code === "P2021" || err.code === "P2022")
     ) {
       console.warn(
