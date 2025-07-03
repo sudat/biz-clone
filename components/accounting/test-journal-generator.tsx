@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { Calendar as CalendarIcon, CheckCircle, AlertCircle, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -442,9 +443,12 @@ export function TestJournalGenerator({ className }: TestJournalGeneratorProps) {
                           className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm"
                         >
                           <div className="space-y-1">
-                            <div className="font-mono text-xs text-blue-600">
+                            <Link
+                              href={`/siwake/${journal.journalNumber}`}
+                              className="font-mono text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                            >
                               {journal.journalNumber}
-                            </div>
+                            </Link>
                             <div className="text-muted-foreground">
                               {journal.description}
                             </div>
