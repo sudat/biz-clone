@@ -53,6 +53,8 @@ export function JournalInquiryForm({
       partnerName: d.partnerName || undefined,
       analysisCode: d.analysisCode || undefined,
       analysisCodeName: d.analysisCodeName || undefined,
+      departmentCode: d.departmentCode || undefined,
+      departmentName: d.departmentName || undefined,
       baseAmount: d.baseAmount,
       taxAmount: d.taxAmount,
       totalAmount: d.totalAmount,
