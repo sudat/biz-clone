@@ -1,0 +1,17 @@
+{
+  "browser": {
+    "browserName": "chromium",
+    "isolated": true,
+    "launchOptions": {
+      "headless": true,
+      "args": [
+        "--no-sandbox"
+      ]
+    }
+  },
+  "use": {
+    "screenshot": "on",
+    "video": "retain-on-failure"
+  },
+  "outputDir": "./test-screenshots"
+}
